@@ -58,6 +58,7 @@ Route::prefix('v1')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me', [AuthController::class, 'me']);
             Route::put('password', [AuthController::class, 'changePassword']);
+            Route::post('active-unit', [AuthController::class, 'setActiveUnit']);
             Route::post('email/verification-notification', [AuthController::class, 'sendVerificationEmail']);
         });
 

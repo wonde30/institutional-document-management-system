@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\Api\V1\NavigationController;
 use App\Models\Permission;
+use App\Models\User;
 use Database\Seeders\BaselineReferenceVocabularySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -297,6 +298,52 @@ class NavigationPermissionContractTest extends TestCase
                     $required,
                     "The front-end route '{$path}' requires '{$capability}', which the API route '{$uri}' does not require."
                 );
+            }
+        }
+    }
+
+    /**
+     * Every visible navigation item must be backed by a capability the server
+     * published for the active organizational context.
+     *
+     * This is the coherence property between the published capability set and
+     * the menu: the interface must never offer an action the server has not
+     * granted in the current context.
+     */
+    public function test_visible_navigation_is_backed_by_the_published_capability_set(): void
+    {
+        // The roles and the capability registry are seeded by the baseline
+        // reference vocabulary.
+        $this->seed(BaselineReferenceVocabularySeeder::class);
+
+        $user = User::create([
+            'name' => 'Contract Officer',
+            'email' => 'contract.officer@wu.edu.et',
+            'password' => bcrypt('StrongPassword123!'),
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+
+        $this->assignRoleToUser($user, 'records_officer', 'global', null);
+
+        $this->authenticateAs($user);
+
+        $me = $this->getJson('/api/v1/auth/me');
+        $me->assertStatus(200);
+        $published = $me->json('user.permissions');
+
+        $navigation = $this->getJson('/api/v1/navigation');
+        $navigation->assertStatus(200);
+
+        foreach ($navigation->json('data') as $section) {
+            foreach ($section['items'] as $item) {
+                foreach ((array) $item['permission'] as $capability) {
+                    $this->assertContains(
+                        $capability,
+                        $published,
+                        "The navigation item '{$item['to']}' is offered but '{$capability}' is not published for the active context."
+                    );
+                }
             }
         }
     }

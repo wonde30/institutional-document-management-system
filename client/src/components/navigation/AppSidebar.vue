@@ -29,6 +29,28 @@ const router = useRouter()
 const authStore = useAuthStore()
 const notifStore = useNotificationStore()
 
+/**
+ * Apply an organizational unit selection.
+ *
+ * The server validates the selection and recalculates the capability set. A
+ * refused switch leaves the previous context untouched.
+ */
+async function handleUnitChange(event: Event) {
+ const target = event.target as HTMLSelectElement
+ const unitId = Number(target.value)
+
+ if (!Number.isFinite(unitId) || unitId === authStore.activeUnitId) {
+ return
+ }
+
+ const switched = await authStore.switchUnit(unitId)
+
+ if (!switched) {
+ // Restore the control to the unit that is actually active.
+ target.value = authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''
+ }
+}
+
 // Normalize sections from either backend dynamic navigation or baseline configuration
 const rawSections = computed<NavigationSection[]>(() => {
  if (authStore.dynamicNavigation && Array.isArray(authStore.dynamicNavigation) && authStore.dynamicNavigation.length > 0) {
@@ -268,11 +290,41 @@ function handleLinkClick() {
  <!-- Workspace Context Block (Quiet paper frame) -->
  <div class="px-4 py-2.5 border-b border-hairline bg-surface-hover">
  <div class="text-[9px] font-bold tracking-widest text-ink-muted uppercase">Active Workspace</div>
- <div class="text-xs font-semibold text-ink truncate mt-0.5" :title="authStore.primaryUnit?.unit_name || 'Central University Records'">
- {{ authStore.primaryUnit?.unit_name || 'Central Administration' }}
+
+ <!-- Active organizational unit -->
+ <div class="text-xs font-semibold text-ink truncate mt-0.5" :title="authStore.activeUnit?.name || 'Central University Records'">
+ {{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name || 'Central Administration' }}
  </div>
  <div class="text-[11px] text-ink-muted truncate" :title="authStore.primaryUnit?.position_title || 'Records Officer'">
  {{ authStore.primaryUnit?.position_title || 'Records Officer' }}
+ </div>
+
+ <!-- Context switcher: offered only when the server published more than one unit -->
+ <div v-if="authStore.availableUnits.length > 1" class="mt-2">
+ <label class="block text-[10px] font-semibold text-ink-muted mb-1" for="active-unit-selector">
+ Organizational unit
+ </label>
+ <select
+ id="active-unit-selector"
+ class="w-full rounded-[5px] border border-hairline bg-surface px-2 py-1 text-[11px] text-ink focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-60"
+ :value="authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''"
+ :disabled="authStore.isSwitchingUnit"
+ @change="handleUnitChange"
+ >
+ <option v-for="unit in authStore.availableUnits" :key="unit.id" :value="unit.id">
+ {{ unit.name }}{{ unit.is_primary ? ' (primary)' : '' }}
+ </option>
+ </select>
+ <p class="mt-1 text-[10px] text-ink-muted" role="status" aria-live="polite">
+ {{ authStore.isSwitchingUnit ? 'Applying the selected unit…' : 'Capabilities and menu follow the selected unit.' }}
+ </p>
+ </div>
+
+ <!-- The user holds scoped capabilities but has not selected a unit yet -->
+ <div v-if="authStore.unitSelectionRequired" class="mt-2 p-2 rounded-[5px] bg-[#fdf3e3] dark:bg-[#2e2312] border border-[#e0a03a]/25">
+ <p class="text-[10px] text-ink leading-relaxed">
+ Your account holds unit specific capabilities. Select an organizational unit to display the matching actions.
+ </p>
  </div>
  </div>
 

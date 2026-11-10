@@ -370,6 +370,11 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
 
+  // A context switch recalculates the capability set. Navigation that happens
+  // while a switch is in flight waits for it, so the guard never evaluates a
+  // capability list that belongs to the previous context.
+  await authStore.awaitPendingUnitSwitch()
+
   // Dynamic window title
   const pageTitle = (to.meta.title as string) || 'Document Repository'
   document.title = `${pageTitle} | Wollo University DMS`

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Authorization\OrganizationalContextService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,6 +10,8 @@ class UserResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $context = app(OrganizationalContextService::class)->buildContext($this->resource, $request);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -57,17 +60,21 @@ class UserResource extends JsonResource
                     ];
                 });
             }),
-            // Capability set exposed to the client for user-experience
-            // affordances. The client is not bound to a single organizational
-            // unit, so the union across the user's scopes is published. The
-            // server remains the only authority: every record-scoped request
-            // is re-evaluated against the owning unit or document.
-            'permissions' => $this->getAllPermissionCodesAcrossScopes(),
-            // Capabilities held in the global scope only.
-            'permissions_global' => $this->getEffectivePermissionCodes(),
-            // Capabilities resolved in the scope the user operates in.
-            'permissions_scoped' => $this->getEffectivePermissionCodes($this->getPrimaryUnitId()),
-            'active_unit_id' => $this->getPrimaryUnitId(),
+
+            /*
+            | The capability set published to the client is calculated for the
+            | active organizational context only. It is never the union of every
+            | scoped grant the user holds. The server remains the authority:
+            | every record scoped request is re-evaluated against the owning
+            | unit or document.
+            */
+            'permissions' => $context['permissions'],
+            'permissions_global' => $context['permissions_global'],
+            'permissions_all_scopes' => $context['permissions_all_scopes'],
+            'active_unit' => $context['active_unit'],
+            'active_unit_id' => $context['active_unit_id'],
+            'available_units' => $context['available_units'],
+            'unit_selection_required' => $context['unit_selection_required'],
         ];
     }
 }

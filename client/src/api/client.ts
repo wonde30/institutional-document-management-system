@@ -44,6 +44,7 @@ import type {
   DigitalSignatureItem,
   SigningIdentityItem,
   OperationsStatusData,
+  OrganizationalContext,
 } from '@/types'
 
 export const apiClient = axios.create({
@@ -145,6 +146,17 @@ export const authApi = {
     apiClient.post<ApiResponse<void>>('/auth/email/verification-notification'),
   verifyEmail: (id: number | string, hash: string) =>
     apiClient.get<ApiResponse<void>>(`/auth/verify-email/${id}/${hash}`),
+  /**
+   * Switch the active organizational unit.
+   *
+   * The server validates the requested unit against the units the caller may
+   * select. The client never treats the selection as proof of authorization.
+   */
+  setActiveUnit: (unitId: number) =>
+    apiClient.post<ApiResponse<OrganizationalContext & { context?: OrganizationalContext }>>(
+      '/auth/active-unit',
+      { unit_id: unitId }
+    ),
 }
 
 // ----------------------------------------------------------------------------

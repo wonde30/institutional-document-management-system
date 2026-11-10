@@ -170,46 +170,131 @@ enforced by
 
 ---
 
-## 6. The Client Contract
+## 6. The Active Organizational Unit Context
 
-The client never decides authorization; it decides presentation.
+The client never decides authorization; it decides presentation. The active
+organizational unit is the context in which that presentation happens.
 
-### 6.1 Published capability set
+### 6.1 Available units
 
-`GET /api/v1/auth/me` publishes three capability sets:
+A unit is **available** to a user when either of the following holds:
+
+* the user is an **active member** of it (`organization_memberships` with no
+  `ends_at`, or an `ends_at` in the future); or
+* the user holds an **active scoped grant** that covers it — a `unit` scope
+  covering that exact unit, or a `subtree` scope covering the anchor unit and
+  every descendant.
+
+A `global` grant is unconstrained and therefore does **not** widen the
+selectable set: a globally authorized administrator is offered the units they
+belong to, not the whole institution.
+
+Inactive units are never offered and never accepted as a selection.
+
+The computation is `User::getActiveMembershipUnitIds()` and
+`User::getGrantScopedUnitIds()`, both of which delegate the subtree expansion
+to the shared `User::expandScopesToUnitIds()`.
+
+### 6.2 Resolving the active unit
+
+The active unit is resolved by the server, in this order:
+
+1. the unit recorded **in the session**, when it is still available;
+2. the user's **primary membership**, when it is available;
+3. the **single** available unit, when exactly one exists;
+4. otherwise **no active unit**.
+
+A recorded unit that is no longer available — for example after the grant that
+produced it was revoked — is discarded rather than honoured.
+
+The selection is stored **server side, in the session**
+(`OrganizationalContextService::SESSION_KEY`). The client never supplies an
+authoritative unit identifier, and no unit identifier is trusted as proof of
+authorization.
+
+### 6.3 Switching context
+
+`POST /api/v1/auth/active-unit` with `{ "unit_id": <id> }`:
+
+* the unit is validated against the units the server has determined the caller
+  may select; an unknown, inactive or unauthorized unit is **refused with
+  HTTP 403** and the previous context is left untouched;
+* on success the selection is recorded in the session and the refreshed
+  context is returned;
+* the attempt is recorded in the audit trail (`auth.active_unit_changed` or
+  `auth.active_unit_rejected`).
+
+Switching **never widens a grant**. A `unit` scope covers exactly its own unit
+and is not expanded by the selection; only a `subtree` scope covers
+descendants. Moving into a descendant of a `unit`-scoped grant therefore
+*withdraws* that capability from the published set, which is the correct
+behaviour.
+
+### 6.4 Published capability sets
+
+`GET /api/v1/auth/me` publishes:
 
 | Field | Meaning |
 |---|---|
-| `permissions` | Union across every scope. Used by the client for affordances. |
+| `permissions` | Capabilities calculated **for the active organizational context**. Never the union of every scoped grant. |
 | `permissions_global` | Capabilities held in the global scope only. |
-| `permissions_scoped` | Capabilities resolved in the user's primary unit, including subtree grants. |
-| `active_unit_id` | The user's primary organizational unit. |
+| `permissions_all_scopes` | Union across every scope. Reserved for administrative surfaces; never used to decide an operation. |
+| `active_unit` | The resolved unit: id, code, name, unit type, parent. |
+| `active_unit_id` | The resolved unit identifier, or `null`. |
+| `available_units` | The units the user may select. |
+| `unit_selection_required` | `true` when the user holds scoped capabilities but no unit is active. |
 
-### 6.2 The known affordance limitation
+### 6.5 A user without an active unit
 
-The client is **not** bound to a single organizational unit: there is no
-active-unit switcher. Consequently `permissions` is a flat union, and the
-client may present an action that the server will refuse for a record outside
-the user's scope.
+A user who holds scoped capabilities but has neither a membership nor a single
+available unit has **no active unit**. In that state:
 
-This is a presentation limitation, not a security boundary:
+* `permissions` contains the **globally scoped capabilities only**;
+* no scoped capability is published, and therefore no scoped action is
+  presented;
+* `unit_selection_required` is `true`, and the interface asks for a selection.
 
-* the server re-evaluates every request against the record's owner;
-* a refusal is returned as HTTP 403 with a specific message;
-* the client surfaces the refusal through the forbidden handler
-  (`client/src/api/sessionEvents.ts`).
+This is the direct consequence of the decisive rule in §3.1: a check without a
+target unit is satisfied only by a global grant.
 
-The mitigation, if the institution requires strict unit-bound presentation, is
-to add an active-unit switcher and have the client publish
-`permissions_scoped` instead of `permissions`. That is a product decision and
-is deliberately not implemented here.
+### 6.6 The active unit is not a substitute for record authorization
 
-### 6.3 Navigation and routing
+The active unit determines the **interface**. It never replaces the check
+performed against the record being accessed.
+
+* A record-scoped request is evaluated against the **owning unit or document
+  of that record**, exactly as before (§4).
+* A capability published in the active context does **not** authorize the same
+  operation on a record in another unit; the request is refused with
+  HTTP 403.
+* Collection endpoints remain scoped by `User::getPermittedUnitIds()`, which is
+  grant driven and unchanged.
+* Creation endpoints continue to validate the payload's `owner_unit_id`
+  against the caller's permission in that unit.
+
+### 6.7 Frontend publication
+
+The Pinia authentication store is the single client-side authority:
+
+| Member | Source |
+|---|---|
+| `availableUnits` | `user.available_units` |
+| `activeUnit` / `activeUnitId` | `user.active_unit` / `user.active_unit_id` |
+| `unitSelectionRequired` | `user.unit_selection_required` |
+| `userPermissions` / `hasPermission()` | `user.permissions` — the active context set |
+
+During a switch the capability list is **emptied** so that no capability from
+the previous context remains visible. If the switch is refused, the previous
+context is restored in full; the interface is never left partially updated.
+The router guard awaits an in-flight switch, so a navigation that happens
+during a switch never evaluates a stale capability set.
+
+### 6.8 Navigation and routing
 
 | Surface | Declaration | Contract |
 |---|---|---|
 | API route | `->middleware('permission:<code>')` | Authoritative. |
-| Navigation catalog | `NavigationController::getMasterNavigationCatalog()` | Filtered with the union of the user's capabilities. |
+| Navigation catalog | `NavigationController::getMasterNavigationCatalog()` | Filtered with the **active context** capability set. |
 | Front-end route | `meta.permission` (a capability, or a list of alternatives) | Affordance; "any of" semantics, matching the server-side `a\|b` contract. |
 
 `NavigationPermissionContractTest` asserts that these three declarations agree
@@ -228,6 +313,8 @@ the build when they drift.
 | Password recovery completed | `authz_version` incremented, **all** sessions terminated | Identity cache dropped |
 | Sign out | Session invalidated, token rotated, session rows deleted | Identity, capability set and navigation dropped |
 | Account deactivated | `active_account` middleware refuses | HTTP 403 surfaced |
+| Organizational context switched | Active unit recorded in the session; capability set recalculated | Capability list emptied for the duration of the switch, then replaced |
+| Grant revoked | `authz_version` incremented; the recorded unit is discarded when it is no longer available | Next request receives HTTP 401 |
 
 ### 7.1 Client session states
 
@@ -273,9 +360,25 @@ existence and classification of the record is not disclosed.
 | Navigation is filtered by the scoped set | `AuthorizationBoundaryEnforcementTest` |
 | Navigation, router and API agree | `NavigationPermissionContractTest` |
 | Every route capability is registered | `NavigationPermissionContractTest` |
+| Visible navigation is backed by the published set | `NavigationPermissionContractTest` |
+| Global grant applies in every unit | `ActiveOrganizationalUnitTest` |
+| Role based unit grant is limited to its scope | `ActiveOrganizationalUnitTest` |
+| Direct user unit grant is limited to its scope | `ActiveOrganizationalUnitTest` |
+| College subtree grant covers the college and descendants | `ActiveOrganizationalUnitTest` |
+| Department grant does not reach a sibling department | `ActiveOrganizationalUnitTest` |
+| No active unit means no union of scoped capabilities | `ActiveOrganizationalUnitTest` |
+| Unauthorized unit selection is refused | `ActiveOrganizationalUnitTest` |
+| Switching recalculates the capability set | `ActiveOrganizationalUnitTest` |
+| Revoked permission is no longer advertised | `ActiveOrganizationalUnitTest` |
+| Record authorization is unaffected by the active unit | `ActiveOrganizationalUnitTest` |
+| Navigation follows the active context | `ActiveOrganizationalUnitTest` |
 | Session termination clears the client state | `client/tests/authSessionLifecycle.spec.ts` |
 | Route guards admit and refuse correctly | `client/tests/authSessionLifecycle.spec.ts` |
 | Account recovery works and is not enumerable | `AccountRecoveryTest` |
+| Context publication and switching on the client | `client/tests/activeUnitContext.spec.ts` |
+| No stale capability during a switch | `client/tests/activeUnitContext.spec.ts` |
+| A refused switch restores the previous context | `client/tests/activeUnitContext.spec.ts` |
+| The context switcher is offered only when applicable | `client/tests/activeUnitContext.spec.ts` |
 
 ---
 
@@ -283,6 +386,6 @@ existence and classification of the record is not disclosed.
 
 | Item | Severity | Status |
 |---|---|---|
-| The client capability set is not unit-bound (§6.2) | Low (presentation only) | Accepted; mitigation requires a product decision |
 | `System Settings` and `Data Imports & Exports` are static screens with no backing API | Medium | Open — see `docs/BUILD_STATUS.md` |
 | `DocumentAssignment` participant removal is authorized by unit but does not record an audit event | Low | Open |
+| The active unit is stored in the session, so it is shared between the browser tabs of one session | Low | Accepted; the alternative is a per-tab preference, which the server would still have to validate |

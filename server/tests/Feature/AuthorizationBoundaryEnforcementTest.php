@@ -396,7 +396,8 @@ class AuthorizationBoundaryEnforcementTest extends TestCase
 
         $user = $response->json('user');
 
-        // The union published to the client covers every scope the user holds.
+        // The published capability set is calculated for the active
+        // organizational context, which for this officer is their own unit.
         $this->assertContains('documents.view', $user['permissions']);
 
         // The global grant is published in both listings.
@@ -406,9 +407,9 @@ class AuthorizationBoundaryEnforcementTest extends TestCase
         // The unit-scoped grant is not published as a global capability.
         $this->assertNotContains('documents.view', $user['permissions_global']);
 
-        // It is published in the scope the user operates in.
-        $this->assertContains('documents.view', $user['permissions_scoped']);
+        // The active unit is resolved from the primary membership.
         $this->assertSame($this->unitA->id, $user['active_unit_id']);
+        $this->assertSame($this->unitA->id, $user['active_unit']['id']);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Services\Authorization\OrganizationalContextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,11 +26,11 @@ class NavigationController extends Controller
             ], 401);
         }
 
-        // The navigation catalog is filtered with the union of the user's
-        // capabilities across scopes, matching the capability set published to
-        // the client. The server re-evaluates every record-scoped request
-        // against the owning unit or document.
-        $userPerms = $user->getAllPermissionCodesAcrossScopes();
+        // The catalog is filtered with the capability set calculated for the
+        // active organizational context, so the menu never advertises an
+        // action the server would refuse in the current context.
+        $userPerms = app(OrganizationalContextService::class)
+            ->capabilitiesForActiveContext($user, $request);
         $isSuperAdmin = $user->userRoles()
             ->whereHas('role', fn ($q) => $q->whereIn('code', ['super_admin', 'system_administrator']))
             ->exists();

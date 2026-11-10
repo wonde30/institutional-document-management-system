@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\Authorization\OrganizationalContextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -149,6 +150,60 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Successfully logged out.',
+        ]);
+    }
+
+    /**
+     * Switch the active organizational unit.
+     *
+     * The requested unit is validated against the units the server has
+     * determined the caller may select. A client supplied unit identifier is
+     * never treated as proof of authorization: an unknown or unavailable unit
+     * is rejected.
+     */
+    public function setActiveUnit(
+        Request $request,
+        OrganizationalContextService $contextService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'unit_id' => 'required|integer',
+        ]);
+
+        $user = $request->user();
+
+        $unitId = $contextService->validateUnitSelection($user, (int) $validated['unit_id']);
+
+        if ($unitId === null) {
+            AuditService::recordAuthEvent(
+                action: 'auth.active_unit_rejected',
+                actorId: $user->id,
+                targetType: 'organization_unit',
+                targetId: (string) $validated['unit_id'],
+                details: ['reason' => 'unit_not_available'],
+                request: $request
+            );
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You are not authorized to operate in the requested organizational unit.',
+            ], 403);
+        }
+
+        $contextService->rememberActiveUnit($request, $unitId);
+
+        AuditService::recordAuthEvent(
+            action: 'auth.active_unit_changed',
+            actorId: $user->id,
+            targetType: 'organization_unit',
+            targetId: (string) $unitId,
+            details: [],
+            request: $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Active organizational unit updated.',
+            'context' => $contextService->buildContext($user, $request),
         ]);
     }
 

@@ -96,7 +96,42 @@ export interface User {
   primary_membership?: PrimaryMembership | null
   roles?: UserRoleAssignment[]
   direct_permissions?: UserDirectPermission[]
+  /**
+   * The capability set calculated by the server for the active organizational
+   * context. It is never the union of every scoped grant.
+   */
   permissions?: string[]
+  permissions_global?: string[]
+  permissions_all_scopes?: string[]
+  active_unit?: OrganizationalUnitSummary | null
+  active_unit_id?: number | null
+  available_units?: OrganizationalUnitSummary[]
+  unit_selection_required?: boolean
+}
+
+/**
+ * An organizational unit the user may operate in.
+ */
+export interface OrganizationalUnitSummary {
+  id: number
+  code: string
+  name: string
+  unit_type?: string | null
+  parent_id?: number | null
+  is_primary?: boolean
+}
+
+/**
+ * The organizational context published by the server.
+ */
+export interface OrganizationalContext {
+  active_unit: OrganizationalUnitSummary | null
+  active_unit_id: number | null
+  available_units: OrganizationalUnitSummary[]
+  unit_selection_required: boolean
+  permissions: string[]
+  permissions_global: string[]
+  permissions_all_scopes: string[]
 }
 
 // ----------------------------------------------------------------------------

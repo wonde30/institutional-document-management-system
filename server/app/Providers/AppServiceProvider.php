@@ -19,7 +19,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The organizational context is resolved once per request. The scoped
+        // binding lets the resource, the controller and the navigation
+        // catalog share one computed set of available units instead of
+        // repeating the resolution for each of them.
+        $this->app->scoped(\App\Services\Authorization\OrganizationalContextService::class);
     }
 
     /**

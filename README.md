@@ -31,7 +31,7 @@ DMS/
 * **Runtime:** PHP 8.4+
 * **Database:** MySQL 8.4 Community Server (InnoDB Engine, `utf8mb4_0900_as_cs` collation)
 * **Authentication:** Laravel Sanctum SPA stateful session cookies with double-submit CSRF protection
-* **Testing:** PHPUnit / Pest test suites (291 comprehensive feature and unit tests)
+* **Testing:** PHPUnit / Pest test suites (308 comprehensive feature and unit tests)
 
 ### Frontend
 * **Framework:** Vue 3 (Composition API, `<script setup lang="ts">`)
@@ -40,7 +40,7 @@ DMS/
 * **Routing:** Vue Router 4 with route-level permission navigation guards
 * **Styling:** Tailwind CSS 4 with custom institutional theme tokens (`#0B6B63`, `#81D7CA`, `#142D45`, `#101F30`, `#EAF5F2`)
 * **Icons:** Lucide Icons
-* **Testing:** Vitest 3 unit and component test suites (120 tests)
+* **Testing:** Vitest 3 unit and component test suites (129 tests)
 
 ---
 
@@ -123,6 +123,7 @@ npm run build
 * **Session Boundary:** Stateful HttpOnly, SameSite encrypted session cookies. Sensitive access tokens are never persisted to browser `localStorage`.
 * **Instant Session Revocation:** When an account is locked or permissions are modified by a system administrator, the user's `authz_version` is incremented, terminating active sessions immediately.
 * **Scoped Record Authorization:** Holding a capability is necessary but not sufficient. Every record-scoped request is additionally evaluated against the organizational unit or document that owns it.
+* **Active Organizational Unit:** The interface operates in an explicit organizational context. The server determines which units an account may select, validates every selection, and publishes the capability set calculated for that context. A user without a selected unit receives globally scoped capabilities only — never the union of every scoped grant.
 * **Account Recovery:** Recovery links are delivered by mail, are single use, are rate limited per account and per source address, and terminate every session established with the previous credential. The recovery response is identical for a registered and an unregistered address.
 * **Physical Custody Rule:** Digital scanning never authorizes the physical destruction of official university records without a formal Gazetted disposal order.
 

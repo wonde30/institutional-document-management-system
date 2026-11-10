@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi, navigationApi } from '@/api/client'
 import { onUnauthorized } from '@/api/sessionEvents'
-import type { User } from '@/types'
+import type { OrganizationalUnitSummary, User } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   // Pure cookie-based SPA session authentication: No tokens stored in localStorage or browser headers
@@ -112,7 +112,6 @@ export const useAuthStore = defineStore('auth', () => {
       dynamicNavigation.value = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      localStorage.removeItem('active_unit_id')
     }
   }
 
@@ -133,6 +132,88 @@ export const useAuthStore = defineStore('auth', () => {
     return null
   }
 
+  /**
+   * The organizational units the server has determined the user may select.
+   */
+  const availableUnits = computed<OrganizationalUnitSummary[]>(() => user.value?.available_units || [])
+
+  /**
+   * The organizational unit the user is currently operating in.
+   */
+  const activeUnit = computed<OrganizationalUnitSummary | null>(() => user.value?.active_unit || null)
+
+  const activeUnitId = computed<number | null>(() => user.value?.active_unit_id ?? null)
+
+  /**
+   * True when the user holds scoped capabilities but no unit has been selected
+   * yet, so the interface must ask for a selection.
+   */
+  const unitSelectionRequired = computed<boolean>(() => !!user.value?.unit_selection_required)
+
+  /**
+   * True while the active organizational unit is being switched.
+   */
+  const isSwitchingUnit = ref<boolean>(false)
+
+  let unitSwitchPromise: Promise<boolean> | null = null
+
+  /**
+   * Switch the active organizational unit.
+   *
+   * The server validates the requested unit and recalculates the capability
+   * set for the new context. The capability list is emptied for the duration
+   * of the switch so that no stale capability is presented, and the previous
+   * state is restored when the switch is refused.
+   */
+  function switchUnit(unitId: number): Promise<boolean> {
+    if (unitSwitchPromise) return unitSwitchPromise
+
+    const previousUser = user.value
+
+    isSwitchingUnit.value = true
+
+    unitSwitchPromise = (async () => {
+      try {
+        // Fail closed for the duration of the switch: a capability that
+        // belonged to the previous context must not remain visible.
+        if (user.value) {
+          user.value = { ...user.value, permissions: [] }
+        }
+
+        await authApi.setActiveUnit(unitId)
+
+        // Re-read the canonical context and the navigation for it.
+        await fetchUser()
+
+        return true
+      } catch (err: unknown) {
+        const apiErr = err as { response?: { data?: { message?: string } } }
+        error.value =
+          apiErr.response?.data?.message ||
+          'The organizational context could not be changed.'
+        // Restore the previous context in full: a refused switch must not
+        // leave the interface in a partially updated state.
+        user.value = previousUser
+        await fetchNavigation().catch(() => {})
+        return false
+      } finally {
+        isSwitchingUnit.value = false
+        unitSwitchPromise = null
+      }
+    })()
+
+    return unitSwitchPromise
+  }
+
+  /**
+   * Await an in-flight context switch, if any.
+   */
+  async function awaitPendingUnitSwitch(): Promise<void> {
+    if (unitSwitchPromise) {
+      await unitSwitchPromise
+    }
+  }
+
   let fetchUserPromise: Promise<User | null> | null = null
 
   /**
@@ -151,7 +232,6 @@ export const useAuthStore = defineStore('auth', () => {
     sessionState.value = 'unauthenticated'
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    localStorage.removeItem('active_unit_id')
   }
 
   // A session termination reported by the API client invalidates the store.
@@ -209,6 +289,11 @@ export const useAuthStore = defineStore('auth', () => {
     userRoles,
     userPermissions,
     primaryUnit,
+    availableUnits,
+    activeUnit,
+    activeUnitId,
+    unitSelectionRequired,
+    isSwitchingUnit,
     hasRole,
     hasAnyRole,
     hasPermission,
@@ -216,5 +301,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     fetchUser,
     fetchNavigation,
+    switchUnit,
+    awaitPendingUnitSwitch,
   }
 })

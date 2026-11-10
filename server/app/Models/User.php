@@ -46,6 +46,23 @@ class User extends Authenticatable
     ];
 
     /**
+     * The unit of the user's primary membership, memoised for the instance.
+     */
+    protected ?int $cachedPrimaryUnitId = null;
+
+    /**
+     * Whether the primary membership has already been resolved.
+     */
+    protected bool $primaryUnitResolved = false;
+
+    /**
+     * Memoised ancestor unit identifiers, keyed by unit identifier.
+     *
+     * @var array<string, list<int>>
+     */
+    protected array $cachedSubtreeUnitIds = [];
+
+    /**
      * The attributes that should be cast.
      *
      * @return array<string, string>
@@ -196,43 +213,23 @@ class User extends Authenticatable
     public function hasPermission(string $permissionCode, ?int $unitId = null): bool
     {
         $subtreeUnitIds = $this->resolveSubtreeUnitIds($unitId);
+        $grants = $this->loadActiveGrants();
 
         // 1. Direct permission in global scope or matching unit scope
-        $directQuery = $this->userPermissions()
-            ->whereHas('permission', fn ($q) => $q->where('code', $permissionCode)->where('active', 1))
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->whereHas('scope', function ($q) use ($unitId, $subtreeUnitIds) {
-                $q->where('kind', 'global');
-                if ($unitId !== null) {
-                    $q->orWhere(fn ($sq) => $sq->where('kind', 'unit')->where('unit_id', $unitId))
-                      ->orWhere(fn ($sq) => $sq->where('kind', 'subtree')->whereIn('unit_id', $subtreeUnitIds));
-                }
-            });
+        $direct = $grants['direct']
+            ->filter(fn ($up) => $up->permission?->code === $permissionCode)
+            ->contains(fn ($up) => $this->scopeAppliesToUnit($up->scope, $unitId, $subtreeUnitIds));
 
-        if ($directQuery->exists()) {
+        if ($direct) {
             return true;
         }
 
         // 2. Role permission in global scope or matching unit scope
-        $roleQuery = $this->userRoles()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->whereHas('role', function ($rq) use ($permissionCode) {
-                $rq->where('active', 1)
-                   ->whereHas('permissions', fn ($pq) => $pq->where('code', $permissionCode)->where('active', 1));
-            })
-            ->whereHas('scope', function ($q) use ($unitId, $subtreeUnitIds) {
-                $q->where('kind', 'global');
-                if ($unitId !== null) {
-                    $q->orWhere(fn ($sq) => $sq->where('kind', 'unit')->where('unit_id', $unitId))
-                      ->orWhere(fn ($sq) => $sq->where('kind', 'subtree')->whereIn('unit_id', $subtreeUnitIds));
-                }
-            });
-
-        return $roleQuery->exists();
+        return $grants['roles']
+            ->filter(fn ($ur) => $ur->role?->permissions->contains(
+                fn ($p) => $p->code === $permissionCode && $p->active
+            ))
+            ->contains(fn ($ur) => $this->scopeAppliesToUnit($ur->scope, $unitId, $subtreeUnitIds));
     }
 
     /**
@@ -282,12 +279,18 @@ class User extends Authenticatable
             return [];
         }
 
-        $targetUnit = OrganizationUnit::find($unitId);
-        if (! $targetUnit) {
-            return [$unitId];
+        $cacheKey = 'unit_'.$unitId;
+
+        if (isset($this->cachedSubtreeUnitIds[$cacheKey])) {
+            return $this->cachedSubtreeUnitIds[$cacheKey];
         }
 
-        return array_merge([$unitId], $targetUnit->getAncestorIds());
+        $targetUnit = OrganizationUnit::find($unitId);
+        if (! $targetUnit) {
+            return $this->cachedSubtreeUnitIds[$cacheKey] = [$unitId];
+        }
+
+        return $this->cachedSubtreeUnitIds[$cacheKey] = array_merge([$unitId], $targetUnit->getAncestorIds());
     }
 
     /**
@@ -301,37 +304,7 @@ class User extends Authenticatable
      */
     public function getEffectivePermissionCodes(?int $unitId = null): array
     {
-        $subtreeUnitIds = $this->resolveSubtreeUnitIds($unitId);
-
-        // 1. Direct permissions
-        $directQuery = $this->userPermissions()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->with(['permission', 'scope']);
-
-        $directCodes = $directQuery->get()
-            ->filter(function ($up) use ($unitId, $subtreeUnitIds) {
-                if (! $up->permission || ! $up->permission->active) return false;
-                return $this->scopeAppliesToUnit($up->scope, $unitId, $subtreeUnitIds);
-            })
-            ->map(fn ($up) => $up->permission->code);
-
-        // 2. Role permissions
-        $roleQuery = $this->userRoles()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->with(['role.permissions', 'scope']);
-
-        $roleCodes = $roleQuery->get()
-            ->filter(function ($ur) use ($unitId, $subtreeUnitIds) {
-                if (! $ur->role || ! $ur->role->active) return false;
-                return $this->scopeAppliesToUnit($ur->scope, $unitId, $subtreeUnitIds);
-            })
-            ->flatMap(fn ($ur) => $ur->role->permissions->where('active', 1)->pluck('code'));
-
-        return $directCodes->toBase()->merge($roleCodes)->unique()->values()->all();
+        return $this->getCapabilitySets($unitId)['active'];
     }
 
     /**
@@ -343,25 +316,7 @@ class User extends Authenticatable
      */
     public function getAllPermissionCodesAcrossScopes(): array
     {
-        $directCodes = $this->userPermissions()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->with('permission')
-            ->get()
-            ->filter(fn ($up) => $up->permission && $up->permission->active)
-            ->map(fn ($up) => $up->permission->code);
-
-        $roleCodes = $this->userRoles()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->with('role.permissions')
-            ->get()
-            ->filter(fn ($ur) => $ur->role && $ur->role->active)
-            ->flatMap(fn ($ur) => $ur->role->permissions->where('active', 1)->pluck('code'));
-
-        return $directCodes->toBase()->merge($roleCodes)->unique()->values()->all();
+        return $this->getCapabilitySets()['all'];
     }
 
     /**
@@ -369,9 +324,15 @@ class User extends Authenticatable
      */
     public function getPrimaryUnitId(): ?int
     {
+        if ($this->primaryUnitResolved) {
+            return $this->cachedPrimaryUnitId;
+        }
+
         $membership = $this->primaryMembershipRecord?->membership;
 
-        return $membership?->unit_id !== null ? (int) $membership->unit_id : null;
+        $this->primaryUnitResolved = true;
+
+        return $this->cachedPrimaryUnitId = ($membership?->unit_id !== null ? (int) $membership->unit_id : null);
     }
 
     /**
@@ -384,26 +345,19 @@ class User extends Authenticatable
      */
     public function getPermittedUnitIds(string $permissionCode): ?array
     {
-        // 1. Direct permissions
-        $directPerms = $this->userPermissions()
-            ->whereHas('permission', fn ($q) => $q->where('code', $permissionCode)->where('active', 1))
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->with('scope')
-            ->get();
+        $grants = $this->loadActiveGrants();
 
-        // 2. Role permissions
-        $rolePerms = $this->userRoles()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->whereHas('role', function ($rq) use ($permissionCode) {
-                $rq->where('active', 1)
-                   ->whereHas('permissions', fn ($pq) => $pq->where('code', $permissionCode)->where('active', 1));
-            })
-            ->with('scope')
-            ->get();
+        // 1. Direct permissions carrying the capability
+        $directPerms = $grants['direct']->filter(
+            fn ($up) => $up->permission && $up->permission->code === $permissionCode
+        );
+
+        // 2. Role grants whose role carries the capability
+        $rolePerms = $grants['roles']->filter(
+            fn ($ur) => $ur->role && $ur->role->permissions->contains(
+                fn ($p) => $p->code === $permissionCode && $p->active
+            )
+        );
 
         $allScopes = $directPerms->pluck('scope')->merge($rolePerms->pluck('scope'))->filter();
 
@@ -417,19 +371,233 @@ class User extends Authenticatable
             return null;
         }
 
+        return $this->expandScopesToUnitIds($allScopes);
+    }
+
+    /**
+     * Expand a set of authorization scopes into the concrete unit identifiers
+     * they cover.
+     *
+     * A 'unit' scope covers exactly its own unit. A 'subtree' scope covers
+     * the anchor unit and every descendant unit. A 'global' scope is
+     * unconstrained and therefore contributes no specific unit here; it is
+     * handled by the caller.
+     *
+     * The subtree expansion is performed once for every distinct anchor unit,
+     * and all anchors are expanded together, so the cost is one query per
+     * level of the hierarchy rather than one walk per grant.
+     *
+     * @param  iterable<mixed>  $scopes
+     * @return list<int>
+     */
+    protected function expandScopesToUnitIds(iterable $scopes): array
+    {
         $unitIds = [];
-        foreach ($allScopes as $scope) {
-            if ($scope->kind === 'unit' && $scope->unit_id) {
-                $unitIds[] = (int) $scope->unit_id;
-            } elseif ($scope->kind === 'subtree' && $scope->unit_id) {
-                $unitIds[] = (int) $scope->unit_id;
-                $targetUnit = OrganizationUnit::find($scope->unit_id);
-                if ($targetUnit) {
-                    $unitIds = array_merge($unitIds, $targetUnit->getDescendantIds());
+        $subtreeAnchors = [];
+
+        foreach ($scopes as $scope) {
+            if (! $scope || ! $scope->unit_id) {
+                continue;
+            }
+
+            $unitIds[] = (int) $scope->unit_id;
+
+            if ($scope->kind === 'subtree') {
+                $subtreeAnchors[(int) $scope->unit_id] = true;
+            }
+        }
+
+        if (! empty($subtreeAnchors)) {
+            $unitIds = array_merge($unitIds, $this->descendantIdsFor(array_keys($subtreeAnchors)));
+        }
+
+        return array_values(array_unique($unitIds));
+    }
+
+    /**
+     * Resolve every descendant of the given anchor units.
+     *
+     * All anchors are expanded in a single breadth first walk, which costs one
+     * query per level of the hierarchy regardless of how many anchors or
+     * grants are involved.
+     *
+     * @param  list<int>  $anchorIds
+     * @return list<int>
+     */
+    protected function descendantIdsFor(array $anchorIds): array
+    {
+        $descendants = [];
+        $visited = [];
+        $queue = array_values(array_unique($anchorIds));
+
+        while (! empty($queue)) {
+            $parentIds = array_values(array_diff($queue, $visited));
+
+            if (empty($parentIds)) {
+                break;
+            }
+
+            $visited = array_merge($visited, $parentIds);
+
+            $childIds = OrganizationUnit::whereIn('parent_id', $parentIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            foreach ($childIds as $childId) {
+                if (! in_array($childId, $descendants, true)) {
+                    $descendants[] = $childId;
+                }
+            }
+
+            $queue = $childIds;
+        }
+
+        return $descendants;
+    }
+
+    /**
+     * The user's active role and direct permission grants.
+     *
+     * A grant is active when it has not expired and the role or permission it
+     * carries is itself active. The grants are loaded on demand and are never
+     * cached on the instance, so a grant that is added or revoked is always
+     * observed by the next decision.
+     *
+     * @return array{roles: \Illuminate\Support\Collection<int, UserRole>, direct: \Illuminate\Support\Collection<int, UserPermission>}
+     */
+    public function loadActiveGrants(): array
+    {
+        $roles = $this->userRoles()
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->whereHas('role', fn ($rq) => $rq->where('active', 1))
+            ->with(['role.permissions', 'scope'])
+            ->get();
+
+        $direct = $this->userPermissions()
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->whereHas('permission', fn ($q) => $q->where('active', 1))
+            ->with(['permission', 'scope'])
+            ->get();
+
+        return ['roles' => $roles, 'direct' => $direct];
+    }
+
+    /**
+     * Resolve every capability set of the user in a single pass over the
+     * active grants.
+     *
+     * The three sets are derived from one load of the grants, so the published
+     * capability set, the global capability set and the administrative listing
+     * can never disagree with one another.
+     *
+     * @return array{active: list<string>, global: list<string>, all: list<string>}
+     */
+    public function getCapabilitySets(?int $unitId = null, ?array $grants = null): array
+    {
+        $subtreeUnitIds = $this->resolveSubtreeUnitIds($unitId);
+        $grants = $grants ?? $this->loadActiveGrants();
+
+        $active = [];
+        $global = [];
+        $all = [];
+
+        foreach ($grants['direct'] as $directGrant) {
+            if (! $directGrant->permission || ! $directGrant->permission->active) {
+                continue;
+            }
+
+            $code = $directGrant->permission->code;
+            $all[$code] = true;
+
+            if ($directGrant->scope?->kind === 'global') {
+                $global[$code] = true;
+            }
+
+            if ($this->scopeAppliesToUnit($directGrant->scope, $unitId, $subtreeUnitIds)) {
+                $active[$code] = true;
+            }
+        }
+
+        foreach ($grants['roles'] as $roleGrant) {
+            if (! $roleGrant->role || ! $roleGrant->role->active) {
+                continue;
+            }
+
+            foreach ($roleGrant->role->permissions->where('active', 1) as $permission) {
+                $code = $permission->code;
+                $all[$code] = true;
+
+                if ($roleGrant->scope?->kind === 'global') {
+                    $global[$code] = true;
+                }
+
+                if ($this->scopeAppliesToUnit($roleGrant->scope, $unitId, $subtreeUnitIds)) {
+                    $active[$code] = true;
                 }
             }
         }
 
-        return array_values(array_unique($unitIds));
+        return [
+            'active' => array_keys($active),
+            'global' => array_keys($global),
+            'all' => array_keys($all),
+        ];
+    }
+
+    /**
+     * The scopes carried by the user's active grants.
+     *
+     * @return \Illuminate\Support\Collection<int, AuthorizationScope>
+     */
+    protected function activeGrantScopes(?array $grants = null): \Illuminate\Support\Collection
+    {
+        $grants = $grants ?? $this->loadActiveGrants();
+
+        return $grants['roles']->pluck('scope')
+            ->merge($grants['direct']->pluck('scope'))
+            ->filter();
+    }
+
+    /**
+     * Every organizational unit covered by an active scoped grant, regardless
+     * of the capability that the grant carries.
+     *
+     * Global grants are unconstrained and therefore contribute no specific
+     * unit. Subtree grants contribute the anchor unit and every descendant.
+     *
+     * @return list<int>
+     */
+    public function getGrantScopedUnitIds(?array $grants = null): array
+    {
+        $grants = $grants ?? $this->loadActiveGrants();
+
+        $scopes = $grants['roles']->pluck('scope')
+            ->merge($grants['direct']->pluck('scope'))
+            ->filter();
+
+        return $this->expandScopesToUnitIds($scopes);
+    }
+
+    /**
+     * The organizational units the user is an active member of.
+     *
+     * @return list<int>
+     */
+    public function getActiveMembershipUnitIds(): array
+    {
+        return $this->memberships()
+            ->where(function ($q) {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })
+            ->pluck('unit_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

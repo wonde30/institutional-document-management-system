@@ -1,0 +1,251 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+
+const { me, setActiveUnit, navigationGet } = vi.hoisted(() => ({
+  me: vi.fn(),
+  setActiveUnit: vi.fn(),
+  navigationGet: vi.fn(),
+}))
+
+vi.mock('@/api/client', () => ({
+  authApi: {
+    me,
+    setActiveUnit,
+    login: vi.fn(),
+    logout: vi.fn(),
+  },
+  navigationApi: {
+    get: navigationGet,
+  },
+  notificationsApi: {
+    list: vi.fn().mockResolvedValue({ data: { success: true, data: { items: { data: [] }, unread_count: 0 } } }),
+    unreadCount: vi.fn().mockResolvedValue({ data: { success: true, count: 0 } }),
+  },
+  ensureCsrfCookie: vi.fn().mockResolvedValue(undefined),
+}))
+
+import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
+import AppSidebar from '@/components/navigation/AppSidebar.vue'
+import type { OrganizationalUnitSummary, User } from '@/types'
+
+const collegeA: OrganizationalUnitSummary = {
+  id: 20,
+  code: 'COLLEGE_A',
+  name: 'College A',
+  is_primary: true,
+}
+
+const collegeB: OrganizationalUnitSummary = {
+  id: 21,
+  code: 'COLLEGE_B',
+  name: 'College B',
+  is_primary: false,
+}
+
+function contextUser(
+  overrides: Partial<User> = {},
+  units: OrganizationalUnitSummary[] = [collegeA, collegeB]
+): User {
+  return {
+    id: 7,
+    name: 'Scoped Officer',
+    email: 'officer@wu.edu.et',
+    status: 'active',
+    authz_version: 1,
+    roles: [{ id: 2, name: 'records_officer' }],
+    permissions: ['documents.view'],
+    available_units: units,
+    active_unit: units[0] ?? null,
+    active_unit_id: units[0]?.id ?? null,
+    unit_selection_required: false,
+    ...overrides,
+  }
+}
+
+describe('Active organizational unit context', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    me.mockReset()
+    setActiveUnit.mockReset()
+    navigationGet.mockReset()
+    navigationGet.mockResolvedValue({ data: { success: true, data: [] } })
+  })
+
+  it('publishes the available units and the active unit supplied by the server', async () => {
+    me.mockResolvedValue({ data: { success: true, user: contextUser() } })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    expect(authStore.availableUnits).toHaveLength(2)
+    expect(authStore.activeUnitId).toBe(collegeA.id)
+    expect(authStore.activeUnit?.name).toBe('College A')
+  })
+
+  it('uses the capability set calculated for the active context, not a union', async () => {
+    me.mockResolvedValue({
+      data: {
+        success: true,
+        user: contextUser({
+          permissions: ['documents.view'],
+          permissions_global: [],
+          permissions_all_scopes: ['documents.view', 'roles.view'],
+        }),
+      },
+    })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    // The scoped capability is usable.
+    expect(authStore.hasPermission('documents.view')).toBe(true)
+
+    // The capability held only in another unit is not advertised.
+    expect(authStore.hasPermission('roles.view')).toBe(false)
+  })
+
+  it('recalculates the capability set when the unit is switched', async () => {
+    const switchedUser = contextUser({
+      permissions: ['roles.view'],
+      active_unit: collegeB,
+      active_unit_id: collegeB.id,
+    })
+
+    me.mockResolvedValueOnce({ data: { success: true, user: contextUser() } })
+    setActiveUnit.mockResolvedValue({ data: { success: true } })
+    me.mockResolvedValueOnce({ data: { success: true, user: switchedUser } })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+    expect(authStore.hasPermission('documents.view')).toBe(true)
+    expect(authStore.hasPermission('roles.view')).toBe(false)
+
+    const switched = await authStore.switchUnit(collegeB.id)
+
+    expect(switched).toBe(true)
+    expect(setActiveUnit).toHaveBeenCalledWith(collegeB.id)
+    expect(authStore.activeUnitId).toBe(collegeB.id)
+    expect(authStore.hasPermission('roles.view')).toBe(true)
+    expect(authStore.hasPermission('documents.view')).toBe(false)
+  })
+
+  it('presents no stale capability while a switch is in flight', async () => {
+    me.mockResolvedValue({ data: { success: true, user: contextUser() } })
+    setActiveUnit.mockResolvedValue({ data: { success: true } })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    let release: (() => void) | null = null
+    setActiveUnit.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ data: { success: true } })
+        })
+    )
+
+    const pending = authStore.switchUnit(collegeB.id)
+
+    // While the switch is pending the previous capability set is withdrawn.
+    expect(authStore.isSwitchingUnit).toBe(true)
+    expect(authStore.user?.permissions).toEqual([])
+
+    release?.()
+    await pending
+    expect(authStore.isSwitchingUnit).toBe(false)
+  })
+
+  it('restores the previous context when the switch is refused', async () => {
+    me.mockResolvedValue({ data: { success: true, user: contextUser() } })
+    setActiveUnit.mockRejectedValue({
+      response: { data: { message: 'Forbidden: You are not authorized to operate in the requested organizational unit.' } },
+    })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    const switched = await authStore.switchUnit(collegeB.id)
+
+    expect(switched).toBe(false)
+    expect(authStore.activeUnitId).toBe(collegeA.id)
+    expect(authStore.hasPermission('documents.view')).toBe(true)
+    expect(authStore.error).toContain('not authorized')
+  })
+
+  it('does not start a second switch while one is in flight', async () => {
+    me.mockResolvedValue({ data: { success: true, user: contextUser() } })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    let release: (() => void) | null = null
+    setActiveUnit.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ data: { success: true } })
+        })
+    )
+
+    const first = authStore.switchUnit(collegeB.id)
+    const second = authStore.switchUnit(collegeB.id)
+
+    expect(setActiveUnit).toHaveBeenCalledTimes(1)
+
+    release?.()
+    await Promise.all([first, second])
+  })
+
+  it('offers the context switcher only when more than one unit is available', async () => {
+    me.mockResolvedValue({ data: { success: true, user: contextUser({}, [collegeA]) } })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    const wrapper = mount(AppSidebar, {
+      global: { plugins: [router] },
+    })
+
+    expect(wrapper.find('#active-unit-selector').exists()).toBe(false)
+  })
+
+  it('renders the context switcher when several units are available', async () => {
+    me.mockResolvedValue({ data: { success: true, user: contextUser() } })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    const wrapper = mount(AppSidebar, {
+      global: { plugins: [router] },
+    })
+
+    const selector = wrapper.find('#active-unit-selector')
+    expect(selector.exists()).toBe(true)
+    expect(selector.findAll('option')).toHaveLength(2)
+  })
+
+  it('explains that a unit must be selected when scoped capabilities are held', async () => {
+    me.mockResolvedValue({
+      data: {
+        success: true,
+        user: contextUser({
+          active_unit: null,
+          active_unit_id: null,
+          unit_selection_required: true,
+          permissions: [],
+        }),
+      },
+    })
+
+    const authStore = useAuthStore()
+    await authStore.fetchUser()
+
+    const wrapper = mount(AppSidebar, {
+      global: { plugins: [router] },
+    })
+
+    expect(wrapper.text()).toContain('unit specific capabilities')
+  })
+})
