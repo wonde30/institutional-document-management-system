@@ -45,6 +45,9 @@ import type {
   SigningIdentityItem,
   OperationsStatusData,
   OrganizationalContext,
+  SettingCategory,
+  SettingDefinition,
+  SettingsPayload,
 } from '@/types'
 
 export const apiClient = axios.create({
@@ -431,6 +434,40 @@ export const auditApi = {
 
 export const navigationApi = {
   get: () => apiClient.get<ApiResponse<any[]>>('/navigation'),
+}
+
+// ----------------------------------------------------------------------------
+// 11b. Runtime System Configuration API
+// ----------------------------------------------------------------------------
+export const settingsApi = {
+  /** The configuration catalogue with the current values resolved. */
+  index: () => apiClient.get<ApiResponse<SettingsPayload>>('/settings'),
+  /** The available configuration categories. */
+  categories: () => apiClient.get<ApiResponse<Record<string, SettingCategory>>>('/settings/categories'),
+  /**
+   * Store one or more configuration values. The server decides the type, the
+   * validation rules and the permitted values; the client supplies the value
+   * only.
+   */
+  update: (settings: Array<{ key: string; value: string | number | boolean }>, scopeUnitId?: number | null) =>
+    apiClient.put<ApiResponse<{ settings: SettingDefinition[]; scope_unit_id: number | null }>>('/settings', {
+      settings,
+      ...(scopeUnitId != null ? { scope_unit_id: scopeUnitId } : {}),
+    }),
+  /** Reset a setting to its catalogue default. */
+  reset: (key: string, scopeUnitId?: number | null) =>
+    apiClient.post<ApiResponse<{ setting: SettingDefinition; scope_unit_id: number | null }>>(
+      `/settings/${key}/reset`,
+      scopeUnitId != null ? { scope_unit_id: scopeUnitId } : {}
+    ),
+  /** Reset every setting of a category to its catalogue default. */
+  resetCategory: (category: string, scopeUnitId?: number | null) =>
+    apiClient.post<ApiResponse<{ reset: string[]; settings: SettingDefinition[] }>>(
+      `/settings/categories/${category}/reset`,
+      scopeUnitId != null ? { scope_unit_id: scopeUnitId } : {}
+    ),
+  /** The configuration published on the public portal. */
+  publicSettings: () => apiClient.get<ApiResponse<Record<string, string | number | boolean>>>('/settings/public'),
 }
 
 // ----------------------------------------------------------------------------

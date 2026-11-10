@@ -10,8 +10,8 @@
 
 | Check | Command | Result | Evidence |
 |---|---|---|---|
-| Backend test suite | `php artisan test` | **PASS** | 308 tests, 308 passed, 2015 assertions, 133.7 s |
-| Frontend test suite | `npx vitest run` | **PASS** | 23 files, 129 tests, 129 passed, 4.5 s |
+| Backend test suite | `php artisan test` | **PASS** | 333 tests, 333 passed, 2129 assertions, 123.3 s |
+| Frontend test suite | `npx vitest run` | **PASS** | 24 files, 143 tests, 143 passed, 6.3 s |
 | Frontend type check | `npx vue-tsc -b --noEmit` | **PASS** | exit code 0, no diagnostics |
 | Production build | `npx vite build` | **PASS** | exit code 0, `✓ built in 772ms` |
 | Dependency advisories | `composer audit` | **PASS** | "No security vulnerability advisories found." |
@@ -105,7 +105,119 @@ caught by `test_revoked_permission_is_no_longer_advertised`.
 
 ---
 
-## 3. Test Inventory
+## 3. Phase 3 — Runtime System Settings Module
+
+### 3.1 Status
+
+**PASS — implemented and verified.** Open Item #1 from the previous cycle is
+closed: the `System Settings` screen was a static placeholder that displayed a
+success message without contacting the server. It is now backed by a real,
+validated, audited and persisted configuration module.
+
+### 3.2 What was implemented
+
+| Layer | Change |
+|---|---|
+| Catalogue | `server/config/settings.php` declares every setting: key, label, description, category, type, default, validation rules, scope and editable status. The catalogue is the allowlist; a key that is not declared cannot be stored, edited or reset. |
+| Storage | New `system_settings` table with typed value columns, a scope discriminator, a unique constraint per (key, scope), two foreign keys and three check constraints. |
+| Service | `App\Services\Settings\SettingsService` resolves values, validates them against the catalogue, writes them atomically and records the audit event inside the same transaction. |
+| API | `SettingsController` under `/api/v1/settings` — catalogue, categories, update, reset, category reset, plus a public projection. |
+| Runtime | `ApplyRuntimeSettings` applies the session lifetime before the session starts; the document endpoints consume the upload limit and the default classification. |
+| Interface | `SystemSettingsView` rewritten with category navigation, typed editors, unsaved-change tracking, save/cancel, reset with confirmation, and loading, empty, error, saving and success states. |
+
+### 3.3 The catalogue actually shipped
+
+| Identifier | Type | Default | Scope | Runtime effect |
+|---|---|---|---|---|
+| `institution.display_name` | string | `Wollo University` | global | Published to the client; applied to the browser title and the public portal |
+| `documents.max_upload_size_mb` | integer | `100` | global | The maximum accepted upload, applied to both document upload endpoints |
+| `documents.default_confidentiality_level_code` | select | `internal` | global or unit | The classification applied when a document is registered without an explicit level |
+| `session.lifetime_minutes` | integer | `120` | global | The idle session lifetime, applied before the session starts |
+| `documents.reference_number_scheme` | string | `WU/DOC/{YEAR}/{SEQUENCE}` | global | Not editable. A source managed invariant, displayed for reference only |
+
+Five candidate settings were **deliberately excluded** because the application
+does not consume them. Shipping them would have produced settings that appear
+to work but have no effect. The reasoning is recorded in
+`docs/CONFIGURATION_CATALOG.md` §3.3.
+
+### 3.4 Authorization and security test matrix — actual results
+
+`SystemSettingsTest` — 25 tests, 101 assertions, all passing.
+
+| Scenario | Expected behaviour | Result |
+|---|---|---|
+| Authorized settings retrieval | Catalogue, categories and deployment boundary returned | PASS |
+| Unauthorized settings retrieval | 403 without `system.configure` | PASS |
+| Unauthenticated request | 401 | PASS |
+| Valid setting update | Persisted and returned | PASS |
+| Invalid value | 422, nothing stored | PASS |
+| Wrong value type | 422 | PASS |
+| Unknown setting key | 422 | PASS |
+| Protected setting update (a declared but non-editable setting) | 422 | PASS |
+| Infrastructure secret update (`app.key`, `db.password`, `mail.password`, `aws.secret_access_key`) | 422, never writable | PASS |
+| Select setting with an undeclared value | 422 | PASS |
+| Select setting with a declared value | 200, persisted | PASS |
+| Reset to default | Value removed, default in force | PASS |
+| Category reset | Only that category reset | PASS |
+| Audit event creation | Key, previous value, new value, scope, operation, actor | PASS |
+| Audit rollback after a failed operation | No audit event written | PASS |
+| No partial write on a rejected batch | No row written, no audit event | PASS |
+| Duplicate configuration | Prevented by the database constraint | PASS |
+| Global and unit scope isolation | Separate rows, unit value overrides | PASS |
+| Cross-unit administrative access | 403 | PASS |
+| Unit scope on a global-only setting | 422 | PASS |
+| Deployment boundary secrecy | Sensitive entries carry no value | PASS |
+| Public projection | Only the declared public keys, no authentication | PASS |
+| Session lifetime applied | `config('session.lifetime')` reflects the stored value | PASS |
+| Upload limit applied | A 2 MB upload is refused at 1 MB and accepted at 5 MB | PASS |
+| Default classification applied | The configured level is used; an explicit level always wins | PASS |
+
+### 3.5 Frontend test matrix — actual results
+
+`client/tests/systemSettings.spec.ts` — 14 tests, all passing.
+
+Settings loading · category selection · the control that matches the declared
+type · a non-editable setting marked as fixed · the deployment boundary with no
+secret value · unsaved-change tracking · cancel · save through the API ·
+validation failure surfaced · reset confirmation requested before any request ·
+reset cancelled · category reset · a failure to load · a failed save that does
+not claim success · the catalogue re-read after a reset — **all PASS**.
+
+### 3.6 A database constraint discovered during implementation
+
+The first design used a **stored generated column** for the scope
+discriminator, mirroring the existing `authorization_scopes` table. The
+migration failed on MySQL 8.4 with error 1215. The cause was isolated with a
+sequence of probes:
+
+| Shape | Result |
+|---|---|
+| Generated column + foreign key added by `ALTER` + `ON DELETE CASCADE` | **Rejected** (1215) |
+| Generated column + foreign key added by `ALTER`, no cascade | Allowed |
+| Generated column + foreign key declared inline in `CREATE` | Allowed |
+| Plain column + `ON DELETE CASCADE` + a consistency check constraint | Allowed |
+
+MySQL refuses a cascading referential action on a table that carries a stored
+generated column. The final design uses a plain `scope_key` column together
+with a check constraint that keeps it in agreement with `scope_unit_id`, which
+preserves both the cascade and the uniqueness guarantee.
+
+### 3.7 Defects found by the new tests during implementation
+
+| Defect | Closure |
+|---|---|
+| The validation rules lost their field key, so validation ran against the fields `0`, `1`, `2` and every value was refused | The rules are bound to the `value` field again |
+| A batch update wrote each setting in its own transaction, so a rejected value left the earlier settings changed | The whole batch is applied in one transaction |
+| A reset referenced a variable that was not captured by its closure | The closure captures the previous value |
+| The previous value recorded in the audit was `null` when no override existed | It records the value actually in force, which is the catalogue default |
+| The public settings route was registered inside the `auth` prefix group and resolved to 404 | It is registered as `/api/v1/settings/public` |
+| The classification default was not captured by the document creation transaction | The closure captures it |
+| The document controller constructor changed its signature, breaking a test that instantiates it directly | The controller resolves the service from the container, as the rest of the code base does |
+| The select control was rendered with `BaseInput`, which has no `options` prop, so it rendered as a text input | The select control uses `BaseSelect` |
+
+---
+
+## 4. Test Inventory
 
 ### 3.1 Backend (PHPUnit / Pest) — 308 tests
 
@@ -132,7 +244,7 @@ caught by `test_revoked_permission_is_no_longer_advertised`.
 
 ---
 
-## 4. Defects Found and Closed
+## 5. Defects Found and Closed
 
 Every item below was discovered by inspection of the running code, reproduced,
 and closed with a regression test.
@@ -153,7 +265,7 @@ and closed with a regression test.
 | 12 | **Low** | A document that did not exist passed the authorization middleware and was rejected only by the controller. | The middleware returned "allow" for an unresolved record. | The middleware now fails closed with HTTP 404 |
 | 13 | **Medium** | Resolving the organizational context executed **116** database queries for a single request, because the subtree walk was repeated once per grant and the grants were loaded once per capability resolution. | `getDescendantIds()` was called per scope, and each capability resolution re-queried the grants. | The subtree expansion is batched across all anchors and the grants are loaded once per context: **19 queries**. Grants are never cached on the model, so a revoked capability is never advertised |
 
-### 4.1 Dependency remediation
+### 5.1 Dependency remediation
 
 | Package | From | To | Reason |
 |---|---|---|---|
@@ -165,7 +277,7 @@ and closed with a regression test.
 
 ---
 
-## 5. Architecture Delivered
+## 6. Architecture Delivered
 
 | Component | Purpose |
 |---|---|
@@ -177,14 +289,20 @@ and closed with a regression test.
 | `bootstrap/app.php` | Middleware priority, validation error envelope |
 | `client/src/api/sessionEvents.ts` | Decouples the HTTP client from the authentication store |
 | `client/src/stores/auth.ts` | Session state machine and the organizational context |
+| `config/settings.php` | The authoritative runtime configuration catalogue |
+| `app/Services/Settings/SettingsService.php` | Resolves, validates, persists and audits configuration values |
+| `app/Models/SystemSetting.php` | A stored configuration value and its scope |
+| `app/Http/Controllers/Api/V1/SettingsController.php` | The configuration REST contract |
+| `app/Http/Middleware/ApplyRuntimeSettings.php` | Applies the runtime configuration before the session starts |
+| `client/src/composables/useInstitution.ts` | The published institutional identity applied to the interface |
 
 ---
 
-## 6. Open Items
+## 7. Open Items
 
 | # | Severity | Item | Impact | Recommended action |
 |---|---|---|---|---|
-| 1 | **Medium** | `SystemSettingsView` presents an editable settings form that persists nothing and shows a success toast. There is no `system_settings` table and no settings API. | An administrator believes a configuration was applied when nothing changed. | Either implement the settings API and table, or replace the screen with an explicit "not yet configurable" notice. The target catalogue is specified in `docs/CONFIGURATION_CATALOG.md` §3. |
+| 1 | ~~**Medium**~~ **CLOSED** | ~~`SystemSettingsView` presents an editable settings form that persists nothing and shows a success toast. There is no `system_settings` table and no settings API.~~ | An administrator believed a configuration was applied when nothing changed. | **Closed in Phase 3.** The catalogue, the storage, the API, the audit trail and the interface are implemented and verified. See §3. |
 | 2 | **Medium** | `DataImportsExportsView` is a static screen with no import or export operation. | Advertised bulk data operations do not exist. | Implement against the repository service, or remove the surface from navigation. |
 | 3 | **Low** | The navigation catalog and the static fallback are maintained as two parallel declarations. | A future divergence is possible. | Mitigated today by `NavigationPermissionContractTest`; a single generated source would remove the duplication entirely. |
 | 4 | **Low** | Assignment participant removal is authorized by unit but records no audit event. | The audit trail is incomplete for that operation. | Add an `AuditEvent` write to `AssignmentService::removeParticipant`. |
@@ -194,7 +312,7 @@ and closed with a regression test.
 
 ---
 
-## 7. Environment Notes
+## 8. Environment Notes
 
 | Item | Detail |
 |---|---|

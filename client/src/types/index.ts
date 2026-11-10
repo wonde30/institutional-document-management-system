@@ -134,6 +134,56 @@ export interface OrganizationalContext {
   permissions_all_scopes: string[]
 }
 
+/**
+ * A configuration category.
+ */
+export interface SettingCategory {
+  label: string
+  description: string
+}
+
+/**
+ * A runtime configuration setting, as published by the server.
+ */
+export interface SettingDefinition {
+  key: string
+  label: string
+  description: string
+  category: string
+  type: 'string' | 'integer' | 'boolean' | 'select'
+  options: string[] | null
+  default: string | number | boolean
+  value: string | number | boolean
+  scope: 'global' | 'global_or_unit'
+  scope_unit_id: number | null
+  editable: boolean
+  is_default: boolean
+  updated_at: string | null
+  updated_by: string | null
+}
+
+/**
+ * A deployment managed configuration entry. A sensitive entry never carries a
+ * value; it only states that the value is managed outside the application.
+ */
+export interface DeploymentEntry {
+  key: string
+  label: string
+  sensitive: boolean
+  value: string | null
+  managed: string
+}
+
+/**
+ * The configuration payload served by the API.
+ */
+export interface SettingsPayload {
+  categories: Record<string, SettingCategory>
+  settings: SettingDefinition[]
+  deployment: DeploymentEntry[]
+  scope_unit_id: number | null
+}
+
 // ----------------------------------------------------------------------------
 // 02. Scoped RBAC
 // ----------------------------------------------------------------------------

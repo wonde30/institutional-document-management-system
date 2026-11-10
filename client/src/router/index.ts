@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useInstitution } from '@/composables/useInstitution'
 
 const routes: RouteRecordRaw[] = [
   // --- Group A: Authentication & Account ---
@@ -377,7 +378,7 @@ router.beforeEach(async (to, _from, next) => {
 
   // Dynamic window title
   const pageTitle = (to.meta.title as string) || 'Document Repository'
-  document.title = `${pageTitle} | Wollo University DMS`
+  document.title = `${pageTitle} | ${useInstitution().displayName.value}`
 
   const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
   const guestOnly = to.matched.some((r) => r.meta.guestOnly)

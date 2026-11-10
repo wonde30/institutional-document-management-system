@@ -12,12 +12,11 @@ be conflated:
 * **Administrator-managed runtime settings** — values an authorized
   administrator must be able to adjust after deployment without a release.
 
-> **Current state:** the system is configured entirely through the environment.
-> There is **no** database-backed settings table, and the `System Settings`
-> administration screen is a static placeholder with no persistence. This is
-> recorded as an open item in `docs/BUILD_STATUS.md`. Until that item is
-> closed, the administrator-managed category below is empty by design rather
-> than by omission.
+> **Current state:** the deployment and secret categories are managed by the
+> environment. The administrator-managed runtime category is **implemented**:
+> the catalogue lives in `server/config/settings.php`, the values are stored in
+> the `system_settings` table and are changed through the `System Settings`
+> administration screen. See §3.
 
 ---
 
@@ -27,6 +26,11 @@ These values are read from the environment at boot. They take effect on
 application restart (or on `php artisan config:clear` when the configuration
 cache is in use). No audit trail is produced, because they are not editable
 through the application.
+
+The `System Settings` screen publishes a read-only **deployment boundary**
+section that lists these values so an administrator can confirm the boundary
+an instance is running under. A sensitive entry exposes its key name only; its
+value is never read, returned or displayed.
 
 ### 1.1 Application identity
 
@@ -133,32 +137,73 @@ and is excluded from version control by `.gitignore`.
 
 ## 3. Administrator-Managed Runtime Settings
 
-**Empty.** No value is currently adjustable by an administrator at runtime
-without a deployment.
+**Implemented.** The catalogue is defined in the code, in
+`server/config/settings.php`. It is the authoritative registry: a key that is
+not declared there cannot be stored, edited or reset, and the type, the
+default value and the validation rules always come from the catalogue rather
+than from the request.
 
-The intended category, once the `System Settings` screen is given a backing
-API, is:
+Values are persisted in the `system_settings` table and are changed through
+the `System Settings` administration screen, which requires the
+`system.configure` capability.
 
-| Intended identifier | Purpose | Type | Default | Minimum role | Persistence | Audit |
+### 3.1 The catalogue
+
+| Identifier | Category | Type | Default | Scope | Editable | Runtime effect |
 |---|---|---|---|---|---|---|
-| `institution.display_name` | Official institutional name shown across the interface. | string | `Wollo University` | `system.configure` | `system_settings` table | Required |
-| `institution.acronym` | Short institutional identifier. | string | `WU` | `system.configure` | `system_settings` table | Required |
-| `institution.academic_year` | Current academic year pairing. | string | — | `system.configure` | `system_settings` table | Required |
-| `retention.default_policy_code` | Retention policy applied when a document is registered without an explicit policy. | string | `INST_PERM` | `system.configure` | `system_settings` table | Required |
-| `storage.default_driver` | Storage driver used for new documents. | enum | `local` | `system.configure` | `system_settings` table | Required |
-| `security.session_lifetime_minutes` | Idle session lifetime. | integer | `120` | `system.configure` | `system_settings` table | Required |
-| `security.password_minimum_length` | Minimum accepted credential length. | integer | `8` | `system.configure` | `system_settings` table | Required |
+| `institution.display_name` | Institutional Profile | string | `Wollo University` | global | yes | Published to the client; applied to the browser title and the public portal |
+| `documents.max_upload_size_mb` | Document Repository | integer | `100` | global | yes | The maximum accepted upload, applied to document registration and version upload validation |
+| `documents.default_confidentiality_level_code` | Document Repository | select (`internal`, `confidential`, `restricted`) | `internal` | global **or** organizational unit | yes | The classification applied when a document is registered without an explicit level |
+| `session.lifetime_minutes` | Session & Access | integer | `120` | global | yes | The idle session lifetime, applied before the session starts |
+| `documents.reference_number_scheme` | Document Repository | string | `WU/DOC/{YEAR}/{SEQUENCE}` | global | **no** | None. A source managed invariant, displayed for reference only and never stored |
 
-Design constraints that apply to the category when it is implemented:
+### 3.2 Design constraints
 
-* Every value is persisted in the database and survives a restart or redeploy.
-* Every write is performed inside a transaction and produces an audit event
-  recording the actor, the previous value, the new value and the source
-  address.
-* A "reset to default" operation is available per setting.
-* Secrets are never part of this category.
-* The front end fetches the effective values at bootstrap and applies them
-  without a rebuild.
+* The catalogue is the allowlist. A client supplied key is never accepted.
+* The type, the default and the validation rules are read from the catalogue,
+  never from the request.
+* Every successful change writes an audit event recording the setting key, the
+  previous value, the new value, the scope and the operation.
+* A rejected value leaves no setting changed, no audit event written, and the
+  previously stored values in force. A batch update is atomic.
+* Infrastructure secrets are not part of the catalogue and can never be
+  written through the settings API.
+* A unit scoped value overrides the global value for that organizational unit.
+  A unit scoped write is accepted only for the unit the caller is currently
+  operating in, so switching the active unit never widens the administrative
+  reach.
+* The `public` classification level is never permitted as a default.
+
+### 3.3 Deliberately excluded
+
+The following were considered and **not** implemented, because the application
+does not consume them and shipping them would create a setting that appears to
+work but has no effect:
+
+| Candidate | Reason for exclusion |
+|---|---|
+| `institution.acronym` | Not consumed by any code path. |
+| `institution.academic_year` | Not consumed by any code path. |
+| `retention.default_policy_code` | Documents do not carry a retention policy; the policy is chosen explicitly when a record is transferred to the archive. |
+| `storage.default_driver` | Infrastructure configuration. The storage driver is read from `FILESYSTEM_DISK` at boot and cannot be changed safely at runtime. |
+| `pki_status` | The trust provider is a deployment boundary, not a runtime setting. |
+
+### 3.4 Storage and resolution
+
+| Property | Value |
+|---|---|
+| Table | `system_settings` |
+| Columns | `setting_key`, `scope_unit_id` (null = global), `scope_key` (0 = global), `value_type`, `string_value`, `integer_value`, `boolean_value`, `updated_by`, timestamps |
+| Uniqueness | `UNIQUE (setting_key, scope_key)` — the database, not only the service, prevents a duplicate value in the same scope |
+| Integrity | Three check constraints: the scope discriminator must agree with the unit, the type must be declared, and exactly the value column that matches the type may be populated |
+| Foreign keys | `scope_unit_id` to `organization_units` (cascade on delete), `updated_by` to `users` (null on delete) |
+| Resolution order | Unit scoped value, then global value, then catalogue default |
+| Caching | Resolved values are cached for 300 seconds; the cache is invalidated on every write, so a saved value is never stale |
+
+> **Note on the scope discriminator.** `scope_key` is a plain column rather
+> than a generated one. MySQL refuses a cascading foreign key on a table that
+> carries a stored generated column, and the consistency check constraint
+> keeps the two columns in agreement.
 
 ---
 

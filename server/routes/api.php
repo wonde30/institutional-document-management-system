@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\OcrController;
 use App\Http\Controllers\Api\V1\OrganizationUnitController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RolePermissionController;
+use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WorkflowController;
@@ -49,6 +50,10 @@ Route::prefix('v1')->group(function () {
         // hash carried in the link, so it does not require an active session.
         Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail']);
     });
+
+    // Configuration published on the public portal. Only the keys declared in
+    // the public catalogue are exposed, and no value is a secret.
+    Route::get('settings/public', [SettingsController::class, 'publicSettings']);
 
     // 2. Protected Endpoints (Sanctum SPA Session + Authz Version + Active Account Boundary)
     Route::middleware(['auth:sanctum', 'authz_version', 'active_account'])->group(function () {
@@ -345,5 +350,19 @@ Route::prefix('v1')->group(function () {
 
         Route::get('operations/status', [InstitutionalModuleController::class, 'operations'])
             ->middleware('permission:system.configure');
+
+        // Runtime System Configuration
+        Route::prefix('settings')->group(function () {
+            Route::get('/', [SettingsController::class, 'index'])
+                ->middleware('permission:system.configure');
+            Route::get('categories', [SettingsController::class, 'categories'])
+                ->middleware('permission:system.configure');
+            Route::put('/', [SettingsController::class, 'update'])
+                ->middleware('permission:system.configure');
+            Route::post('categories/{category}/reset', [SettingsController::class, 'resetCategory'])
+                ->middleware('permission:system.configure');
+            Route::post('{key}/reset', [SettingsController::class, 'reset'])
+                ->middleware('permission:system.configure');
+        });
     });
 });

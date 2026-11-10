@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        // The runtime configuration is applied before the session starts, so a
+        // changed session lifetime takes effect on the next request.
+        $middleware->append(\App\Http\Middleware\ApplyRuntimeSettings::class);
+
         $middleware->alias([
             'active_account' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'authz_version' => \App\Http\Middleware\ValidateAuthorizationVersion::class,

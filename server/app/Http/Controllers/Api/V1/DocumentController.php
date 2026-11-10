@@ -14,6 +14,7 @@ use App\Models\ReferenceSequence;
 use App\Models\VersionFile;
 use App\Services\DocumentRepositoryService;
 use App\Services\DocumentTimelineService;
+use App\Services\Settings\SettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,49 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DocumentController extends Controller
 {
+    /**
+     * The largest upload accepted, expressed in kilobytes for the validator.
+     */
+    protected function maxUploadSizeKilobytes(): int
+    {
+        $megabytes = app(SettingsService::class)->value('documents.max_upload_size_mb');
+
+        if (! is_numeric($megabytes) || (int) $megabytes < 1) {
+            return 100 * 1024;
+        }
+
+        return (int) $megabytes * 1024;
+    }
+
+    /**
+     * Resolve the classification applied to a document.
+     *
+     * An explicit level always wins. Otherwise the level configured for the
+     * owning unit is used, then the global level, and finally the internal
+     * level. The public level is never applied as a default.
+     */
+    protected function resolveConfidentialityId(?int $requested, ?int $ownerUnitId): int
+    {
+        if ($requested) {
+            return $requested;
+        }
+
+        $code = app(SettingsService::class)->effectiveValue(
+            'documents.default_confidentiality_level_code',
+            $ownerUnitId
+        );
+
+        if (! is_string($code) || ! in_array($code, ['internal', 'confidential', 'restricted'], true)) {
+            $code = 'internal';
+        }
+
+        $level = DB::table('confidentiality_levels')
+            ->where('code', $code)
+            ->where('active', 1)
+            ->value('id');
+
+        return (int) ($level ?? DB::table('confidentiality_levels')->where('code', 'internal')->value('id'));
+    }
     /**
      * List documents with filtering and search.
      */
@@ -107,11 +151,11 @@ class DocumentController extends Controller
             'title' => 'required|string|max:500',
             'summary' => 'nullable|string',
             'category_id' => 'required|exists:document_categories,id',
-            'confidentiality_id' => 'required|exists:confidentiality_levels,id',
+            'confidentiality_id' => 'nullable|exists:confidentiality_levels,id',
             'owner_unit_id' => 'required|exists:organization_units,id',
             'custodian_id' => 'nullable|exists:users,id',
             'document_date' => 'required|date',
-            'file' => 'nullable|file|max:102400', // max 100MB
+            'file' => 'nullable|file|max:'.$this->maxUploadSizeKilobytes(),
             'change_note' => 'nullable|string',
         ]);
 
@@ -119,7 +163,13 @@ class DocumentController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
         $currentYear = date('Y');
 
-        $document = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request) {
+        // When no classification is supplied, the configured policy applies.
+        $confidentialityId = $this->resolveConfidentialityId(
+            isset($validated['confidentiality_id']) ? (int) $validated['confidentiality_id'] : null,
+            (int) $validated['owner_unit_id']
+        );
+
+        $document = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request, $confidentialityId) {
             // 1. Generate reference number atomically
             $seq = DB::table('reference_sequences')
                 ->where('sequence_key', 'DOC')
@@ -149,7 +199,7 @@ class DocumentController extends Controller
                 'title' => $validated['title'],
                 'summary' => $validated['summary'] ?? null,
                 'category_id' => $validated['category_id'],
-                'confidentiality_id' => $validated['confidentiality_id'],
+                'confidentiality_id' => $confidentialityId,
                 'owner_unit_id' => $validated['owner_unit_id'],
                 'custodian_id' => $validated['custodian_id'] ?? null,
                 'created_by' => $actor->id,
@@ -295,7 +345,7 @@ class DocumentController extends Controller
         $document = Document::findOrFail($id);
 
         $validated = $request->validate([
-            'file' => 'required|file|max:102400',
+            'file' => 'required|file|max:'.$this->maxUploadSizeKilobytes(),
             'change_note' => 'required|string|max:1000',
             'purpose' => 'nullable|in:primary,attachment',
         ]);
