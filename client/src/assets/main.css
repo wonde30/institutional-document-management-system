@@ -1,0 +1,464 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Centralized Semantic Tokens (Tailwind CSS 4 + DESIGN.md) */
+  --color-primary: var(--wu-primary);
+  --color-primary-hover: var(--wu-primary-hover);
+  --color-primary-active: var(--wu-primary-active);
+  --color-primary-subtle: var(--wu-primary-subtle);
+  --color-on-primary: var(--wu-on-primary);
+
+  --color-canvas: var(--wu-canvas);
+  --color-canvas-soft: var(--wu-canvas-soft);
+  --color-surface: var(--wu-surface);
+  --color-surface-hover: var(--wu-surface-hover);
+  --color-surface-muted: var(--wu-surface-muted);
+
+  --color-ink: var(--wu-text);
+  --color-ink-secondary: var(--wu-secondary-text);
+  --color-ink-muted: var(--wu-muted);
+  --color-ink-faint: var(--wu-faint);
+
+  --color-hairline: var(--wu-line);
+  --color-hairline-subtle: var(--wu-line-subtle);
+
+  /* DESIGN.md Border Radius Scale */
+  --radius-xs: 4px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Notion-Inspired Color Palette (from DESIGN.md) */
+  --color-notion-primary: #0075de;
+  --color-notion-primary-active: #005bab;
+  --color-notion-secondary: #213183;
+  --color-notion-on-primary: #ffffff;
+  --color-notion-canvas: #ffffff;
+  --color-notion-canvas-soft: #f6f5f4;
+  --color-notion-surface: #ffffff;
+  --color-notion-ink: #000000;
+  --color-notion-ink-secondary: #31302e;
+  --color-notion-ink-muted: #615d59;
+  --color-notion-ink-faint: #a39e98;
+  --color-notion-hairline: #e6e6e6;
+
+  /* Sticker Accent Palette (DESIGN.md) */
+  --color-notion-accent-sky: #62aef0;
+  --color-notion-accent-purple: #d6b6f6;
+  --color-notion-accent-purple-deep: #391c57;
+  --color-notion-accent-pink: #ff64c8;
+  --color-notion-accent-orange: #dd5b00;
+  --color-notion-accent-orange-deep: #793400;
+  --color-notion-accent-teal: #2a9d99;
+  --color-notion-accent-green: #1aae39;
+  --color-notion-accent-brown: #523410;
+
+  /* Institutional Semantic Bridge (Maintains backward compatibility) */
+  --color-wu-primary: var(--wu-primary);
+  --color-wu-primary-hover: #005bab;
+  --color-wu-primary-dark: #2b8bee;
+  --color-wu-primary-deep: #213183;
+
+  --color-wu-nav: var(--wu-nav);
+  --color-wu-nav-dark: #1a1a1a;
+  --color-wu-nav-active: var(--wu-navactive);
+  --color-wu-nav-active-dark: #262626;
+  --color-wu-nav-text: var(--wu-navtext);
+  --color-wu-nav-muted: var(--wu-navmuted);
+
+  --color-wu-bg: var(--wu-bg);
+  --color-wu-bg-dark: #141414;
+  --color-wu-surface: var(--wu-surface);
+  --color-wu-surface-dark: #1e1e1e;
+
+  --color-wu-text: var(--wu-text);
+  --color-wu-text-dark: #f0f0f0;
+  --color-wu-muted: var(--wu-muted);
+  --color-wu-muted-dark: #999999;
+
+  --color-wu-line: var(--wu-line);
+  --color-wu-line-dark: #2e2e2e;
+
+  --color-wu-soft: #f6f5f4;
+  --color-wu-soft-dark: #222222;
+
+  --color-wu-warning: #fff8e6;
+  --color-wu-warning-dark: #2b220d;
+  --color-wu-warning-text: #dd5b00;
+  --color-wu-warning-text-dark: #f59e0b;
+
+  --color-wu-danger: #e03e3e;
+  --color-wu-danger-dark: #f87171;
+}
+
+:root {
+  color-scheme: light dark;
+  /* Notion Light Baseline (DESIGN.md) */
+  --wu-bg: #f6f5f4;
+  --wu-canvas: #ffffff;
+  --wu-canvas-soft: #f6f5f4;
+  --wu-surface: #ffffff;
+  --wu-surface-hover: #fbfbfa;
+  --wu-surface-muted: #f1f0ee;
+  --wu-text: #000000;
+  --wu-secondary-text: #31302e;
+  --wu-muted: #787774;
+  --wu-faint: #a39e98;
+  --wu-line: #e6e6e6;
+  --wu-line-subtle: #f0f0f0;
+  --wu-primary: #0075de;
+  --wu-primary-hover: #005bab;
+  --wu-primary-active: #005bab;
+  --wu-primary-subtle: #e8f3fc;
+  --wu-on-primary: #ffffff;
+  --color-brand-primary: #0075de;
+  --wu-soft: #f6f5f4;
+
+  /* Notion Paper Daylight Navigation */
+  --wu-nav: #ffffff;
+  --wu-navtext: #31302e;
+  --wu-navmuted: #615d59;
+  --wu-navactive: #f6f5f4;
+  --wu-navactive-indicator: #0075de;
+  --wu-nav-border: #e6e6e6;
+
+  /* Semantic Alerts */
+  --wu-warning: #fff8e6;
+  --wu-warning-text: #793400;
+  --wu-danger: #e03e3e;
+  --wu-danger-bg: #fee2e2;
+  --wu-success: #1aae39;
+  --wu-success-bg: #e8f7ec;
+}
+
+.dark {
+  /* Notion Dark Complementary Baseline */
+  --wu-bg: #141414;
+  --wu-canvas: #1e1e1e;
+  --wu-canvas-soft: #141414;
+  --wu-surface: #1e1e1e;
+  --wu-surface-hover: #252525;
+  --wu-surface-muted: #262626;
+  --wu-text: #f7f6f3;
+  --wu-secondary-text: #d4d4d4;
+  --wu-muted: #9b9a97;
+  --wu-faint: #666666;
+  --wu-line: #2e2e2e;
+  --wu-line-subtle: #262626;
+  --wu-primary: #62aef0;
+  --wu-primary-hover: #2b8bee;
+  --wu-primary-active: #1f6ac4;
+  --wu-primary-subtle: #172c42;
+  --wu-on-primary: #ffffff;
+  --color-brand-primary: #2b8bee;
+  --wu-soft: #222222;
+
+  /* Notion Dark Navigation */
+  --wu-nav: #1a1a1a;
+  --wu-navtext: #d4d4d4;
+  --wu-navmuted: #888888;
+  --wu-navactive: #262626;
+  --wu-navactive-indicator: #2b8bee;
+  --wu-nav-border: #2e2e2e;
+
+  /* Semantic Alerts */
+  --wu-warning: #2b220d;
+  --wu-warning-text: #f59e0b;
+  --wu-danger: #f87171;
+  --wu-danger-bg: #371717;
+  --wu-success: #34d399;
+  --wu-success-bg: #132e1f;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: var(--wu-bg);
+  color: var(--wu-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Typography Utilities (from DESIGN.md)
+   ========================================================================== */
+
+.notion-display-1 {
+  font-family: var(--font-sans);
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.0;
+  letter-spacing: -2.125px;
+}
+
+.notion-display-2 {
+  font-family: var(--font-sans);
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -1.875px;
+}
+
+.notion-heading-1 {
+  font-family: var(--font-sans);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -1.0px;
+}
+
+.notion-heading-2 {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.23;
+  letter-spacing: -0.625px;
+}
+
+.notion-heading-3 {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.27;
+  letter-spacing: -0.25px;
+}
+
+.notion-title {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.125px;
+}
+
+.notion-body-md {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.notion-body-sm {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.33;
+  letter-spacing: 0;
+}
+
+.notion-button {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.notion-caption {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.43;
+  letter-spacing: 0;
+}
+
+.notion-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.33;
+  letter-spacing: 0.125px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Elevation & Layered Micro-Shadows (from DESIGN.md)
+   ========================================================================== */
+
+/* Level 0: Flat with Hairline */
+.notion-shadow-flat {
+  box-shadow: none;
+  border: 1px solid var(--wu-line);
+}
+
+/* Level 1: Soft Multi-Stop Micro-Shadow */
+.notion-shadow-soft {
+  box-shadow:
+    rgba(0, 0, 0, 0.01) 0px 0.175px 1.041px,
+    rgba(0, 0, 0, 0.02) 0px 0.8px 2.925px,
+    rgba(0, 0, 0, 0.027) 0px 2.025px 7.847px,
+    rgba(0, 0, 0, 0.04) 0px 4px 18px;
+}
+.dark .notion-shadow-soft {
+  box-shadow:
+    rgba(0, 0, 0, 0.15) 0px 1px 3px,
+    rgba(0, 0, 0, 0.25) 0px 4px 12px;
+}
+
+/* Level 2: Elevated 5-Stop Dialog Shadow */
+.notion-shadow-elevated {
+  box-shadow:
+    rgba(0, 0, 0, 0.02) 0px 4px 12px,
+    rgba(0, 0, 0, 0.05) 0px 12px 32px,
+    rgba(0, 0, 0, 0.05) 0px 23px 52px;
+}
+.dark .notion-shadow-elevated {
+  box-shadow:
+    rgba(0, 0, 0, 0.3) 0px 8px 24px,
+    rgba(0, 0, 0, 0.45) 0px 24px 64px;
+}
+
+/* ==========================================================================
+   Quiet Clean Scrollbars
+   ========================================================================== */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--wu-line);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--wu-muted);
+}
+
+/* ==========================================================================
+   Notion Status Badges & Pills
+   ========================================================================== */
+.wu-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.33;
+  letter-spacing: 0.125px;
+  white-space: nowrap;
+}
+
+.wu-badge-primary {
+  background-color: #e8f3fc;
+  color: #0075de;
+}
+.dark .wu-badge-primary {
+  background-color: #172c42;
+  color: #62aef0;
+}
+
+.wu-badge-warning {
+  background-color: #fff4e6;
+  color: #dd5b00;
+}
+.dark .wu-badge-warning {
+  background-color: #3b220c;
+  color: #f59e0b;
+}
+
+.wu-badge-danger {
+  background-color: #fde8e8;
+  color: #e03e3e;
+}
+.dark .wu-badge-danger {
+  background-color: #371717;
+  color: #f87171;
+}
+
+.wu-badge-success {
+  background-color: #e8f7ec;
+  color: #1aae39;
+}
+.dark .wu-badge-success {
+  background-color: #14301d;
+  color: #34d399;
+}
+
+.wu-badge-neutral {
+  background-color: var(--wu-line);
+  color: var(--wu-muted);
+}
+
+/* ==========================================================================
+   Notice Panels
+   ========================================================================== */
+.wu-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background-color: #fff8e6;
+  color: #793400;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dark .wu-notice {
+  background-color: #2b220d;
+  color: #fcd34d;
+  border-color: #78350f;
+}
+
+.wu-notice svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Notion Design System Overrides for Universal Institutional Consistency
+   ========================================================================== */
+.text-\[\#0B6B63\],
+.text-\[\#0b6b63\] {
+  color: var(--wu-primary, #0075de) !important;
+}
+.dark .text-\[\#81D7CA\],
+.dark .text-\[\#81d7ca\],
+.text-\[\#81D7CA\],
+.text-\[\#81d7ca\] {
+  color: var(--wu-primary, #62aef0) !important;
+}
+.bg-\[\#0B6B63\],
+.bg-\[\#0b6b63\] {
+  background-color: var(--wu-primary, #0075de) !important;
+}
+.hover\:bg-\[\#08544D\]:hover,
+.hover\:\!bg-\[\#08544D\]:hover,
+.hover\:bg-\[\#08544d\]:hover,
+.hover\:\!bg-\[\#08544d\]:hover {
+  background-color: var(--wu-primary-active, #005bab) !important;
+}
+.bg-\[\#EAF5F2\],
+.bg-\[\#eaf5f2\] {
+  background-color: #e8f3fc !important;
+}
+.dark .bg-\[\#203B3C\],
+.dark .bg-\[\#203b3c\],
+.bg-\[\#203B3C\],
+.bg-\[\#203b3c\] {
+  background-color: #172c42 !important;
+}
+.border-\[\#0B6B63\],
+.border-\[\#0b6b63\] {
+  border-color: var(--wu-primary, #0075de) !important;
+}
+.border-\[\#0B6B63\]\/20,
+.border-\[\#0B6B63\]\/30,
+.border-\[\#0b6b63\]\/20,
+.border-\[\#0b6b63\]\/30 {
+  border-color: rgba(0, 117, 222, 0.25) !important;
+}

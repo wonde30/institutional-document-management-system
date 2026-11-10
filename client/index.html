@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Wollo University Administrative and Document Management System (WU-DMS) — Web-based Integrated Document Repository, Digital Archive, and Inter-Office Communication Management." />
+    <meta name="institution" content="Wollo University, Kombolcha Institute of Technology, Ethiopia" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <title>Wollo University — Administrative & Document Management System</title>
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem('wu-theme-mode');
+          var legacy = localStorage.getItem('wu-theme');
+          var isDark = false;
+          if (mode === 'dark') {
+            isDark = true;
+          } else if (mode === 'system') {
+            isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          } else if (legacy === 'dark') {
+            isDark = true;
+          }
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

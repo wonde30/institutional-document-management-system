@@ -1,0 +1,61 @@
+# Environments & Secrets
+.env
+.env.*
+!.env.example
+*.key
+demo_credentials.json
+.demo_credentials.json
+/server/storage/demo_credentials.json
+/storage/demo_credentials.json
+
+# Dependencies
+/server/vendor/
+/server/node_modules/
+/client/node_modules/
+/package/node_modules/
+
+# Server build & runtime
+/server/public/build/
+/server/public/hot/
+/server/public/storage/
+/server/storage/*.key
+/server/storage/logs/*.log
+/server/storage/framework/cache/data/*
+/server/storage/framework/sessions/*
+/server/storage/framework/views/*
+/server/storage/pail/
+/server/.phpunit.cache/
+/server/.phpunit.result.cache
+
+# Client build
+/client/dist/
+/client/dist-ssr/
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# IDE & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local scratch & helper scripts (repository root only)
+# These are machine-specific conveniences and must never be published.
+/*.bat
+/*.cmd
+/*.ps1
+/*.sh
+/*.tmp
+/*.bak
+/*.old
+/*~
+/*.orig

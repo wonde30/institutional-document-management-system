@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Wollo University Institutional Colors -->
+    <linearGradient id="wuShield" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B6B63" />
+      <stop offset="100%" stop-color="#074E48" />
+    </linearGradient>
+    <linearGradient id="wuGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E2B144" />
+      <stop offset="100%" stop-color="#C59B27" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Shield Contour -->
+  <path d="M32 4 L56 12 C56 36 46 52 32 60 C18 52 8 36 8 12 Z" fill="url(#wuShield)" stroke="#DCE4EC" stroke-width="1.5" />
+
+  <!-- Inner Gold Inset -->
+  <path d="M32 8 L52 15 C52 34 43 48 32 55 C21 48 12 34 12 15 Z" fill="none" stroke="url(#wuGold)" stroke-width="1.2" opacity="0.85" />
+
+  <!-- Open Academic Book (Institutional Repository & Knowledge) -->
+  <path d="M32 37 C27 34 20 34 17 35 L17 23 C20 22 27 22 32 25 C37 22 44 22 47 23 L47 35 C44 34 37 34 32 37 Z" fill="#FFFFFF" opacity="0.95" />
+  <path d="M32 25 L32 37" stroke="#0B6B63" stroke-width="1.5" stroke-linecap="round" />
+
+  <!-- Knowledge Sunburst Rays -->
+  <circle cx="32" cy="18" r="3" fill="url(#wuGold)" />
+  <line x1="32" y1="13" x2="32" y2="11" stroke="url(#wuGold)" stroke-width="1.5" stroke-linecap="round" />
+  <line x1="36" y1="15" x2="38" y2="13" stroke="url(#wuGold)" stroke-width="1.2" stroke-linecap="round" />
+  <line x1="28" y1="15" x2="26" y2="13" stroke="url(#wuGold)" stroke-width="1.2" stroke-linecap="round" />
+
+  <!-- Document & Archive Ribbon Scroll Base -->
+  <path d="M22 42 Q32 46 42 42" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+  <path d="M26 46 Q32 49 38 46" fill="none" stroke="url(#wuGold)" stroke-width="1.5" stroke-linecap="round" />
+</svg>
