@@ -209,6 +209,8 @@ A filter that is not declared by the dataset is discarded.
 
 ## 6. File lifecycle and retention
 
+### 6.1 Export artefacts
+
 | Property | Rule |
 |---|---|
 | Storage | The private disk, under `exports/{operation id}/{uuid}.csv` |
@@ -216,6 +218,28 @@ A filter that is not declared by the dataset is discarded.
 | Authorization at retrieval | The dataset capability is **re-evaluated at the moment of the download**, so a revoked capability stops the retrieval immediately |
 | Expiry | The file is retrievable for 24 hours, after which the endpoint reports that it is no longer available |
 | Auditing | The download is recorded |
+
+### 6.2 Temporary import files
+
+An uploaded dataset file is **temporary only while the operation that owns it
+is still waiting to be applied**. The cleanup is implemented by
+`php artisan dms:cleanup-import-uploads` and is registered to run daily at
+02:30, which requires the deployment to run the Laravel scheduler.
+
+| Operation state | The file |
+|---|---|
+| `uploaded`, `validated` | Removed once the retention window has passed |
+| `importing` | Never touched |
+| `completed`, `completed_with_errors`, `failed` | Never touched: the source file is the only record of what was submitted |
+| `discarded` | The stale reference is cleared; the operation history is preserved |
+
+The retention window is the runtime setting
+`data_imports.temporary_file_retention_hours`, default 168 hours, overridable
+per run with `--hours`. The command supports `--dry-run`, is idempotent, and
+never removes a stored path outside the `imports/` area of the private disk.
+
+The complete operational description, including the scheduler requirement, is
+in [`docs/OPERATIONS.md`](OPERATIONS.md).
 
 ---
 

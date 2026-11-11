@@ -619,13 +619,38 @@ export const ocrApi = {
       supported_languages: string[]
       models_configured: string[]
     }>>('/ocr/status'),
-  process: (data: { document_id: number; file_object_id?: number; languages?: string; queue_mode?: 'sync' | 'async' }) =>
-    apiClient.post<ApiResponse<any>>('/ocr/process', data),
-  extractions: (documentId: number) =>
-    apiClient.get<ApiResponse<any[]>>(`/ocr/${documentId}/extractions`),
-  verify: (extractionId: number, data: { corrected_text: string; notes?: string }) =>
-    apiClient.post<ApiResponse<any>>(`/ocr/${extractionId}/verify`, data),
-  retry: (extractionId: number) =>
-    apiClient.post<ApiResponse<any>>(`/ocr/${extractionId}/retry`),
+  process: (
+    documentId: number,
+    versionId: number,
+    data: { file_object_id?: number; languages?: string; sync?: boolean }
+  ) =>
+    apiClient.post<ApiResponse<any>>(
+      `/documents/${documentId}/versions/${versionId}/extractions/process`,
+      { sync: true, ...data }
+    ),
+  extractions: (documentId: number, versionId: number) =>
+    apiClient.get<ApiResponse<any[]>>(
+      `/documents/${documentId}/versions/${versionId}/extractions`
+    ),
+  verify: (
+    documentId: number,
+    versionId: number,
+    extractionId: number,
+    data: { verified_text: string; notes?: string }
+  ) =>
+    apiClient.post<ApiResponse<any>>(
+      `/documents/${documentId}/versions/${versionId}/extractions/${extractionId}/verify`,
+      data
+    ),
+  retry: (
+    documentId: number,
+    versionId: number,
+    extractionId: number,
+    data?: { sync?: boolean }
+  ) =>
+    apiClient.post<ApiResponse<any>>(
+      `/documents/${documentId}/versions/${versionId}/extractions/${extractionId}/retry`,
+      { sync: true, ...(data ?? {}) }
+    ),
 }
 

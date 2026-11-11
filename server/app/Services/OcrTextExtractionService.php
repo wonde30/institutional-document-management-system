@@ -336,9 +336,17 @@ class OcrTextExtractionService
 
     /**
      * Verify and correct an OCR extraction by a human officer.
+     *
+     * The remarks of the verifying officer are part of the permanent record of
+     * the verification, so they are written to the audit trail with the
+     * verification itself.
      */
-    public function verifyExtraction(DocumentTextExtraction $extraction, string $verifiedText, User $actor): DocumentTextExtraction
-    {
+    public function verifyExtraction(
+        DocumentTextExtraction $extraction,
+        string $verifiedText,
+        User $actor,
+        ?string $notes = null
+    ): DocumentTextExtraction {
         $now = now()->format('Y-m-d H:i:s.u');
         $normalizedSearchable = $this->normalizeEthiopicText($verifiedText);
 
@@ -350,6 +358,15 @@ class OcrTextExtractionService
             'verified_at' => $now,
         ]);
 
+        $details = [
+            'extraction_id' => $extraction->id,
+            'verified_by' => $actor->id,
+        ];
+
+        if ($notes !== null && $notes !== '') {
+            $details['notes'] = $notes;
+        }
+
         AuditEvent::create([
             'actor_id' => $actor->id,
             'action' => 'ocr.verified',
@@ -357,10 +374,7 @@ class OcrTextExtractionService
             'target_id' => (string) $extraction->id,
             'request_id' => (string) Str::uuid(),
             'occurred_at' => $now,
-            'details_json' => [
-                'extraction_id' => $extraction->id,
-                'verified_by' => $actor->id,
-            ],
+            'details_json' => $details,
         ]);
 
         return $extraction;

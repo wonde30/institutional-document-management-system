@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -45,7 +46,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Consistent API error envelope. The framework renders a validation
         // failure as {"message": ..., "errors": {...}}; the documented contract
         // additionally carries the "success" discriminator so that a client can
-        // distinguish a failure without inspecting the status code.
+        // distinguish a failure without inspecting the status code. The same
+        // envelope is applied to the HTTP exceptions raised by the controllers.
         $exceptions->render(function (ValidationException $e, Request $request) {
             if (! $request->is('api/*') && ! $request->expectsJson()) {
                 return null;
@@ -56,5 +58,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => $e->getMessage(),
                 'errors' => $e->errors(),
             ], $e->status);
+        });
+
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() !== '' ? $e->getMessage() : 'The request could not be completed.',
+            ], $e->getStatusCode());
         });
     })->create();

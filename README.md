@@ -131,6 +131,9 @@ npm run build
 
 The complete authorization specification is in [`docs/AUTHORIZATION_MODEL.md`](docs/AUTHORIZATION_MODEL.md);
 the deployment configuration registry is in [`docs/CONFIGURATION_CATALOG.md`](docs/CONFIGURATION_CATALOG.md);
+the operational arrangements, including the scheduler requirement and the continuous integration pipeline, are in [`docs/OPERATIONS.md`](docs/OPERATIONS.md);
+the proposal traceability matrix is in [`docs/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md`](docs/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md);
+the forward roadmap is in [`docs/NEXT_PHASE_ROADMAP.md`](docs/NEXT_PHASE_ROADMAP.md);
 and the current verification scorecard is in [`docs/BUILD_STATUS.md`](docs/BUILD_STATUS.md).
 
 ---

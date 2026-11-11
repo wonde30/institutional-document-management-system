@@ -110,14 +110,24 @@ class AssignmentController extends Controller
     /**
      * Remove a participant from an assignment team.
      */
-    public function removeParticipant(int $id, int $userId): JsonResponse
+    public function removeParticipant(Request $request, int $id, int $userId): JsonResponse
     {
         $assignment = DocumentAssignment::findOrFail($id);
-        $this->assignmentService->removeParticipant($assignment, $userId);
+
+        $participant = $this->assignmentService->removeParticipant(
+            $assignment,
+            $userId,
+            $request->user()
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Participant removed from assignment team.',
+            'data' => [
+                'assignment_id' => $assignment->id,
+                'user_id' => $userId,
+                'previous_role_code' => $participant->role_code,
+            ],
         ]);
     }
 

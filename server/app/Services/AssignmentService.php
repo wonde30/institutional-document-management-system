@@ -13,6 +13,7 @@ use App\Models\DocumentAssignment;
 use App\Models\DocumentRelation;
 use App\Models\DocumentRelationType;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -140,12 +141,70 @@ class AssignmentService
 
     /**
      * Remove a participant from an assignment.
+     *
+     * The removal and both of its audit records are written inside a single
+     * transaction, so a failed removal cannot leave a false successful audit
+     * event, and a successful removal cannot leave an unaudited state change.
+     *
+     * @return AssignmentParticipant The removed participant.
      */
-    public function removeParticipant(DocumentAssignment $assignment, int $userId): void
-    {
-        AssignmentParticipant::where('assignment_id', $assignment->id)
+    public function removeParticipant(
+        DocumentAssignment $assignment,
+        int $userId,
+        ?User $actor = null
+    ): AssignmentParticipant {
+        $participant = AssignmentParticipant::where('assignment_id', $assignment->id)
             ->where('user_id', $userId)
-            ->delete();
+            ->first();
+
+        if (! $participant) {
+            abort(404, 'The participant is not a member of this assignment.');
+        }
+
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        $previousState = [
+            'role_code' => $participant->role_code,
+            'status' => $participant->status,
+        ];
+
+        DB::transaction(function () use ($assignment, $participant, $userId, $actor, $now, $previousState) {
+            $participant->delete();
+
+            // The domain lifecycle event, following the convention of the
+            // participant addition.
+            $sequence = (DB::table('assignment_events')
+                ->where('assignment_id', $assignment->id)
+                ->max('sequence_number') ?? 0) + 1;
+
+            AssignmentEvent::create([
+                'assignment_id' => $assignment->id,
+                'sequence_number' => $sequence,
+                'actor_id' => $actor?->id,
+                'target_user_id' => $userId,
+                'action' => 'participant_removed',
+                'occurred_at' => $now,
+                'comment' => 'Removed participant with role \''.$previousState['role_code'].'\'',
+            ]);
+
+            // The system audit trail.
+            AuditService::log(
+                action: 'assignment.participant_removed',
+                targetType: 'document_assignment',
+                targetId: (string) $assignment->id,
+                details: [
+                    'assignment_id' => $assignment->id,
+                    'document_id' => $assignment->document_id,
+                    'removed_user_id' => $userId,
+                    'scope_unit_id' => $assignment->assigned_unit_id,
+                    'previous_state' => $previousState,
+                    'resulting_state' => null,
+                ],
+                actorId: $actor?->id,
+            );
+        });
+
+        return $participant;
     }
 
     /**

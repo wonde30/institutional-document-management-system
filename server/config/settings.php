@@ -114,6 +114,17 @@ return [
             'editable' => true,
         ],
 
+        'data_imports.temporary_file_retention_hours' => [
+            'label' => 'Temporary Import File Retention',
+            'description' => 'Hours an inspected import file is retained before it may be removed. A file is only removed once the import has been inspected and not executed, so a source file that produced an audit record is never deleted.',
+            'category' => 'security',
+            'type' => 'integer',
+            'default' => 168,
+            'rules' => ['required', 'integer', 'min:1', 'max:8760'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
         /*
         | A source managed invariant. It is displayed so the administrator can
         | confirm the numbering scheme in force, but it is never stored: the

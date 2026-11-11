@@ -144,12 +144,14 @@ class OcrController extends Controller
 
         $validated = $request->validate([
             'verified_text' => 'required|string',
+            'notes' => 'nullable|string|max:2000',
         ]);
 
         $verified = $this->ocrService->verifyExtraction(
             $extraction,
             $validated['verified_text'],
-            $request->user()
+            $request->user(),
+            $validated['notes'] ?? null
         );
 
         return response()->json([

@@ -10,8 +10,8 @@
 
 | Check | Command | Result | Evidence |
 |---|---|---|---|
-| Backend test suite | `php artisan test` | **PASS** | 363 tests, 363 passed, 2237 assertions, 148.8 s |
-| Frontend test suite | `npx vitest run` | **PASS** | 25 files, 152 tests, 152 passed, 5.0 s |
+| Backend test suite | `php artisan test` | **PASS** | 395 tests, 395 passed, 2536 assertions, 141.8 s |
+| Frontend test suite | `npx vitest run` | **PASS** | 25 files, 152 tests, 152 passed, 5.4 s |
 | Frontend type check | `npx vue-tsc -b --noEmit` | **PASS** | exit code 0, no diagnostics |
 | Production build | `npx vite build` | **PASS** | exit code 0, `✓ built in 772ms` |
 | Dependency advisories | `composer audit` | **PASS** | "No security vulnerability advisories found." |
@@ -335,9 +335,176 @@ simulated progress indicator would be dishonest.
 
 ---
 
-## 5. Test Inventory
+---
 
-### 5.1 Backend (PHPUnit / Pest) - 363 tests
+## 5. Phase 5 - Production Readiness, Operational Hardening and Proposal Traceability
+
+### 5.1 Status
+
+**PASS - implemented and verified.** The three operational defects are closed,
+the continuous integration workflow is in place, and the proposal traceability
+matrix and the forward roadmap are established from real evidence.
+
+### 5.2 Assignment participant removal audit
+
+The removal of an assignment participant changed the delegation of an
+institutional record and produced no audit record at all. It now writes both
+the domain lifecycle event and the system audit trail, inside the transaction
+that performs the removal.
+
+| Requirement | Implementation |
+|---|---|
+| The actor | `AssignmentEvent.actor_id` and `audit_events.actor_id` |
+| The affected assignment | `assignment_id` and `target_id` |
+| The removed participant | `target_user_id` and `removed_user_id` |
+| The organizational context | `scope_unit_id`, taken from the assignment's assigned unit |
+| The timestamp | `occurred_at` |
+| The previous and resulting state | `previous_state` (role code and status) and `resulting_state` (null) |
+| The framework | The existing `AuditService` and the existing `assignment_events` ledger. No second audit framework was introduced. |
+
+The removal of a participant that is not a member of the team is now refused
+with HTTP 404 instead of reporting a success that did not happen.
+
+**Transaction behaviour.** The removal, the lifecycle event and the audit event
+are written in one transaction. `AssignmentParticipantAuditAtomicityTest` injects
+a database level failure while the audit is written and asserts that the
+participant is still a member of the team and that neither event survived.
+
+The assignment event vocabulary is a check constraint, so a new incremental
+migration replaces that constraint with one that also admits
+`participant_removed`. The historical migration was not modified.
+
+**Tests.** `AssignmentParticipantAuditTest` (6) and
+`AssignmentParticipantAuditAtomicityTest` (1): successful removal, unauthorised
+removal, an invalid participant reference, an already removed participant, the
+audit records, the cross-unit boundary and the transaction rollback.
+
+### 5.3 Temporary import file lifecycle
+
+The uploaded file of an import that was inspected and never executed occupied
+private storage indefinitely.
+
+**The expiry policy.** A dataset file is temporary only while the operation
+that owns it is still waiting to be applied. The cleanup therefore removes the
+file of an operation in the `validated` or `uploaded` state once the retention
+window has passed. The file of an operation that was executed is **never**
+removed: it is the only record of what was submitted, and it supports the audit
+trail. The file of an operation that is being executed is never touched. The
+operation history is always preserved; only a stale file reference is cleared.
+
+**The retention window** is a runtime setting, `data_imports.temporary_file_retention_hours`, default 168 hours (7 days), adjustable through the established configuration catalogue and overridable per run with `--hours`.
+
+**The command.** `dms:cleanup-import-uploads` reports the eligible operations, the files removed, the expired references cleared, the paths skipped and the failures. It supports `--dry-run` and `--hours`. It is idempotent, handles a missing physical file safely, refuses to touch a stored path outside the import area of the private disk, and records its own outcome in the audit trail.
+
+**Scheduling.** The command is registered in `routes/console.php` to run daily at 02:30. **The scheduler must be running for this to happen.** The production requirement is a cron entry that invokes `php artisan schedule:run` every minute. Until that entry exists on the host, the cleanup is a manual operation. This is recorded rather than assumed.
+
+**Tests.** `ImportUploadCleanupTest` (12): an expired inspected upload, an active upload, a recently uploaded file, a completed operation, a discarded operation, a missing physical file, a repeated cleanup, an unauthorised filesystem path, the dry run behaviour, the actual deletion, the audit record, the operator supplied window and the runtime setting.
+
+### 5.4 Continuous integration workflow
+
+The repository is hosted on GitHub, so the workflow is a GitHub Actions
+definition at `.github/workflows/ci.yml`.
+
+| Aspect | Value |
+|---|---|
+| Triggers | `push` and `pull_request` on `main` and `develop` |
+| Runtime versions | PHP 8.4, Node.js 24 |
+| Database service | MySQL 8.4 with a health check, a disposable `wollo_dms_test` schema |
+| Backend steps | manifest validation, PHP syntax validation of every source file, dependency install from the lockfile, security audit, route table verification, migration verification, the full test suite |
+| Frontend steps | dependency install from the lockfile, workflow definition validation, strict type check, the test suite, the production build |
+| Concurrency | The pipeline is serialised per branch, because two database backed suites against one schema interfere with each other |
+| Failure behaviour | Any failed step fails the job and blocks the merge |
+| Secrets | None. The workflow requires no credential: the MySQL service is created inside the runner |
+| Deployment | The workflow does not deploy. It verifies only |
+
+**The integration check is a test, not a script.** `FrontendApiContractTest`
+reads every call the front end client declares and asserts that each is a
+registered route. It runs in the ordinary backend suite, so a contract break
+fails the same run that catches a behavioural regression.
+
+**Workflow validation.** `scripts/validate-ci-workflow.cjs` checks the
+workflow definition itself: that every step declares a command, that the
+required tools are pinned, that the MySQL service has a health check, and that
+the database is not substituted. It is executed as a pipeline step.
+
+### 5.5 Navigation permission contract review
+
+The dynamic catalogue (server side, permission filtered per request) and the
+static fallback (client side, used for the first paint before the catalogue
+arrives) remain two declarations.
+
+**They cannot be consolidated safely.** A single source of truth would require
+either generating the client catalogue from the server catalogue at build time,
+which introduces a generated artefact and a build step that must be kept in
+step with the server, or removing the fallback, which breaks the first paint
+and the bootstrap behaviour when the catalogue cannot be fetched.
+
+**The architecture is therefore preserved and the guard is strengthened.**
+`NavigationPermissionContractTest` already asserts that the API contract, the
+dynamic catalogue, the route metadata and the static fallback agree, and that
+every referenced capability exists in the registry. This phase added the
+`FrontendApiContractTest`, which closes the remaining gap: the front end client
+and the route table.
+
+**Residual maintenance risk.** The two declarations remain a duplication. A
+developer who adds a navigation entry must add it in both places. The contract
+test converts that silent risk into a build failure, which is the strongest
+guarantee available without a build step.
+
+### 5.6 Authorization and performance regression
+
+The permission resolution was re-verified end to end.
+`AuthorizationResolutionRegressionTest` (8) asserts the four rules the whole
+architecture rests on: an unscoped check is satisfied only by a global grant; a
+unit grant covers exactly its own unit; a subtree grant covers the anchor and
+every descendant; and the decision and the published capability set resolve
+identically. It also asserts that a role grant and a direct grant resolve
+alike, that a capability without a grant resolves to nothing, and that an
+expired grant is not honoured.
+
+No permission caching was introduced. The grant load happens once per model
+instance and is never reused across a request, which is the price of never
+serving a stale authorization decision.
+
+The query plans of the operational statements were inspected with
+`php artisan dms:profile-queries`. Every statement uses an index and no
+statement performs a filesort on a large table.
+
+### 5.7 Proposal traceability and the forward roadmap
+
+`docs/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md` evaluates the twenty seven
+functional requirements of the approved proposal against the actual
+implementation. The proposal was recovered from the repository history and
+read directly; it is not present in the current working tree, and the
+document records the reference path.
+
+**Position: 15 verified, 12 partial, 0 missing, 0 untested.** Three of the
+partial items are blocked on a university decision rather than on engineering:
+the approval authority for each document category, the confidentiality
+classification schedule and the retention schedule. The proposal states that
+these *"will be established with the relevant university offices"*, so they
+are recorded as open decisions and not as unfinished software.
+
+`docs/NEXT_PHASE_ROADMAP.md` ranks the outstanding work by security and data
+integrity first, then core functionality, operational importance, dependencies,
+complexity and verification.
+
+### 5.8 Defects found and closed in this phase
+
+| # | Severity | Defect | Closure |
+|---|---|---|---|
+| 1 | **High** | The OCR operations of the document detail screen called four endpoints that do not exist, so every OCR action returned HTTP 404. | The client calls the real, permission scoped routes; the view passes the version identifier. |
+| 2 | **High** | The OCR verification sent `corrected_text` while the server requires `verified_text`. | The client sends `verified_text`. |
+| 3 | **Medium** | The HTTP error envelope was inconsistent: a validation failure carried `success: false` and a controller exception did not. | The exception renderer applies the same envelope to every API failure. |
+| 4 | **Medium** | The assignment participant removal produced no audit record and reported success even when nothing was removed. | Both ledgers are written inside the transaction; a participant that is not a member is refused. |
+| 5 | **Medium** | An inspected import that was never executed kept its uploaded file indefinitely. | The cleanup command removes it once the retention window has passed. |
+| 6 | **Low** | The repository had no continuous integration workflow. | The workflow verifies the backend against MySQL 8.4 and the front end against the committed lockfile. |
+| 7 | **Medium** | The verification remarks collected on the extraction panel were discarded, because the server had nowhere to store them. | The remarks are now an optional field of the verification and are written to the audit trail with the verification itself; `OcrVerificationContractTest` proves it. |
+
+---
+## 6. Test Inventory
+
+### 6.1 Backend (PHPUnit / Pest) - 395 tests
 
 | Suite | Purpose |
 |---|---|
@@ -347,9 +514,15 @@ simulated progress indicator would be dishonest.
 | `AccountRecoveryTest` | Recovery delivery, non-enumeration, session termination, address confirmation |
 | `SecurityAndAccessControlAuditTest` | Cross-department access, anti-self-approval, confidentiality |
 | `SecurityPenetrationTest` | Session invalidation, account lockout, replay resistance |
+| `AuthorizationResolutionRegressionTest` | The four scope resolution rules, the agreement between the decision and the published capability set, expired grants |
+| `FrontendApiContractTest` | Every call declared by the front-end client resolves to a registered route |
+| `AssignmentParticipantAuditTest` | The participant removal audit: success, refusal, invalid reference, already removed, cross-unit |
+| `AssignmentParticipantAuditAtomicityTest` | A database-level failure during the audit rolls the removal back |
+| `ImportUploadCleanupTest` | The temporary import file lifecycle: expiry, protection, idempotence, path safety, dry run |
+| `OcrVerificationContractTest` | The text extraction verification: the corrected text, the remarks in the audit trail, the required field, the capability and the unit boundary |
 | Remaining 22 suites | Workflow, correspondence, repository, archive, PKI, disaster recovery, schema invariants, scheduling, transactions, credentials |
 
-### 5.2 Frontend (Vitest) - 152 tests
+### 6.2 Frontend (Vitest) - 152 tests
 
 | Suite | Purpose |
 |---|---|
@@ -362,7 +535,7 @@ simulated progress indicator would be dishonest.
 
 ---
 
-## 6. Defects Found and Closed
+## 7. Defects Found and Closed
 
 Every item below was discovered by inspection of the running code, reproduced,
 and closed with a regression test.
@@ -383,7 +556,7 @@ and closed with a regression test.
 | 12 | **Low** | A document that did not exist passed the authorization middleware and was rejected only by the controller. | The middleware returned "allow" for an unresolved record. | The middleware now fails closed with HTTP 404 |
 | 13 | **Medium** | Resolving the organizational context executed **116** database queries for a single request, because the subtree walk was repeated once per grant and the grants were loaded once per capability resolution. | `getDescendantIds()` was called per scope, and each capability resolution re-queried the grants. | The subtree expansion is batched across all anchors and the grants are loaded once per context: **19 queries**. Grants are never cached on the model, so a revoked capability is never advertised |
 
-### 6.1 Dependency remediation
+### 7.1 Dependency remediation
 
 | Package | From | To | Reason |
 |---|---|---|---|
@@ -395,7 +568,7 @@ and closed with a regression test.
 
 ---
 
-## 7. Architecture Delivered
+## 8. Architecture Delivered
 
 | Component | Purpose |
 |---|---|
@@ -420,24 +593,34 @@ and closed with a regression test.
 | `app/Models/DataImportOperation.php` | The history of an import operation |
 | `app/Models/DataImportRowError.php` | A row level validation failure |
 | `app/Models/DataExportOperation.php` | The history of an export operation and its artefact |
+| `app/Console/Commands/CleanupImportUploadsCommand.php` | The temporary import file lifecycle with a dry run, a retention window and an audit record |
+| `app/Services/AssignmentService.php` | The assignment lifecycle, including the audited participant removal |
+| `.github/workflows/ci.yml` | The continuous integration pipeline: the backend against MySQL 8.4, the front end against the committed lockfile |
+| `scripts/validate-ci-workflow.cjs` | The structural validation of the workflow definition |
+| `docs/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md` | The evaluation of the twenty-seven proposal requirements against the implementation |
+| `docs/NEXT_PHASE_ROADMAP.md` | The ranked outstanding work and its dependencies |
 
 ---
 
-## 8. Open Items
+## 9. Open Items
 
 | # | Severity | Item | Impact | Recommended action |
 |---|---|---|---|---|
 | 1 | ~~**Medium**~~ **CLOSED** | ~~`SystemSettingsView` presents an editable settings form that persists nothing and shows a success toast. There is no `system_settings` table and no settings API.~~ | An administrator believed a configuration was applied when nothing changed. | **Closed in Phase 3.** The catalogue, the storage, the API, the audit trail and the interface are implemented and verified. See §3. |
 | 2 | ~~**Medium**~~ **CLOSED** | ~~`DataImportsExportsView` is a static screen with no import or export operation.~~ | Advertised bulk data operations did not exist. | **Closed in Phase 4.** The dataset catalogue, the storage, the API, the audit trail and the interface are implemented and verified. See §4 and `docs/DATA_IMPORT_EXPORT_CATALOG.md`. |
-| 3 | **Low** | The navigation catalog and the static fallback are maintained as two parallel declarations. | A future divergence is possible. | Mitigated today by `NavigationPermissionContractTest`; a single generated source would remove the duplication entirely. |
-| 4 | **Low** | Assignment participant removal is authorized by unit but records no audit event. | The audit trail is incomplete for that operation. | Add an `AuditEvent` write to `AssignmentService::removeParticipant`. |
-| 5 | **Low** | No continuous integration workflow is defined. | Regression detection depends on a local run. | Add a GitHub Actions workflow running the four commands in §1. |
+| 3 | ~~**Low**~~ **CLOSED** | ~~The navigation catalog and the static fallback are maintained as two parallel declarations.~~ | A future divergence is possible. | **Reviewed in Phase 5.** Consolidation was evaluated and rejected: it would require a build step or the loss of the first paint. The architecture is preserved and the guard is strengthened with `FrontendApiContractTest`. See §5.5. |
+| 4 | ~~**Low**~~ **CLOSED** | ~~Assignment participant removal is authorized by unit but records no audit event.~~ | The audit trail is incomplete for that operation. | **Closed in Phase 5.** Both ledgers are written inside the removal transaction, and a participant that is not a member is refused. See §5.2. |
+| 5 | ~~**Low**~~ **CLOSED** | ~~No continuous integration workflow is defined.~~ | Regression detection depends on a local run. | **Closed in Phase 5.** The GitHub Actions workflow verifies the backend against MySQL 8.4 and the front end against the committed lockfile. See §5.4. |
 | 6 | **Low** | The active unit is stored in the session, so it is shared between the browser tabs of one session. | Switching in one tab changes the context of the other. | Accepted. A per-tab preference would still have to be validated by the server, so it buys little. |
 | 7 | **Informational** | `MAIL_MAILER=log` is the default in `.env.example`. | Recovery and confirmation links are written to the log instead of being delivered. | Set a real transport for any deployment where recovery must work. See `docs/CONFIGURATION_CATALOG.md` §4. |
+| 8 | **Low** | The temporary import file cleanup only runs when the Laravel scheduler is running. | Inspected import files accumulate until the cleanup is invoked. | The command is registered to run daily at 02:30. **The deployment must provide a cron entry that invokes `php artisan schedule:run` every minute.** Until then the cleanup is a manual operation. See §5.3. |
+| 9 | **Low** | The audit ledger is append-only by convention, not by a database guarantee. | The application account could update or delete an audit row. | Grant the application account no `UPDATE` or `DELETE` on `audit_events`. Ranked second in `docs/NEXT_PHASE_ROADMAP.md`. |
+| 10 | **Medium** | The OCR operations of the document detail screen were broken. | Every OCR action returned HTTP 404. | **Closed in Phase 5**, with `FrontendApiContractTest` as the permanent guard. See §5.8. |
+| 11 | **Medium** | The proposal traceability records twelve partial requirements. | The repository, tagging, the stamp application, research and project approvals, the staff information model, the deployment runbook, the user guidance and the handover document are outstanding. | `docs/NEXT_PHASE_ROADMAP.md` ranks them. Three of them are blocked on a university decision rather than on engineering. |
 
 ---
 
-## 9. Environment Notes
+## 10. Environment Notes
 
 | Item | Detail |
 |---|---|

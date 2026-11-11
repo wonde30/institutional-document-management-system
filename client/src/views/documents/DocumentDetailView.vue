@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { documentsApi, archiveApi, ocrApi, institutionalApi } from '@/api/client'
 import type { Document, ArchiveCollection, RetentionPolicy, TimelineEvent, PhysicalOriginal } from '@/types'
@@ -292,10 +292,26 @@ const ocrCorrectedText = ref('')
 const ocrVerificationNotes = ref('')
 const isVerifyingOcr = ref(false)
 
+/**
+ * The version the text extraction applies to.
+ *
+ * The extraction belongs to a document version, so the current version is
+ * required by every extraction call.
+ */
+const currentVersionId = computed<number | null>(() => {
+  const versions = document.value?.versions
+  if (!versions || versions.length === 0) return null
+  return versions[0].id
+})
+
 async function loadOcrExtractions() {
+  if (!currentVersionId.value) {
+    ocrExtractions.value = []
+    return
+  }
   isLoadingOcr.value = true
   try {
-    const res = await ocrApi.extractions(docId)
+    const res = await ocrApi.extractions(docId, currentVersionId.value)
     ocrExtractions.value = (res.data as any).data || []
   } catch (err) {
     console.warn('Failed to load OCR extractions:', err)
@@ -305,13 +321,16 @@ async function loadOcrExtractions() {
 }
 
 async function handleProcessOcr(fileObjectId?: number) {
+  if (!currentVersionId.value) {
+    toast.error('This document has no version to extract from.')
+    return
+  }
   isProcessingOcr.value = true
   try {
-    await ocrApi.process({
-      document_id: docId,
+    await ocrApi.process(docId, currentVersionId.value, {
       file_object_id: fileObjectId,
       languages: 'eng+amh',
-      queue_mode: 'sync',
+      sync: true,
     })
     toast.success('OCR document extraction completed successfully.')
     await loadOcrExtractions()
@@ -324,9 +343,10 @@ async function handleProcessOcr(fileObjectId?: number) {
 }
 
 async function handleRetryOcr(extractionId: number) {
+  if (!currentVersionId.value) return
   isProcessingOcr.value = true
   try {
-    await ocrApi.retry(extractionId)
+    await ocrApi.retry(docId, currentVersionId.value, extractionId, { sync: true })
     toast.success('OCR extraction retry initiated.')
     await loadOcrExtractions()
   } catch (err: any) {
@@ -351,8 +371,9 @@ async function submitOcrVerify() {
   }
   isVerifyingOcr.value = true
   try {
-    await ocrApi.verify(selectedOcrExtraction.value.id, {
-      corrected_text: ocrCorrectedText.value,
+    if (!currentVersionId.value) return
+    await ocrApi.verify(docId, currentVersionId.value, selectedOcrExtraction.value.id, {
+      verified_text: ocrCorrectedText.value,
       notes: ocrVerificationNotes.value.trim() || undefined,
     })
     toast.success('OCR text verified and marked clean.')

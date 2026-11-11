@@ -1,0 +1,128 @@
+name: CI
+
+# The continuous integration pipeline of the Wollo University Administrative and
+# Document Management System.
+#
+# It verifies exactly what a release must satisfy: the backend against a
+# disposable MySQL 8.4 instance, the front end against the committed lockfile,
+# and the contract between them.
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# A concurrent run of two database backed suites against the same schema
+# interferes with each other, so the pipeline is serialised.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Laravel, MySQL 8.4)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: wollo_dms_test
+        ports:
+          - '3306:3306'
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, openssl, curl, dom, fileinfo, tokenizer, xml, ctype, json, filter, session, iconv, zip, gd, intl, bcmath
+          coverage: none
+
+      - name: Cache the Composer packages
+        uses: actions/cache@v4
+        with:
+          path: server/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('server/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Validate the Composer manifest
+        run: composer validate --no-check-publish
+
+      - name: Validate the PHP syntax of every source file
+        run: |
+          set -e
+          find app bootstrap config database routes tests -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l > /dev/null
+
+      - name: Install the Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Audit the Composer dependencies
+        run: composer audit
+
+      - name: Prepare the environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Verify the route table
+        run: php artisan route:list --except-vendor
+
+      - name: Verify the migrations apply cleanly
+        run: php artisan migrate --force
+
+      - name: Run the backend test suite
+        run: php artisan test
+
+  frontend:
+    name: Frontend (Vue 3, TypeScript)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install the front end dependencies
+        run: npm ci
+
+      - name: Validate the continuous integration workflow definition
+        run: node ../scripts/validate-ci-workflow.cjs
+
+      - name: Type check the front end
+        run: npx vue-tsc -b --noEmit
+
+      - name: Run the front end test suite
+        run: npm run test
+
+      - name: Build the production bundle
+        run: npm run build
