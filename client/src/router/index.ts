@@ -231,7 +231,12 @@ const routes: RouteRecordRaw[] = [
     path: '/exports',
     name: 'data.exports',
     component: () => import('@/views/admin/DataImportsExportsView.vue'),
-    meta: { title: 'Data Imports & Exports', requiresAuth: true, permission: 'roles.view', group: 'Trust & reporting' },
+    meta: {
+      title: 'Data Imports & Exports',
+      requiresAuth: true,
+      permission: ['data.import', 'data.export'],
+      group: 'Trust & reporting',
+    },
   },
   {
     path: '/imports',

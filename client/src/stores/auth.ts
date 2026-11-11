@@ -68,8 +68,19 @@ export const useAuthStore = defineStore('auth', () => {
     return userRoles.value.some((r) => targets.includes(r.toLowerCase()))
   }
 
-  function hasPermission(permissionCode: string): boolean {
+  /**
+   * Whether the account holds a capability.
+   *
+   * A list of capabilities is satisfied when **any** of them is held, which is
+   * the same "any of" semantics the route guard and the navigation filter use.
+   */
+  function hasPermission(permissionCode: string | string[]): boolean {
     if (isSuperAdmin.value) return true
+
+    if (Array.isArray(permissionCode)) {
+      return permissionCode.some((code) => hasPermission(code))
+    }
+
     const target = permissionCode.toLowerCase().trim()
     return userPermissions.value.some((p) => p.toLowerCase().trim() === target)
   }

@@ -48,6 +48,9 @@ import type {
   SettingCategory,
   SettingDefinition,
   SettingsPayload,
+  DataDataset,
+  DataExportOperation,
+  DataImportOperation,
 } from '@/types'
 
 export const apiClient = axios.create({
@@ -468,6 +471,60 @@ export const settingsApi = {
     ),
   /** The configuration published on the public portal. */
   publicSettings: () => apiClient.get<ApiResponse<Record<string, string | number | boolean>>>('/settings/public'),
+}
+
+// ----------------------------------------------------------------------------
+// 11c. Dataset Import and Export API
+// ----------------------------------------------------------------------------
+export const dataTransferApi = {
+  /** The supported import and export datasets. */
+  datasets: () =>
+    apiClient.get<
+      ApiResponse<DataDataset[]> & { meta: { max_import_kilobytes: number } }
+    >('/data/datasets'),
+
+  /** The import history of the caller. */
+  imports: () => apiClient.get<ApiResponse<DataImportOperation[]>>('/data/imports'),
+
+  /**
+   * Receive and inspect an import file.
+   *
+   * The inspection creates no business record. The progress callback reports
+   * the actual network activity of the upload.
+   */
+  inspectImport: (form: FormData, onUploadProgress?: (percent: number) => void) =>
+    apiClient.post<ApiResponse<DataImportOperation>>('/data/imports', form, {
+      onUploadProgress: (event) => {
+        if (!onUploadProgress) return
+        const percent = event.total ? Math.round((event.loaded / event.total) * 100) : 0
+        onUploadProgress(percent)
+      },
+    }),
+
+  /** The detail of an import operation, including its row level failures. */
+  showImport: (id: number) => apiClient.get<ApiResponse<DataImportOperation>>(`/data/imports/${id}`),
+
+  /** Execute a previously inspected import. */
+  executeImport: (id: number) => apiClient.post<ApiResponse<DataImportOperation>>(`/data/imports/${id}/execute`),
+
+  /** Discard an import operation and remove its uploaded file. */
+  discardImport: (id: number) => apiClient.delete<ApiResponse<DataImportOperation>>(`/data/imports/${id}`),
+
+  /** The export history of the caller. */
+  exports: () => apiClient.get<ApiResponse<DataExportOperation[]>>('/data/exports'),
+
+  /** Generate an export file. */
+  generateExport: (payload: {
+    dataset: string
+    filters?: Record<string, string>
+    scope_unit_id?: number | null
+  }) => apiClient.post<ApiResponse<DataExportOperation>>('/data/exports', payload),
+
+  /** The address of a generated export file. */
+  exportDownloadUrl: (id: number) => `/api/v1/data/exports/${id}/download`,
+
+  /** The address of the structured validation error report of an import. */
+  importErrorsUrl: (id: number) => `/api/v1/data/imports/${id}/errors`,
 }
 
 // ----------------------------------------------------------------------------

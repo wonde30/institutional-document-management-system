@@ -155,6 +155,7 @@ the `System Settings` administration screen, which requires the
 | `documents.max_upload_size_mb` | Document Repository | integer | `100` | global | yes | The maximum accepted upload, applied to document registration and version upload validation |
 | `documents.default_confidentiality_level_code` | Document Repository | select (`internal`, `confidential`, `restricted`) | `internal` | global **or** organizational unit | yes | The classification applied when a document is registered without an explicit level |
 | `session.lifetime_minutes` | Session & Access | integer | `120` | global | yes | The idle session lifetime, applied before the session starts |
+| `data_imports.max_file_size_mb` | Session & Access | integer | `20` | global | yes | The largest dataset file accepted for inspection. It is distinct from the document upload limit, because an import file is a structured dataset rather than a repository record. |
 | `documents.reference_number_scheme` | Document Repository | string | `WU/DOC/{YEAR}/{SEQUENCE}` | global | **no** | None. A source managed invariant, displayed for reference only and never stored |
 
 ### 3.2 Design constraints

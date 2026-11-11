@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CorrespondenceController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DataTransferController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\DocumentMovementController;
 use App\Http\Controllers\Api\V1\GlobalSearchController;
@@ -363,6 +364,36 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:system.configure');
             Route::post('{key}/reset', [SettingsController::class, 'reset'])
                 ->middleware('permission:system.configure');
+        });
+
+        // Dataset Import & Export
+        Route::prefix('data')->group(function () {
+            Route::get('datasets', [DataTransferController::class, 'datasets'])
+                ->middleware('permission:data.import|data.export');
+
+            Route::prefix('imports')->group(function () {
+                Route::get('/', [DataTransferController::class, 'imports'])
+                    ->middleware('permission:data.import');
+                Route::post('/', [DataTransferController::class, 'storeImport'])
+                    ->middleware('permission:data.import');
+                Route::get('{id}', [DataTransferController::class, 'showImport'])
+                    ->middleware('permission:data.import');
+                Route::post('{id}/execute', [DataTransferController::class, 'executeImport'])
+                    ->middleware('permission:data.import');
+                Route::get('{id}/errors', [DataTransferController::class, 'importErrors'])
+                    ->middleware('permission:data.import');
+                Route::delete('{id}', [DataTransferController::class, 'destroyImport'])
+                    ->middleware('permission:data.import');
+            });
+
+            Route::prefix('exports')->group(function () {
+                Route::get('/', [DataTransferController::class, 'exports'])
+                    ->middleware('permission:data.export');
+                Route::post('/', [DataTransferController::class, 'storeExport'])
+                    ->middleware('permission:data.export');
+                Route::get('{id}/download', [DataTransferController::class, 'downloadExport'])
+                    ->middleware('permission:data.export');
+            });
         });
     });
 });

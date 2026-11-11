@@ -98,6 +98,8 @@ class BaselineReferenceVocabularySeeder extends Seeder
             ['code' => 'stamps.apply', 'name' => 'Stamps apply', 'active' => 1],
             ['code' => 'reports.view', 'name' => 'Reports view', 'active' => 1],
             ['code' => 'reports.export', 'name' => 'Reports export', 'active' => 1],
+            ['code' => 'data.import', 'name' => 'Dataset import', 'active' => 1],
+            ['code' => 'data.export', 'name' => 'Dataset export', 'active' => 1],
             ['code' => 'audit.view', 'name' => 'Audit view', 'active' => 1],
             ['code' => 'system.configure', 'name' => 'System configure', 'active' => 1],
             ['code' => 'backups.manage', 'name' => 'Backups manage', 'active' => 1],
@@ -155,6 +157,7 @@ class BaselineReferenceVocabularySeeder extends Seeder
                 'documents.view', 'documents.create', 'documents.update', 'documents.delete', 'documents.upload', 'documents.download', 'documents.version', 'documents.share',
                 'reports.view', 'reports.export', 'audit.view', 'system.configure', 'backups.manage', 'backups.restore',
                 'accreditation.view', 'accreditation.manage', 'accreditation.review_evidence', 'accreditation.export',
+                'data.import', 'data.export',
             ],
             'document_controller' => [
                 'documents.view', 'documents.create', 'documents.update', 'documents.upload', 'documents.download', 'documents.version', 'documents.share',

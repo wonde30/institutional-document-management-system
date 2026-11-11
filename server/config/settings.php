@@ -103,6 +103,17 @@ return [
             'editable' => true,
         ],
 
+        'data_imports.max_file_size_mb' => [
+            'label' => 'Maximum Import File Size',
+            'description' => 'Largest dataset file accepted for inspection, in megabytes. Distinct from the document upload limit, because an import file is a structured dataset rather than a repository record.',
+            'category' => 'security',
+            'type' => 'integer',
+            'default' => 20,
+            'rules' => ['required', 'integer', 'min:1', 'max:256'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
         /*
         | A source managed invariant. It is displayed so the administrator can
         | confirm the numbering scheme in force, but it is never stored: the

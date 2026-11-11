@@ -184,6 +184,86 @@ export interface SettingsPayload {
   scope_unit_id: number | null
 }
 
+/**
+ * A supported import or export dataset.
+ */
+export interface DataDataset {
+  key: string
+  label: string
+  description: string
+  direction: 'import' | 'export'
+  format: string
+  permission: string
+  scope: string
+  fields: string[]
+  required_headers: string[]
+  filters: string[]
+  max_rows: number | null
+}
+
+/**
+ * A row level validation failure recorded during an import inspection.
+ */
+export interface DataImportRowError {
+  row_number: number
+  column_name: string | null
+  code: string
+  message: string
+}
+
+/**
+ * An import operation.
+ */
+export interface DataImportOperation {
+  id: number
+  dataset: string
+  status:
+    | 'uploaded'
+    | 'validated'
+    | 'importing'
+    | 'completed'
+    | 'completed_with_errors'
+    | 'failed'
+    | 'discarded'
+  format: string
+  original_filename: string
+  scope_unit_id: number | null
+  scope_unit: string | null
+  total_rows: number
+  valid_rows: number
+  invalid_rows: number
+  duplicate_rows: number
+  imported_rows: number
+  failed_rows: number
+  failure_reason: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string | null
+  executable: boolean
+  errors?: DataImportRowError[]
+}
+
+/**
+ * An export operation.
+ */
+export interface DataExportOperation {
+  id: number
+  dataset: string
+  status: 'requested' | 'generating' | 'completed' | 'failed'
+  format: string
+  filters: Record<string, string> | null
+  scope_unit_id: number | null
+  scope_unit: string | null
+  record_count: number
+  file_size: number
+  failure_reason: string | null
+  started_at: string | null
+  completed_at: string | null
+  expires_at: string | null
+  created_at: string | null
+  retrievable: boolean
+}
+
 // ----------------------------------------------------------------------------
 // 02. Scoped RBAC
 // ----------------------------------------------------------------------------

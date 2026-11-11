@@ -10,8 +10,8 @@
 
 | Check | Command | Result | Evidence |
 |---|---|---|---|
-| Backend test suite | `php artisan test` | **PASS** | 333 tests, 333 passed, 2129 assertions, 123.3 s |
-| Frontend test suite | `npx vitest run` | **PASS** | 24 files, 143 tests, 143 passed, 6.3 s |
+| Backend test suite | `php artisan test` | **PASS** | 363 tests, 363 passed, 2237 assertions, 148.8 s |
+| Frontend test suite | `npx vitest run` | **PASS** | 25 files, 152 tests, 152 passed, 5.0 s |
 | Frontend type check | `npx vue-tsc -b --noEmit` | **PASS** | exit code 0, no diagnostics |
 | Production build | `npx vite build` | **PASS** | exit code 0, `✓ built in 772ms` |
 | Dependency advisories | `composer audit` | **PASS** | "No security vulnerability advisories found." |
@@ -217,9 +217,127 @@ preserves both the cascade and the uniqueness guarantee.
 
 ---
 
-## 4. Test Inventory
+## 4. Phase 4 — Dataset Import & Export Module
 
-### 3.1 Backend (PHPUnit / Pest) — 308 tests
+### 4.1 Status
+
+**PASS — implemented and verified.** Open Item #2 from the previous cycle is
+closed. The `Data Imports & Exports` screen was a static table of hardcoded
+rows whose buttons reported "Export job queued" and "Batch import validated and
+queued" without contacting the server at all. It is now backed by a real,
+audited, database-backed module.
+
+### 4.2 What was implemented
+
+| Layer | Change |
+|---|---|
+| Catalogue | `config/data_transfer.php` declares the supported datasets: two importable, four exportable, CSV only. Nothing outside the catalogue can be performed. |
+| Storage | Three tables: `data_import_operations`, `data_import_row_errors`, `data_export_operations`. |
+| Service | `DataTransferService` implements the import lifecycle and the export generation. `CsvWriter` writes UTF-8 files with spreadsheet formula injection neutralised. |
+| API | `DataTransferController` under `/api/v1/data`: dataset catalogue, import upload, inspection, execution, error report, discard, export history, generation and download. |
+| Authorization | Two new capabilities, `data.import` and `data.export`, govern the operations. The dataset's own capability governs the content. |
+| Runtime setting | `data_imports.max_file_size_mb`, default 20 MB. It is deliberately distinct from the document upload limit. |
+| Interface | `DataImportsExportsView` rewritten with the real workflow, real upload progress, a validation preview, row level errors, confirmation, actual results and operation history. |
+
+### 4.3 Supported operations
+
+| Dataset | Direction | Capability | Scope |
+|---|---|---|---|
+| `organization_units` | import | `organization.manage` | active organizational unit |
+| `organization_memberships` | import | `organization.manage` | active organizational unit |
+| `document_catalog` | export | `documents.view` | permitted units |
+| `correspondence_registry` | export | `correspondence.view` | permitted units |
+| `organization_directory` | export | `organization.view` | permitted units |
+| `audit_events` | export | `audit.view` | global |
+
+The full specification is in `docs/DATA_IMPORT_EXPORT_CATALOG.md`.
+
+### 4.4 Deliberate exclusions
+
+Business records that carry a registration workflow (documents, correspondence)
+are **not** importable: a bulk write would bypass the workflow, the reference
+number sequence and the record history. Staff records, the RBAC tables,
+sessions and credentials are not exported. The spreadsheet library was removed in
+an earlier phase and was not re-introduced for one screen, so **XLSX is no
+longer advertised**; the interface previously claimed support it never had.
+
+### 4.5 Authorization and security test matrix — actual results
+
+`DataTransferTest` — 30 tests, 87 assertions, all passing.
+
+| Scenario | Expected behaviour | Result |
+|---|---|---|
+| Import upload authorization | 403 without `data.import` | PASS |
+| Unsupported file format | 422 | PASS |
+| Unreadable file content | 422 | PASS |
+| Oversized file | 422 | PASS |
+| Invalid headers | 422 | PASS |
+| Required field validation | Row level failure, nothing stored | PASS |
+| Type validation | Row level failure | PASS |
+| Duplicate detection | Reported as a duplicate | PASS |
+| Preview without persistence | No record created | PASS |
+| Authorized import | The records are created | PASS |
+| Unauthorized import | 403 | PASS |
+| Cross-unit import | 403 | PASS |
+| Invalid foreign key reference | Row level failure | PASS |
+| Transaction rollback | `failed`, zero imported | PASS |
+| Batch failure behaviour | Valid records committed, failures reported | PASS |
+| Audit event creation | Recorded on inspection and on execution | PASS |
+| No completion audit after a failure | No completion event | PASS |
+| Export authorization | 403 without `data.export` | PASS |
+| Export filters | Only the matching records are exported | PASS |
+| Cross-unit export protection | The foreign unit's records are absent | PASS |
+| Confidentiality restriction | The record policy is applied per record | PASS |
+| Export field allowlisting | Only the declared columns are written | PASS |
+| CSV injection protection | The formula is prefixed | PASS |
+| Amharic text | Preserved in the file | PASS |
+| Download authorization | 403 without the dataset capability | PASS |
+| Download returns the file | The real generated file | PASS |
+| Expired export | 404 | PASS |
+| Permission revoked | The download stops immediately | PASS |
+| Temporary file cleanup | The uploaded file is removed on discard | PASS |
+
+### 4.6 Frontend test matrix — actual results
+
+`client/tests/dataImportsExports.spec.ts` — 9 tests, all passing.
+
+Loading of the catalogue and the history · the required columns of the selected
+dataset · the inspection and the validation preview · an upload failure without a
+false preview · the import executed only after the preview was accepted · the
+export generated with the applied filters · a failure to load · the forbidden
+module without the workflow · the empty state — **all PASS**.
+
+### 4.7 Defects found by the new tests during implementation
+
+| Defect | Closure |
+|---|---|
+| The dataset dispatcher used `array_key_first()`, which returns the key and not the value, so no export branch ever matched and every export was empty | The dispatcher names the dataset explicitly |
+| The row error records were created without the operation identifier | The identifier is written with every error |
+| The dataset capability was checked without a scope, so a unit scoped holder was refused | The scope is resolved before the check |
+| An export operation without a scope was treated as a single resource and refused | A scope less export covers every permitted unit and is not resource bound |
+| Reading the uploaded file of an operation with no stored path raised an error | The operation is refused with a clear message |
+| The navigation item for the screen required `roles.view`, which the API never required | All three declarations now require the data capabilities |
+| `hasPermission` accepted only a string, so an array capability raised a type error | The store accepts a list with "any of" semantics, matching the route guard |
+
+### 4.8 Performance observations
+
+| Observation | Value |
+|---|---|
+| Export memory use | Bounded. The rows are produced by a generator and written straight to the file; no result set is materialised. |
+| Export query shape | One query per dataset with the eager loaded relations. `cursor()` streams the result. |
+| Import memory use | Bounded. The file is read row by row and the valid rows are written inside a single transaction. |
+| Export row ceiling | 10 000 records, enforced by the query limit. |
+| Import row ceiling | 2 000 records, enforced during the inspection. |
+| Export retention | 24 hours, after which the file is no longer retrievable. |
+
+No queue was introduced. The deployment does not guarantee a worker, and a
+simulated progress indicator would be dishonest.
+
+---
+
+## 5. Test Inventory
+
+### 5.1 Backend (PHPUnit / Pest) - 363 tests
 
 | Suite | Purpose |
 |---|---|
@@ -231,7 +349,7 @@ preserves both the cascade and the uniqueness guarantee.
 | `SecurityPenetrationTest` | Session invalidation, account lockout, replay resistance |
 | Remaining 22 suites | Workflow, correspondence, repository, archive, PKI, disaster recovery, schema invariants, scheduling, transactions, credentials |
 
-### 3.2 Frontend (Vitest) — 129 tests
+### 5.2 Frontend (Vitest) - 152 tests
 
 | Suite | Purpose |
 |---|---|
@@ -244,7 +362,7 @@ preserves both the cascade and the uniqueness guarantee.
 
 ---
 
-## 5. Defects Found and Closed
+## 6. Defects Found and Closed
 
 Every item below was discovered by inspection of the running code, reproduced,
 and closed with a regression test.
@@ -265,7 +383,7 @@ and closed with a regression test.
 | 12 | **Low** | A document that did not exist passed the authorization middleware and was rejected only by the controller. | The middleware returned "allow" for an unresolved record. | The middleware now fails closed with HTTP 404 |
 | 13 | **Medium** | Resolving the organizational context executed **116** database queries for a single request, because the subtree walk was repeated once per grant and the grants were loaded once per capability resolution. | `getDescendantIds()` was called per scope, and each capability resolution re-queried the grants. | The subtree expansion is batched across all anchors and the grants are loaded once per context: **19 queries**. Grants are never cached on the model, so a revoked capability is never advertised |
 
-### 5.1 Dependency remediation
+### 6.1 Dependency remediation
 
 | Package | From | To | Reason |
 |---|---|---|---|
@@ -277,7 +395,7 @@ and closed with a regression test.
 
 ---
 
-## 6. Architecture Delivered
+## 7. Architecture Delivered
 
 | Component | Purpose |
 |---|---|
@@ -295,15 +413,22 @@ and closed with a regression test.
 | `app/Http/Controllers/Api/V1/SettingsController.php` | The configuration REST contract |
 | `app/Http/Middleware/ApplyRuntimeSettings.php` | Applies the runtime configuration before the session starts |
 | `client/src/composables/useInstitution.ts` | The published institutional identity applied to the interface |
+| `config/data_transfer.php` | The authoritative dataset import and export catalogue |
+| `app/Services/DataTransfer/DataTransferService.php` | The import lifecycle and the export generation |
+| `app/Services/DataTransfer/CsvWriter.php` | UTF-8 CSV writing with spreadsheet formula injection neutralised |
+| `app/Http/Controllers/Api/V1/DataTransferController.php` | The dataset import and export REST contract |
+| `app/Models/DataImportOperation.php` | The history of an import operation |
+| `app/Models/DataImportRowError.php` | A row level validation failure |
+| `app/Models/DataExportOperation.php` | The history of an export operation and its artefact |
 
 ---
 
-## 7. Open Items
+## 8. Open Items
 
 | # | Severity | Item | Impact | Recommended action |
 |---|---|---|---|---|
 | 1 | ~~**Medium**~~ **CLOSED** | ~~`SystemSettingsView` presents an editable settings form that persists nothing and shows a success toast. There is no `system_settings` table and no settings API.~~ | An administrator believed a configuration was applied when nothing changed. | **Closed in Phase 3.** The catalogue, the storage, the API, the audit trail and the interface are implemented and verified. See §3. |
-| 2 | **Medium** | `DataImportsExportsView` is a static screen with no import or export operation. | Advertised bulk data operations do not exist. | Implement against the repository service, or remove the surface from navigation. |
+| 2 | ~~**Medium**~~ **CLOSED** | ~~`DataImportsExportsView` is a static screen with no import or export operation.~~ | Advertised bulk data operations did not exist. | **Closed in Phase 4.** The dataset catalogue, the storage, the API, the audit trail and the interface are implemented and verified. See §4 and `docs/DATA_IMPORT_EXPORT_CATALOG.md`. |
 | 3 | **Low** | The navigation catalog and the static fallback are maintained as two parallel declarations. | A future divergence is possible. | Mitigated today by `NavigationPermissionContractTest`; a single generated source would remove the duplication entirely. |
 | 4 | **Low** | Assignment participant removal is authorized by unit but records no audit event. | The audit trail is incomplete for that operation. | Add an `AuditEvent` write to `AssignmentService::removeParticipant`. |
 | 5 | **Low** | No continuous integration workflow is defined. | Regression detection depends on a local run. | Add a GitHub Actions workflow running the four commands in §1. |
@@ -312,7 +437,7 @@ and closed with a regression test.
 
 ---
 
-## 8. Environment Notes
+## 9. Environment Notes
 
 | Item | Detail |
 |---|---|

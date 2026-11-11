@@ -53,7 +53,9 @@ class NavigationPermissionContractTest extends TestCase
         '/admin/audit' => 'api/v1/audit-events',
         '/admin/operations' => 'api/v1/operations/status',
         // The settings surface is served by the system configuration endpoint.
-        '/admin/settings' => 'api/v1/operations/status',
+        '/admin/settings' => 'api/v1/settings',
+        // The data operations surface is served by the dataset catalogue.
+        '/exports' => 'api/v1/data/datasets',
     ];
 
     /**
@@ -86,6 +88,8 @@ class NavigationPermissionContractTest extends TestCase
         '/admin/office-procedures' => 'api/v1/procedures',
         '/admin/audit' => 'api/v1/audit-events',
         '/admin/operations' => 'api/v1/operations/status',
+        '/admin/settings' => 'api/v1/settings',
+        '/exports' => 'api/v1/data/datasets',
     ];
 
     /**

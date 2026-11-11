@@ -222,7 +222,7 @@ class NavigationController extends Controller
                         'name' => 'Imports & exports',
                         'to' => '/exports',
                         'icon' => 'ArrowUpDown',
-                        'permission' => 'roles.view',
+                        'permission' => ['data.import', 'data.export'],
                     ],
                 ],
             ],

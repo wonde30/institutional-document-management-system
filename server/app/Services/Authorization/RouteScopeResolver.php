@@ -37,6 +37,39 @@ class RouteScopeResolver
 
         $id = (int) $routeId;
 
+        // 0. Dataset import and export operations. The operation is owned by
+        //    the organizational unit it applies to.
+        if (str_contains($path, 'data/imports')) {
+            $operation = \App\Models\DataImportOperation::find($id);
+
+            if (! $operation) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            if (! $operation->scope_unit_id) {
+                return RouteAuthorizationTarget::capabilityOnly();
+            }
+
+            return RouteAuthorizationTarget::forUnit((int) $operation->scope_unit_id);
+        }
+
+        if (str_contains($path, 'data/exports')) {
+            $operation = \App\Models\DataExportOperation::find($id);
+
+            if (! $operation) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            // An export that was not narrowed to a single organizational unit
+            // covers every unit the caller may reach, so it is not bound to one
+            // resource scope.
+            if (! $operation->scope_unit_id) {
+                return RouteAuthorizationTarget::capabilityOnly();
+            }
+
+            return RouteAuthorizationTarget::forUnit((int) $operation->scope_unit_id);
+        }
+
         // 1. Custody receipts: the movement is owned by the RECEIVING unit, so
         //    acknowledgment authority must be evaluated against that unit
         //    rather than against the originating document.
