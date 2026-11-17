@@ -607,7 +607,7 @@ async function submitApplyStamp() {
 
  <div class="overflow-x-auto">
  <table class="w-full text-left text-xs">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-medium text-ink-muted">
  <tr>
  <th class="py-2.5 px-3">Identity Ref</th>
  <th class="py-2.5 px-3">User</th>
@@ -801,7 +801,7 @@ async function submitApplyStamp() {
 
  <div class="grid grid-cols-2 gap-3">
  <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
- <div class="text-xs text-ink-muted font-medium uppercase">ByteRange Integrity</div>
+ <div class="text-xs text-ink-muted font-medium">ByteRange integrity</div>
  <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mt-1 flex items-center gap-1">
  <CheckCircle2 class="w-3.5 h-3.5" />
  Unbroken (Tamper Passed)

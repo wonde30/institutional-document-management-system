@@ -292,7 +292,7 @@ onMounted(() => {
  class="space-y-1"
  >
  <div class="flex items-center justify-between text-xs">
- <span class="font-medium text-ink-secondary uppercase">{{ conf.confidentiality }}</span>
+ <span class="font-medium text-ink-secondary">{{ conf.confidentiality }}</span>
  <span class="font-mono font-semibold text-primary">{{ conf.count }}</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">

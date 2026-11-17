@@ -1271,7 +1271,7 @@ onMounted(() => {
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div class="flex items-center gap-2 flex-wrap">
                 <span
-                  class="px-2 py-0.5 rounded text-xs font-semibold uppercase"
+                  class="px-2 py-0.5 rounded text-xs font-semibold"
                   :class="{
                     'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]': ext.processing_status === 'completed',
                     'bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0] animate-pulse': ext.processing_status === 'processing',

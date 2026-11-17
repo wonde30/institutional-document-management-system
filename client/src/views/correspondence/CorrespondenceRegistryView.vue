@@ -626,18 +626,18 @@ onMounted(async () => {
 <template>
  <div class="space-y-5">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
  <Mail class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
  <span>Correspondence & Inter-Office Registry</span>
  </h1>
- <p class="mt-0.5 text-xs text-ink-muted">
- Dual-path incoming letter logging, version-bound outgoing dispatch, and inter-office memoranda tracking.
+ <p class="mt-1 text-sm text-ink-muted">
+ Dual-path incoming letter logging, version-bound outgoing dispatch, and inter-office memoranda tracking
  </p>
  </div>
 
- <div class="flex items-center gap-2.5">
+ <div class="flex items-center gap-2.5 shrink-0">
  <BaseButton
  v-if="authStore.hasPermission('correspondence.register')"
  variant="primary"
@@ -645,7 +645,7 @@ onMounted(async () => {
  @click="openCreateModal"
  >
  <Plus class="w-3.5 h-3.5 mr-1" />
- <span>Log Correspondence</span>
+ Log correspondence
  </BaseButton>
  </div>
  </div>
@@ -657,10 +657,10 @@ onMounted(async () => {
  role="tab"
  :aria-selected="selectedTab === tab.key"
  v-for="tab in [
- { key: 'all', label: 'All Records' },
- { key: 'incoming', label: 'Incoming Letters' },
- { key: 'outgoing', label: 'Outgoing Dispatches' },
- { key: 'internal_memo', label: 'Internal Memoranda' },
+ { key: 'all', label: 'All records' },
+ { key: 'incoming', label: 'Incoming letters' },
+ { key: 'outgoing', label: 'Outgoing dispatches' },
+ { key: 'internal_memo', label: 'Internal memoranda' },
  ]"
  :key="tab.key"
  @click="selectedTab = tab.key as any; loadCorrespondences(1)"
@@ -674,7 +674,7 @@ onMounted(async () => {
  </div>
 
  <!-- Search Bar -->
- <div class="bg-surface border border-hairline rounded-lg p-3 sm:p-4 shadow-2xs">
+ <div class="bg-surface border border-line rounded-lg p-3 sm:p-4">
  <SearchFilterBar
  v-model="searchQuery"
  placeholder="Search correspondence by reference, subject, or external sender..."
@@ -714,10 +714,10 @@ onMounted(async () => {
  <template #cell-sender_recipient="{ item }">
  <div class="space-y-0.5 text-xs">
  <div class="font-medium text-ink truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getSenderName(item)">
- <span class="text-xs  font-bold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
+ <span class="text-xs font-semibold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
  </div>
  <div class="text-xs text-ink-muted truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getRecipientName(item)">
- <span class="text-xs  font-bold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
+ <span class="text-xs font-semibold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
  </div>
  </div>
  </template>
@@ -1231,19 +1231,19 @@ onMounted(async () => {
 
  <div class="grid grid-cols-2 gap-3 text-xs border-y border-hairline py-3">
  <div>
- <span class="text-ink-muted block text-xs  font-bold">Originating Sender</span>
+ <span class="text-ink-muted block text-xs font-semibold">Originating Sender</span>
  <span class="font-medium text-ink">{{ getSenderName(inspectingCorr) }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-xs  font-bold">First Receiving Office</span>
+ <span class="text-ink-muted block text-xs font-semibold">First Receiving Office</span>
  <span class="font-medium text-ink">{{ getRecipientName(inspectingCorr) }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-xs  font-bold">Type & Priority</span>
+ <span class="text-ink-muted block text-xs font-semibold">Type & Priority</span>
  <span class="font-medium text-ink">{{ inspectingCorr.type?.name }} &bull; {{ inspectingCorr.priority?.name }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-xs  font-bold">External Reference</span>
+ <span class="text-ink-muted block text-xs font-semibold">External Reference</span>
  <span class="font-mono text-ink">{{ inspectingCorr.external_reference || 'None (Internal)' }}</span>
  </div>
  </div>

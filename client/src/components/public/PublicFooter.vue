@@ -34,7 +34,7 @@ import { Building2, ShieldCheck, FileText, ExternalLink } from 'lucide-vue-next'
 
         <!-- Col 2: Institutional Modules -->
         <div class="space-y-3">
-          <h3 class="text-xs font-bold uppercase text-white">
+          <h3 class="text-xs font-bold text-white">
             Institutional Modules
           </h3>
           <ul class="space-y-2 text-xs text-slate-400">
@@ -61,7 +61,7 @@ import { Building2, ShieldCheck, FileText, ExternalLink } from 'lucide-vue-next'
 
         <!-- Col 3: Compliance & Legal -->
         <div class="space-y-3">
-          <h3 class="text-xs font-bold uppercase text-white">
+          <h3 class="text-xs font-bold text-white">
             Governance &amp; Policy
           </h3>
           <ul class="space-y-2 text-xs text-slate-400">
