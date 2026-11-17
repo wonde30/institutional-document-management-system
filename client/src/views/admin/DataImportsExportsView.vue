@@ -736,7 +736,7 @@ onMounted(loadAll)
               <tr v-for="operation in exportHistory" :key="operation.id" class="hover:bg-surface-hover transition-colors">
                 <td class="p-3.5 font-medium font-mono text-xs">{{ operation.dataset }}</td>
                 <td class="p-3.5">{{ operation.record_count }} rows</td>
-                <td class="p-3.5 font-mono text-xs">{{ formatBytes(operation.file_size) }}</td>
+                <td class="p-3.5 text-xs tabular-nums">{{ formatBytes(operation.file_size) }}</td>
                 <td class="p-3.5 text-ink-muted">
                   {{ operation.expires_at ? new Date(operation.expires_at).toLocaleString() : '—' }}
                 </td>

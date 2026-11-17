@@ -636,7 +636,7 @@ onMounted(() => {
  <div>
  <div class="font-medium text-ink-secondary text-xs flex items-center gap-1.5">
  {{ item.name }}
- <span class="text-xs text-ink-muted font-mono font-normal">v{{ item.authz_version }}</span>
+ <span class="text-xs text-ink-muted font-normal tabular-nums">v{{ item.authz_version }}</span>
  </div>
  <div class="text-xs text-ink-muted flex items-center gap-1">
  <Mail class="w-3 h-3 text-ink-muted" />
@@ -906,7 +906,7 @@ onMounted(() => {
  <Calendar class="w-3 h-3" />
  {{ user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A' }}
  </span>
- <span class="font-mono text-xs">Session Guard: v{{ user.authz_version }}</span>
+ <span class="text-xs tabular-nums">Session Guard: v{{ user.authz_version }}</span>
  </div>
  </div>
 

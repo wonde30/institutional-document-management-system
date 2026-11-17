@@ -1294,7 +1294,7 @@ onMounted(async () => {
  >
  <div class="flex items-center justify-between font-medium">
  <span class="text-primary font-semibold">Assigned to: {{ a.assigned_user?.name || 'Officer' }} ({{ a.assigned_unit?.name || 'Unit' }})</span>
- <span v-if="a.due_at" class="text-xs text-amber-600 font-mono">Due: {{ formatDate(a.due_at) }}</span>
+ <span v-if="a.due_at" class="text-xs text-amber-600 ">Due: {{ formatDate(a.due_at) }}</span>
  </div>
  <div class="text-xs text-ink-secondary">
  {{ a.instruction }}
@@ -1319,7 +1319,7 @@ onMounted(async () => {
  >
  <div class="flex items-center justify-between font-medium text-emerald-800 dark:text-emerald-300">
  <span>Method: {{ d.method?.name || 'Official Dispatch' }}</span>
- <span class="text-xs font-mono">{{ formatDate(d.dispatched_at) }}</span>
+ <span class="text-xs tabular-nums">{{ formatDate(d.dispatched_at) }}</span>
  </div>
  <div v-if="d.tracking_reference" class="text-xs font-mono text-emerald-700 dark:text-emerald-400">
  Tracking Ref: {{ d.tracking_reference }}

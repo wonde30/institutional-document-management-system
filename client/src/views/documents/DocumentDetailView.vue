@@ -2143,7 +2143,7 @@ onMounted(() => {
           <div class="p-3 rounded-xl bg-surface border border-hairline space-y-2">
             <div class="font-bold text-ink flex items-center justify-between">
               <span>Version {{ comparisonResult.version_a.version_number }}.0</span>
-              <span class="text-xs text-ink-faint font-mono">{{ formatDate(comparisonResult.version_a.created_at) }}</span>
+              <span class="text-xs text-ink-faint tabular-nums">{{ formatDate(comparisonResult.version_a.created_at) }}</span>
             </div>
             <div class="text-xs text-ink-secondary">
               Note: {{ comparisonResult.version_a.change_note || 'None' }}
@@ -2153,8 +2153,7 @@ onMounted(() => {
             </div>
             <div class="border-t border-hairline pt-2 space-y-1">
               <span class="text-xs font-bold  text-ink-muted">Files ({{ comparisonResult.version_a.files.length }})</span>
-              <div v-for="f in comparisonResult.version_a.files" :key="f.id" class="text-xs font-mono truncate">
-                {{ f.filename }} ({{ formatFileSize(f.byte_size) }})
+              <div v-for="f in comparisonResult.version_a.files" :key="f.id" class="text-xs truncate">{{ f.filename }} ({{ formatFileSize(f.byte_size) }})
               </div>
             </div>
           </div>
@@ -2163,7 +2162,7 @@ onMounted(() => {
           <div class="p-3 rounded-xl bg-surface border border-hairline space-y-2">
             <div class="font-bold text-ink flex items-center justify-between">
               <span>Version {{ comparisonResult.version_b.version_number }}.0</span>
-              <span class="text-xs text-ink-faint font-mono">{{ formatDate(comparisonResult.version_b.created_at) }}</span>
+              <span class="text-xs text-ink-faint tabular-nums">{{ formatDate(comparisonResult.version_b.created_at) }}</span>
             </div>
             <div class="text-xs text-ink-secondary">
               Note: {{ comparisonResult.version_b.change_note || 'None' }}
@@ -2173,8 +2172,7 @@ onMounted(() => {
             </div>
             <div class="border-t border-hairline pt-2 space-y-1">
               <span class="text-xs font-bold  text-ink-muted">Files ({{ comparisonResult.version_b.files.length }})</span>
-              <div v-for="f in comparisonResult.version_b.files" :key="f.id" class="text-xs font-mono truncate">
-                {{ f.filename }} ({{ formatFileSize(f.byte_size) }})
+              <div v-for="f in comparisonResult.version_b.files" :key="f.id" class="text-xs truncate">{{ f.filename }} ({{ formatFileSize(f.byte_size) }})
               </div>
             </div>
           </div>

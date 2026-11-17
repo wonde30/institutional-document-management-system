@@ -78,19 +78,19 @@ function handleCtaClick() {
             <!-- Technical Scope Fact Sheet (Tested Proposal Metrics) -->
             <div class="mt-8 pt-6 border-t border-hairline grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div class="p-3 rounded-lg border border-hairline bg-surface">
-                <span class="block text-2xl font-bold font-mono text-primary">118</span>
+                <span class="block text-2xl font-bold text-primary tabular-nums">118</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Normalized Tables</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface">
-                <span class="block text-2xl font-bold font-mono text-primary">3NF</span>
+                <span class="block text-2xl font-bold text-primary">3NF</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Relational Baseline</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface">
-                <span class="block text-2xl font-bold font-mono text-primary">100%</span>
+                <span class="block text-2xl font-bold text-primary tabular-nums">100%</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Audited Lifecycle</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface">
-                <span class="block text-2xl font-bold font-mono text-primary">Multi-Unit</span>
+                <span class="block text-2xl font-bold text-primary">Multi-Unit</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Scoped RBAC</span>
               </div>
             </div>

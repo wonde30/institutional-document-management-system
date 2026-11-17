@@ -756,7 +756,7 @@ watchEffect(() => {
               <Eye class="w-3.5 h-3.5 text-primary" />
               <span>Real-Time A4 Document Preview</span>
             </span>
-            <span class="text-xs font-mono text-ink-faint">A4 Portrait (210×297mm)</span>
+            <span class="text-xs text-ink-faint">A4 Portrait (210×297mm)</span>
           </div>
 
           <OfficialLetterA4Preview
@@ -947,13 +947,13 @@ watchEffect(() => {
               <Eye class="w-3.5 h-3.5 text-primary" />
               <span>Live Generated Document Layout</span>
             </span>
-            <span class="text-xs font-mono text-ink-faint">Standard Template A4</span>
+            <span class="text-xs text-ink-faint">Standard Template A4</span>
           </div>
 
           <div class="bg-surface rounded-xl border border-hairline overflow-hidden min-h-[500px]">
             <div class="border-b border-hairline bg-surface-hover px-4 py-2.5 flex items-center justify-between text-xs text-ink-secondary">
               <span class="font-semibold">{{ selectedTemplate?.name || 'Template Document' }}</span>
-              <span class="font-mono text-xs text-ink-muted">A4 Paper Simulation</span>
+              <span class="text-xs text-ink-muted">A4 Paper Simulation</span>
             </div>
             <div class="p-6 bg-white dark:bg-zinc-900 text-black dark:text-zinc-100 min-h-[460px]">
               <div v-html="templateLivePreviewHtml"></div>

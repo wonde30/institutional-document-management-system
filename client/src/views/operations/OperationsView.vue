@@ -178,7 +178,7 @@ onMounted(() => {
  <td class="py-3 px-4 text-ink-muted">
  {{ b.completed_at ? new Date(b.completed_at).toLocaleString() : 'Recent' }}
  </td>
- <td class="py-3 px-4 font-mono text-xs text-ink-muted truncate max-w-xs">
+ <td class="py-3 px-4 text-xs text-ink-muted truncate max-w-xs">
  {{ b.manifest_reference }}
  </td>
  <td class="py-3 px-4 text-right">

@@ -110,7 +110,7 @@ onMounted(async () => {
  <div v-else class="p-4 rounded-xl bg-canvas-soft border border-hairline space-y-2">
  <p class="text-xs text-ink leading-relaxed">
  A confirmation link was sent to your registered address:
- <strong class="font-mono text-xs">{{ maskedEmail }}</strong>.
+ <strong class="text-xs">{{ maskedEmail }}</strong>.
  </p>
  <p class="text-xs text-ink-muted">
  For data security, access to protected repository records remains restricted until your institutional identity is confirmed.

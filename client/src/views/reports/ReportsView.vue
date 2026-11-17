@@ -257,7 +257,7 @@ onMounted(() => {
  >
  <div class="flex items-center justify-between text-xs gap-2">
  <span class="font-medium text-ink-secondary truncate max-w-[200px] sm:max-w-xs" :title="cat.category">{{ cat.category }}</span>
- <span class="font-mono font-semibold text-primary shrink-0">{{ cat.count }}</span>
+ <span class="font-semibold tabular-nums text-primary shrink-0">{{ cat.count }}</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">
  <div
@@ -293,7 +293,7 @@ onMounted(() => {
  >
  <div class="flex items-center justify-between text-xs">
  <span class="font-medium text-ink-secondary">{{ conf.confidentiality }}</span>
- <span class="font-mono font-semibold text-primary">{{ conf.count }}</span>
+ <span class="font-semibold tabular-nums text-primary">{{ conf.count }}</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">
  <div
@@ -329,7 +329,7 @@ onMounted(() => {
  >
  <div class="flex items-center justify-between text-xs">
  <span class="font-medium text-ink-secondary">{{ ctype.type }}</span>
- <span class="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{{ ctype.count }}</span>
+ <span class="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{{ ctype.count }}</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">
  <div
@@ -365,7 +365,7 @@ onMounted(() => {
  >
  <div class="flex items-center justify-between text-xs gap-2">
  <span class="font-medium text-ink-secondary truncate max-w-[200px] sm:max-w-xs" :title="dest.unit">{{ dest.unit }}</span>
- <span class="font-mono font-semibold text-amber-600 dark:text-amber-400 shrink-0">{{ dest.count }} dispatches</span>
+ <span class="font-semibold tabular-nums text-amber-600 dark:text-amber-400 shrink-0">{{ dest.count }} dispatches</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">
  <div
