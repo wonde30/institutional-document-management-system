@@ -336,7 +336,7 @@ onMounted(() => {
         </thead>
         <tbody class="divide-y divide-hairline text-ink-secondary">
           <tr v-for="c in confidentiality" :key="c.id" class="hover:bg-surface-hover transition">
-            <td class="p-3.5 font-mono">{{ c.rank_order || c.id }}</td>
+            <td class="p-3.5 tabular-nums">{{ c.rank_order || c.id }}</td>
             <td class="p-3.5 font-mono font-bold text-primary">{{ c.code }}</td>
             <td class="p-3.5 font-medium">{{ c.name }}</td>
             <td class="p-3.5 text-ink-muted">{{ c.description || '—' }}</td>

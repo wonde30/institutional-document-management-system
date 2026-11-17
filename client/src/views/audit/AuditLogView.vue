@@ -167,7 +167,7 @@ onMounted(() => {
  <div class="text-xs text-ink-muted">{{ item.actor.email }}</div>
  </div>
  </div>
- <span v-else class="text-xs text-ink-muted font-mono">System Actor</span>
+ <span v-else class="text-xs text-ink-muted">System Actor</span>
  </template>
 
  <template #cell-action="{ value }">
@@ -227,7 +227,7 @@ onMounted(() => {
 
  <div class="p-3 rounded-lg bg-canvas-soft border border-hairline">
  <span class="text-ink-muted block mb-1 font-medium">Timestamp</span>
- <span class="font-mono text-ink-secondary">{{ selectedEvent.occurred_at }}</span>
+ <span class="text-ink-secondary tabular-nums">{{ selectedEvent.occurred_at }}</span>
  </div>
 
  <div class="p-3 rounded-lg bg-canvas-soft border border-hairline">

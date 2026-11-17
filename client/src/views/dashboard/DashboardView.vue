@@ -413,7 +413,7 @@ watch(() => authStore.activeUnitId, () => {
                   <div class="font-medium text-ink truncate">{{ corr.document?.title || corr.external_reference || 'Correspondence record' }}</div>
                   <div class="text-xs text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference || '' }}</div>
                 </div>
-                <span class="text-xs text-ink-faint shrink-0 font-mono">{{ corr.correspondence_date }}</span>
+                <span class="text-xs text-ink-faint shrink-0 tabular-nums">{{ corr.correspondence_date }}</span>
               </router-link>
             </div>
 

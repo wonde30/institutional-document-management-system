@@ -1261,7 +1261,7 @@ onMounted(async () => {
  >
  <div class="flex items-center justify-between font-medium">
  <span>{{ m.from_unit?.name || 'Unit' }} &rarr; {{ m.to_unit?.name || 'Unit' }}</span>
- <span class="text-xs font-mono text-ink-muted">{{ formatDate(m.sent_at) }}</span>
+ <span class="text-xs text-ink-muted tabular-nums">{{ formatDate(m.sent_at) }}</span>
  </div>
  <div v-if="m.instruction" class="text-xs text-ink-secondary italic">
  Instruction: {{ m.instruction }}
@@ -1299,8 +1299,7 @@ onMounted(async () => {
  <div class="text-xs text-ink-secondary">
  {{ a.instruction }}
  </div>
- <div class="text-xs text-ink-muted font-mono">
- Assigned {{ formatDate(a.assigned_at) }}
+ <div class="text-xs text-ink-muted">Assigned {{ formatDate(a.assigned_at) }}
  </div>
  </div>
  </div>
@@ -1374,8 +1373,7 @@ onMounted(async () => {
        <p class="text-xs text-amber-800 dark:text-amber-300">
          This outgoing correspondence cannot be formally closed until required dispatches are delivered and verified:
        </p>
-       <ul class="list-disc list-inside space-y-0.5 pl-1 text-xs font-mono">
-         <li v-for="(blocker, idx) in activeCorrespondence.closure_blockers" :key="idx">
+       <ul class="list-disc list-inside space-y-0.5 pl-1 text-xs"><li v-for="(blocker, idx) in activeCorrespondence.closure_blockers" :key="idx">
            {{ blocker }}
          </li>
        </ul>

@@ -93,8 +93,7 @@ onMounted(() => {
  <span class="text-xs font-semibold text-ink-muted">Storage Driver</span>
  <HardDrive class="w-4 h-4 text-primary" />
  </div>
- <div class="text-sm font-bold text-ink-secondary mt-2 font-mono">
- Local POSIX Storage
+ <div class="text-sm font-bold text-ink-secondary mt-2">Local POSIX Storage
  </div>
  <div class="text-xs text-ink-muted mt-0.5">Encrypted at rest · Strict SHA-256</div>
  </div>

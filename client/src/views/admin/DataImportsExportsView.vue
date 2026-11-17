@@ -507,8 +507,8 @@ onMounted(loadAll)
                 </thead>
                 <tbody class="divide-y divide-hairline text-ink-secondary">
                   <tr v-for="(rowError, index) in inspection.errors" :key="index">
-                    <td class="p-2.5 font-mono text-xs">{{ rowError.row_number }}</td>
-                    <td class="p-2.5 font-mono text-xs">{{ rowError.column_name || '—' }}</td>
+                    <td class="p-2.5 text-xs tabular-nums">{{ rowError.row_number }}</td>
+                    <td class="p-2.5 text-xs">{{ rowError.column_name || '—' }}</td>
                     <td class="p-2.5">{{ rowError.message }}</td>
                   </tr>
                 </tbody>
