@@ -163,7 +163,7 @@ function handleSavePreferences() {
  </div>
  <div>
  <span class="block text-ink-muted">Institutional Email</span>
- <span class="font-mono font-medium text-ink text-sm">{{ authStore.user?.email }}</span>
+ <span class="font-medium text-ink text-sm">{{ authStore.user?.email }}</span>
  </div>
  <div>
  <span class="block text-ink-muted">Account Status</span>
