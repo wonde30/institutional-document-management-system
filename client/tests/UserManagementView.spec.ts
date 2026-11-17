@@ -193,8 +193,8 @@ describe('UserManagementView.vue', () => {
     // Initially in tabular view
     expect(wrapper.findComponent({ name: 'DataTable' }).exists()).toBe(true)
 
-    // Click Table Cards view button
-    const cardViewBtn = wrapper.findAll('button').find((b) => b.text().includes('Table Cards'))
+    // Click Table cards view button
+    const cardViewBtn = wrapper.findAll('button').find((b) => b.text().includes('Table cards'))
     expect(cardViewBtn).toBeDefined()
     await cardViewBtn!.trigger('click')
 

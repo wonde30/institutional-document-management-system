@@ -500,18 +500,18 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
  <Users class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
  <span>User Accounts & Staff Directory</span>
  </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status.
+ <p class="text-sm text-ink-muted mt-1">
+ Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status
  </p>
  </div>
 
- <div class="flex items-center gap-2.5 flex-wrap">
+ <div class="flex items-center gap-2.5 flex-wrap shrink-0">
  <!-- View Mode Switcher -->
  <div class="inline-flex rounded-md border border-hairline p-0.5 bg-surface-muted">
  <button
@@ -521,7 +521,7 @@ onMounted(() => {
  @click="viewMode = 'table'"
  >
  <List class="w-3.5 h-3.5" />
- Tabular View
+ Tabular view
  </button>
  <button
  type="button"
@@ -530,7 +530,7 @@ onMounted(() => {
  @click="viewMode = 'cards'"
  >
  <LayoutGrid class="w-3.5 h-3.5" />
- Table Cards
+ Table cards
  </button>
  </div>
 
@@ -541,13 +541,13 @@ onMounted(() => {
 
  <BaseButton variant="primary" size="sm" @click="openCreateModal">
  <UserPlus class="w-4 h-4 mr-1.5" />
- Register Staff Member
+ Register staff member
  </BaseButton>
  </div>
  </div>
 
  <!-- Filters & Search Bar -->
- <div class="bg-surface rounded-lg border border-hairline p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+ <div class="bg-surface rounded-lg border border-line p-4 flex flex-col md:flex-row items-center justify-between gap-4">
  <div class="relative w-full md:w-72">
  <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
  <input

@@ -200,18 +200,18 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
           <Key class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
           <span>Institutional Permission Registry</span>
         </h1>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Catalog of atomic security capabilities enforcing server-side authorization boundaries, risk classification, and scope applicability.
+        <p class="text-sm text-ink-muted mt-1">
+          Catalog of atomic security capabilities enforcing server-side authorization boundaries, risk classification, and scope applicability
         </p>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 shrink-0">
         <BaseButton variant="outline" size="sm" :loading="loading" @click="loadPermissions">
           <RefreshCw class="w-4 h-4 mr-1.5" />
           Refresh
@@ -221,33 +221,33 @@ onMounted(() => {
 
     <!-- Stats Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted">Total Capabilities</div>
-        <div class="text-2xl font-bold text-ink-secondary mt-1">{{ stats.total }}</div>
+      <div class="bg-surface p-4 rounded-lg border border-line">
+        <div class="text-xs font-semibold text-ink-muted">Total capabilities</div>
+        <div class="text-2xl font-semibold text-ink-secondary mt-1 tabular-nums">{{ stats.total }}</div>
         <div class="text-xs text-ink-muted mt-0.5">{{ availableModules.length }} functional domains</div>
       </div>
 
-      <div class="bg-surface p-4 rounded-xl border border-hairline">
+      <div class="bg-surface p-4 rounded-lg border border-line">
         <div class="text-xs  font-bold text-ink-muted">Assignable</div>
         <div class="text-2xl font-bold text-emerald-600 mt-1">{{ stats.assignable }}</div>
         <div class="text-xs text-ink-muted mt-0.5">roles & unit grants</div>
       </div>
 
-      <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted">Protected / Admin</div>
+      <div class="bg-surface p-4 rounded-lg border border-line">
+        <div class="text-xs  font-semibold text-ink-muted">Protected / Admin</div>
         <div class="text-2xl font-bold text-primary mt-1">{{ stats.protectedCount }}</div>
         <div class="text-xs text-ink-muted mt-0.5">requires super_admin</div>
       </div>
 
-      <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted">Deactivated</div>
+      <div class="bg-surface p-4 rounded-lg border border-line">
+        <div class="text-xs  font-semibold text-ink-muted">Deactivated</div>
         <div class="text-2xl font-bold text-ink-muted mt-1">{{ stats.deactivated }}</div>
         <div class="text-xs text-ink-muted mt-0.5">blocked from assignment</div>
       </div>
     </div>
 
     <!-- Filter Toolbar -->
-    <div class="bg-surface rounded-xl border border-hairline p-4 space-y-3">
+    <div class="bg-surface rounded-lg border border-line p-4 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="relative w-full sm:w-80">
           <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -332,7 +332,7 @@ onMounted(() => {
       <div
         v-for="(perms, mod) in filteredGroups"
         :key="mod"
-        class="bg-surface rounded-xl border border-hairline p-5 space-y-4"
+        class="bg-surface rounded-lg border border-line p-5 space-y-4"
       >
         <div class="flex items-center justify-between pb-3 border-b border-hairline">
           <div class="flex items-center gap-2.5">
@@ -340,7 +340,7 @@ onMounted(() => {
               <component :is="moduleIcons[mod] || Shield" class="w-5 h-5" />
             </div>
             <div>
-              <h2 class="text-base font-bold text-ink-secondary">
+              <h2 class="text-base font-semibold text-ink-secondary tabular-nums">
                 {{ mod }} Domain
               </h2>
               <div class="text-xs text-ink-muted">

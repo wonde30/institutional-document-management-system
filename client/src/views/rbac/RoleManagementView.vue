@@ -267,18 +267,18 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
           <Shield class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
           <span>Scoped Role Management</span>
         </h1>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes.
+        <p class="text-sm text-ink-muted mt-1">
+          Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes
         </p>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 shrink-0">
         <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
           <RefreshCw class="w-4 h-4 mr-1.5" />
           Refresh
@@ -286,13 +286,13 @@ onMounted(() => {
 
         <BaseButton variant="primary" size="sm" @click="openCreateModal">
           <Plus class="w-4 h-4 mr-1.5" />
-          Create Custom Role
+          Create custom role
         </BaseButton>
       </div>
     </div>
 
     <!-- Search & Filter Bar -->
-    <div class="bg-surface rounded-lg border border-hairline p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="bg-surface rounded-lg border border-line p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2.5 flex-1">
         <div class="relative w-full sm:w-72">
           <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
