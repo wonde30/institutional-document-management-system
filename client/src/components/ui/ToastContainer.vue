@@ -111,7 +111,7 @@ function progressBarColor(type: string): string {
 
           <!-- Message content -->
           <div class="flex-1 min-w-0">
-            <h4 v-if="toast.title" class="text-xs font-bold uppercase tracking-wider mb-0.5 text-ink">
+            <h4 v-if="toast.title" class="text-xs font-semibold mb-0.5 text-ink">
               {{ toast.title }}
             </h4>
             <p class="text-xs font-medium text-ink-secondary break-words leading-relaxed">

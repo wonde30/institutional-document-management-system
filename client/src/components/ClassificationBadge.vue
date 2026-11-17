@@ -36,15 +36,15 @@ const badge = computed(() => {
 const tokenClasses = computed(() => {
  switch (badge.value.className) {
  case 'badge-restricted':
- return 'bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171]'
+ return 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/10 dark:bg-red-950 dark:text-red-300 dark:ring-red-500/20'
  case 'badge-confidential':
- return 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]'
+ return 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/10 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-500/20'
  case 'badge-internal':
- return 'bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0]'
+ return 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/10 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-500/20'
  case 'badge-public':
- return 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]'
+ return 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/10 dark:bg-green-950 dark:text-green-300 dark:ring-green-500/20'
  default:
- return 'bg-[var(--wu-line)] text-[var(--wu-muted)]'
+ return 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/10 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-500/20'
  }
 })
 </script>
@@ -52,7 +52,7 @@ const tokenClasses = computed(() => {
 <template>
  <span
  :class="[
- 'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium',
+ 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
  tokenClasses,
  'badge',
  badge.className

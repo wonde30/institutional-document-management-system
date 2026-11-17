@@ -57,7 +57,7 @@ function handleInput(event: Event) {
         :aria-invalid="!!error"
         :aria-describedby="(error || hint) ? fieldId + '-hint' : undefined"
         @input="handleInput"
-        class="w-full px-3.5 py-2 h-9 text-sm text-ink bg-surface border rounded-lg transition-colors duration-150 placeholder:text-ink-faint focus:outline-hidden focus:ring-2 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed"
+        class="w-full px-3.5 py-2 h-9 text-sm text-ink bg-surface border rounded-md transition-colors duration-150 placeholder:text-ink-faint focus:outline-hidden focus:ring-2 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed"
         :class="[
           $slots.prefix ? 'pl-9' : '',
           $slots.suffix ? 'pr-9' : '',

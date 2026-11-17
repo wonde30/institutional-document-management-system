@@ -50,7 +50,7 @@ function handleChange(event: Event) {
         :aria-invalid="!!error"
         :aria-describedby="(error || hint) ? fieldId + '-hint' : undefined"
         @change="handleChange"
-        class="w-full px-3.5 py-2 h-9 text-sm text-ink bg-surface border rounded-lg transition-colors duration-150 focus:outline-hidden focus:ring-2 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed appearance-none pr-8 cursor-pointer"
+        class="w-full px-3.5 py-2 h-9 text-sm text-ink bg-surface border rounded-md transition-colors duration-150 focus:outline-hidden focus:ring-2 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed appearance-none pr-8 cursor-pointer"
         :class="[
           error
             ? 'border-[#e03e3e] dark:border-[#f87171] focus:border-[#e03e3e] dark:focus:border-[#f87171] focus:ring-[#e03e3e]/20 dark:focus:ring-[#f87171]/20'
