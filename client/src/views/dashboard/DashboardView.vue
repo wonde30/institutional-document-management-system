@@ -74,7 +74,7 @@ watch(() => authStore.activeUnitId, () => {
     <!-- Page Header: title + subtitle + actions -->
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
       <div class="max-w-2xl">
-        <h1 class="text-2xl font-bold tracking-tight text-ink text-balance">Workspace</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-ink text-balance">Workspace</h1>
         <p class="text-sm text-ink-muted mt-1">Administrative workload, pending decisions, and correspondence</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
@@ -328,39 +328,36 @@ watch(() => authStore.activeUnitId, () => {
 
         <!-- Right: Quick actions & Dispatches -->
         <div class="lg:col-span-5 space-y-4">
-          <!-- Quick actions: list rows, no borders, 16px muted icons -->
+          <!-- Quick actions: list rows, no borders, 16px muted icons, router-link -->
           <section class="bg-surface rounded-lg border border-hairline p-4">
             <h2 class="text-sm font-semibold text-ink mb-3">Quick actions</h2>
             <div class="space-y-1">
-              <button
+              <router-link
                 v-if="authStore.hasPermission('correspondence.register')"
-                type="button"
-                class="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition cursor-pointer"
-                @click="router.push('/letters/incoming')"
+                to="/letters/incoming"
+                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition"
               >
                 <MailPlus class="w-4 h-4 text-ink-muted" aria-hidden="true" />
                 <span>Log an incoming letter</span>
-              </button>
+              </router-link>
 
-              <button
+              <router-link
                 v-if="authStore.hasPermission('correspondence.register')"
-                type="button"
-                class="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition cursor-pointer"
-                @click="router.push('/letters/outgoing')"
+                to="/letters/outgoing"
+                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition"
               >
                 <Send class="w-4 h-4 text-ink-muted" aria-hidden="true" />
                 <span>Prepare an outgoing letter</span>
-              </button>
+              </router-link>
 
-              <button
+              <router-link
                 v-if="authStore.hasPermission('research.create')"
-                type="button"
-                class="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition cursor-pointer"
-                @click="router.push('/research')"
+                to="/research"
+                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition"
               >
                 <BookOpen class="w-4 h-4 text-ink-muted" aria-hidden="true" />
                 <span>Post finalized research record</span>
-              </button>
+              </router-link>
             </div>
           </section>
 
