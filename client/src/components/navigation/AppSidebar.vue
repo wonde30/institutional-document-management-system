@@ -184,6 +184,10 @@ function findGroupForRoute(): string | null {
 // Single-open accordion state: initialized immediately on setup
 const expandedGroupTitle = ref<string | null>(findGroupForRoute())
 
+// Focus trap state
+const asideRef = ref<HTMLElement | null>(null)
+const previousActiveElement = ref<Element | null>(null)
+
 /**
  * Synchronizes the expanded accordion group with the active route.
  */
@@ -194,6 +198,33 @@ function syncGroupWithRoute() {
  }
 }
 
+/**
+ * Trap focus inside the mobile drawer
+ */
+function trapFocus(e: KeyboardEvent) {
+ if (!props.mobileOpen || !asideRef.value) return
+ 
+ const focusableElements = asideRef.value.querySelectorAll(
+ 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+ )
+ const firstFocusable = focusableElements[0] as HTMLElement
+ const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement
+ 
+ if (e.key === 'Tab') {
+ if (e.shiftKey) {
+ if (document.activeElement === firstFocusable) {
+ e.preventDefault()
+ lastFocusable?.focus()
+ }
+ } else {
+ if (document.activeElement === lastFocusable) {
+ e.preventDefault()
+ firstFocusable?.focus()
+ }
+ }
+ }
+}
+
 // Initial expansion on mount and dynamic navigation synchronization
 onMounted(() => {
  if (authStore.isAuthenticated && !authStore.dynamicNavigation) {
@@ -201,10 +232,12 @@ onMounted(() => {
  }
  syncGroupWithRoute()
  window.addEventListener('keydown', handleKeyDown)
+ window.addEventListener('keydown', trapFocus)
 })
 
 onUnmounted(() => {
  window.removeEventListener('keydown', handleKeyDown)
+ window.removeEventListener('keydown', trapFocus)
 })
 
 // Auto-expand destination module's group when route changes or dynamic permissions update
@@ -220,6 +253,24 @@ watch(
  () => authStore.dynamicNavigation,
  () => {
  syncGroupWithRoute()
+ }
+)
+
+// Focus management for mobile drawer
+watch(
+ () => props.mobileOpen,
+ (isOpen) => {
+ if (isOpen) {
+ previousActiveElement.value = document.activeElement
+ // Focus first focusable element in drawer
+ setTimeout(() => {
+ const firstFocusable = asideRef.value?.querySelector('a[href], button:not([disabled])') as HTMLElement
+ firstFocusable?.focus()
+ }, 100)
+ } else {
+ // Return focus to trigger button
+ ;(previousActiveElement.value as HTMLElement)?.focus()
+ }
  }
 )
 
@@ -244,14 +295,15 @@ function handleLinkClick() {
  <!-- Mobile/Drawer Backdrop -->
  <div
  v-if="mobileOpen"
- class="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 xl:hidden transition-opacity"
+ class="fixed inset-0 bg-black/40 z-30 xl:hidden transition-opacity"
  @click="closeMobileDrawer"
  aria-hidden="true"
  />
 
  <!-- Main Sidebar Container: 240px → drawer below 1280px -->
  <aside
- class="bg-surface text-ink-secondary shrink-0 z-40 flex flex-col justify-between transition-transform duration-300 select-none border-r border-hairline h-full"
+ ref="asideRef"
+ class="bg-surface text-ink-secondary shrink-0 z-40 flex flex-col transition-transform duration-300 select-none border-r border-hairline h-full"
  :class="[
  'fixed inset-y-0 left-0 w-60 xl:static xl:translate-x-0',
  mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
