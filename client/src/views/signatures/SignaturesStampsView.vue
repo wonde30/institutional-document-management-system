@@ -809,7 +809,7 @@ async function submitApplyStamp() {
  </div>
 
  <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
- <div class="text-xs text-ink-muted font-medium uppercase">Timestamp Status</div>
+ <div class="text-xs text-ink-muted font-medium">Timestamp status</div>
  <div class="text-xs font-semibold text-ink-secondary mt-1">
  {{ selectedVerification.timestamp_status || 'Offline Test Token' }}
  </div>
