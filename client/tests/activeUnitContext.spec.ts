@@ -22,6 +22,9 @@ vi.mock('@/api/client', () => ({
     list: vi.fn().mockResolvedValue({ data: { success: true, data: { items: { data: [] }, unread_count: 0 } } }),
     unreadCount: vi.fn().mockResolvedValue({ data: { success: true, count: 0 } }),
   },
+  metadataApi: {
+    loadAll: vi.fn().mockResolvedValue({ data: { success: true, data: { categories: [], priorities: [], confidentiality_levels: [], purposes: [], classifications: [], dispatch_methods: [] } } }),
+  },
   ensureCsrfCookie: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -213,22 +216,36 @@ describe('Active organizational unit context', () => {
   })
 
   it('renders the context switcher when several units are available', async () => {
-    // Note: Unit context switcher moved to avatar dropdown per design brief
-    // This test now verifies auth store state instead of DOM presence
     me.mockResolvedValue({ data: { success: true, user: contextUser() } })
 
     const authStore = useAuthStore()
     await authStore.fetchUser()
 
-    // Verify the auth store correctly loads available organizational units
-    expect(authStore.user?.available_units?.length).toBeGreaterThan(1)
-    expect(authStore.activeUnit).toBeTruthy()
-    expect(authStore.activeUnitId).toBe(20) // collegeA id
+    const wrapper = mount(AppLayout, {
+      global: {
+        plugins: [router],
+        stubs: {
+          RouterView: true,
+        },
+      },
+    })
+    await flushPromises()
+
+    // The unit context switcher is now in the avatar dropdown
+    // Find and open the avatar dropdown button
+    const avatarButton = wrapper.find('button[aria-label="Toggle light, dark, or system theme mode"]').element.parentElement?.parentElement?.querySelector('button:last-child')
+    expect(avatarButton).toBeTruthy()
+    
+    // Click to open the dropdown
+    await wrapper.findAll('button').find(el => el.text().includes(userInitials(authStore.user!)))?.trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    // Verify the dropdown shows the active unit in the user info section
+    const dropdownText = wrapper.html()
+    expect(dropdownText).toContain('College A')
   })
 
   it('explains that a unit must be selected when scoped capabilities are held', async () => {
-    // Note: Unit context information moved to avatar dropdown per design brief
-    // This test now verifies the auth store state instead of UI presence
     me.mockResolvedValue({
       data: {
         success: true,
@@ -247,5 +264,14 @@ describe('Active organizational unit context', () => {
     // Verify the auth store reflects the unit selection requirement
     expect(authStore.user?.unit_selection_required).toBe(true)
     expect(authStore.activeUnit).toBeNull()
+    expect(authStore.user?.available_units?.length).toBeGreaterThan(0)
   })
+
+function userInitials(user: User): string {
+  const parts = user.name.split(' ')
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  }
+  return user.name.slice(0, 2).toUpperCase()
+}
 })
