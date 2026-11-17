@@ -616,7 +616,7 @@ onMounted(loadAll)
                     class="px-2 py-0.5 rounded text-[10px] font-semibold border"
                     :class="statusClass(operation.status)"
                   >
-                    {{ operation.status.replace(/_/g, ' ') }}
+                    {{ formatStatus(operation.status) }}
                   </span>
                 </td>
                 <td class="p-3.5 text-right">
