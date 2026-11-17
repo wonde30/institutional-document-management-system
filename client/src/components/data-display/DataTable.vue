@@ -107,8 +107,8 @@ function handleSort(col: TableColumn) {
  <!-- Table Container with responsive horizontal scroll (Notion-inspired hairline & flat level 0) -->
  <div class="overflow-x-auto rounded-lg border border-line bg-surface">
  <table class="w-full text-left text-xs border-collapse">
- <!-- Notion Table Header: canvas-soft background + eyebrow typography -->
- <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-medium uppercase tracking-wide select-none" role="rowgroup">
+ <!-- Table Header -->
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-medium text-ink-muted select-none" role="rowgroup">
  <tr>
  <!-- Select all checkbox -->
  <th v-if="selectable" scope="col" class="w-10 px-3.5 py-2.5 text-center">
@@ -126,7 +126,7 @@ function handleSort(col: TableColumn) {
  v-for="col in columns"
  :key="col.key"
  scope="col"
- class="px-3.5 py-2.5 text-xs font-medium uppercase tracking-wide transition"
+ class="px-3.5 py-2.5 text-xs font-medium text-ink-muted transition"
  :class="[
  col.sortable ? 'cursor-pointer hover:text-ink' : '',
  col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
@@ -151,7 +151,7 @@ function handleSort(col: TableColumn) {
  </th>
 
  <!-- Trailing Actions header (only when not explicitly in columns) -->
- <th v-if="slots.actions && !hasActionsInColumns" scope="col" class="px-3.5 py-2.5 text-right w-24 text-xs font-medium uppercase tracking-wide">
+ <th v-if="slots.actions && !hasActionsInColumns" scope="col" class="px-3.5 py-2.5 text-right w-24 text-xs font-medium text-ink-muted">
  Actions
  </th>
  </tr>
@@ -212,7 +212,7 @@ function handleSort(col: TableColumn) {
  <slot v-else-if="slots['cell-' + col.key]" :name="'cell-' + col.key" :item="item" :value="item[col.key]" />
  <slot v-else-if="col.key === 'actions' && slots.actions" name="actions" :item="item" />
  <template v-else>
- {{ item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '—' }}
+ {{ item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : 'ï¿½' }}
  </template>
  </td>
 
