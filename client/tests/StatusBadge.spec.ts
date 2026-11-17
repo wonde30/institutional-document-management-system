@@ -7,7 +7,7 @@ describe('StatusBadge Component', () => {
     const wrapper = mount(StatusBadge, {
       props: { status: 'approved' },
     })
-    expect(wrapper.text()).toBe('approved')
+    expect(wrapper.text()).toBe('Approved') // Sentence case via formatStatus
     expect(wrapper.classes()).toContain('badge-success')
   })
 
@@ -15,7 +15,7 @@ describe('StatusBadge Component', () => {
     const wrapper = mount(StatusBadge, {
       props: { status: 'rejected' },
     })
-    expect(wrapper.text()).toBe('rejected')
+    expect(wrapper.text()).toBe('Rejected') // Sentence case via formatStatus
     expect(wrapper.classes()).toContain('badge-danger')
   })
 
@@ -23,15 +23,15 @@ describe('StatusBadge Component', () => {
     const wrapper = mount(StatusBadge, {
       props: { status: 'pending' },
     })
-    expect(wrapper.text()).toBe('pending')
+    expect(wrapper.text()).toBe('Pending') // Sentence case via formatStatus
     expect(wrapper.classes()).toContain('badge-warning')
   })
 
-  it('renders fallback info badge and replaces underscores for unknown status', () => {
+  it('renders fallback info badge and formats snake_case to Sentence case', () => {
     const wrapper = mount(StatusBadge, {
       props: { status: 'custom_state' },
     })
-    expect(wrapper.text()).toBe('custom state')
+    expect(wrapper.text()).toBe('Custom state') // Sentence case via formatStatus
     expect(wrapper.classes()).toContain('badge-info')
   })
 })

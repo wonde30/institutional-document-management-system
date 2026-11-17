@@ -34,6 +34,24 @@ export function formatFileSize(bytes?: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
+/**
+ * Format snake_case status strings to Sentence case for display
+ * @example formatStatus('pending_review') => 'Pending review'
+ * @example formatStatus('accepted') => 'Accepted'
+ */
+export function formatStatus(status?: string | null): string {
+  if (!status) return 'Unknown'
+  return status
+    .split('_')
+    .map((word, index) => {
+      if (index === 0) {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      }
+      return word.toLowerCase()
+    })
+    .join(' ')
+}
+
 export function getStatusBadgeClass(status?: string): string {
   switch (status?.toLowerCase()) {
     case 'approved':

@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getStatusBadgeClass } from '@/utils/formatters'
+import { getStatusBadgeClass, formatStatus } from '@/utils/formatters'
 
 const props = defineProps<{
  status?: string
 }>()
 
-const formattedStatus = computed(() => {
- if (!props.status) return 'UNKNOWN'
- return props.status.replace(/_/g, ' ')
-})
+const formattedStatus = computed(() => formatStatus(props.status))
 
 const badgeClass = computed(() => getStatusBadgeClass(props.status))
 
@@ -20,12 +17,14 @@ const tokenClasses = computed(() => {
  case 'dispatched':
  case 'executed':
  case 'acknowledged':
+ case 'accepted':
  return 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]'
  case 'pending_review':
  case 'under_review':
  case 'assigned':
  case 'in_progress':
  case 'pending':
+ case 'needs_revision':
  return 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]'
  case 'rejected':
  case 'overdue':
@@ -46,7 +45,7 @@ const tokenClasses = computed(() => {
 <template>
  <span
  :class="[
- 'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium',
+ 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
  tokenClasses,
  'badge',
  badgeClass
