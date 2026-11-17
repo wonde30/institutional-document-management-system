@@ -26,7 +26,7 @@ const tokenClasses = computed(() => {
 <template>
   <span
     :class="[
-      'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+      'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset',
       tokenClasses,
       'badge',
       badgeClass
