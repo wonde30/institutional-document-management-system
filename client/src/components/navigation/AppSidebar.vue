@@ -314,7 +314,7 @@ function handleLinkClick() {
  <!-- Top Section: University Branding & Mobile Close -->
  <div class="px-4 py-3.5 border-b border-hairline flex items-center justify-between gap-2">
  <router-link to="/dashboard" class="flex items-center gap-2.5 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-[5px]" @click="handleLinkClick">
- <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
+ <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center shrink-0">
  WU
  </span>
  <div class="flex flex-col min-w-0">

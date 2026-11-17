@@ -865,7 +865,7 @@ async function deleteRetentionPolicy(id: number) {
         :class="[
           'flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
           activeTab === 'workflows'
-            ? 'bg-primary text-white shadow-xs'
+            ? 'bg-primary text-white'
             : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
         ]"
       >
@@ -880,7 +880,7 @@ async function deleteRetentionPolicy(id: number) {
         :class="[
           'flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
           activeTab === 'numbering'
-            ? 'bg-primary text-white shadow-xs'
+            ? 'bg-primary text-white'
             : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
         ]"
       >
@@ -895,7 +895,7 @@ async function deleteRetentionPolicy(id: number) {
         :class="[
           'flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
           activeTab === 'routing'
-            ? 'bg-primary text-white shadow-xs'
+            ? 'bg-primary text-white'
             : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
         ]"
       >
@@ -910,7 +910,7 @@ async function deleteRetentionPolicy(id: number) {
         :class="[
           'flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
           activeTab === 'retention'
-            ? 'bg-primary text-white shadow-xs'
+            ? 'bg-primary text-white'
             : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
         ]"
       >
@@ -953,7 +953,7 @@ async function deleteRetentionPolicy(id: number) {
               :class="[
                 'p-4 rounded-lg border transition-all cursor-pointer',
                 selectedWorkflow?.id === def.id
-                  ? 'border-primary bg-primary/5 shadow-xs'
+                  ? 'border-primary bg-primary/5'
                   : 'border-hairline bg-surface hover:border-hairline-strong'
               ]"
             >

@@ -157,7 +157,7 @@ async function submitProposal() {
  <div class="flex items-center gap-2">
  <button
  type="button"
- class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-xs"
+ class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors"
  @click="openCreateModal"
  >
  <Plus class="w-4 h-4" />

@@ -304,7 +304,7 @@ function handleSavePreferences() {
  <BaseButton
  type="submit"
  variant="primary"
- class="bg-primary hover:bg-primary-hover text-white shadow-xs"
+ class="bg-primary hover:bg-primary-hover text-white"
  :loading="isUpdatingPassword"
  >
  Update Institutional Password
@@ -354,7 +354,7 @@ function handleSavePreferences() {
  <div class="pt-2">
  <BaseButton
  variant="primary"
- class="bg-primary hover:bg-primary-hover text-white shadow-xs"
+ class="bg-primary hover:bg-primary-hover text-white"
  @click="handleSavePreferences"
  >
  Save Preferences

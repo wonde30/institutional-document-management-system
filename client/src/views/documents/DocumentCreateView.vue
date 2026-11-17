@@ -452,7 +452,7 @@ watchEffect(() => {
         <button
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          :class="creationMode === 'letter' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink'"
+          :class="creationMode === 'letter' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
           @click="creationMode = 'letter'"
         >
           <FileSignature class="w-4 h-4" />
@@ -461,7 +461,7 @@ watchEffect(() => {
         <button
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          :class="creationMode === 'template' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink'"
+          :class="creationMode === 'template' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
           @click="creationMode = 'template'"
         >
           <FileText class="w-4 h-4" />
@@ -470,7 +470,7 @@ watchEffect(() => {
         <button
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          :class="creationMode === 'upload' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink'"
+          :class="creationMode === 'upload' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
           @click="creationMode = 'upload'"
         >
           <UploadCloud class="w-4 h-4" />
@@ -739,7 +739,7 @@ watchEffect(() => {
                   variant="primary"
                   type="submit"
                   :loading="isLoading"
-                  class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 shadow-xs"
+                  class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5"
                 >
                   <FileSignature class="w-4 h-4 mr-1.5" />
                   <span>Generate & Register Letter</span>
@@ -931,7 +931,7 @@ watchEffect(() => {
                 variant="primary"
                 type="submit"
                 :loading="isLoading"
-                class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 shadow-xs"
+                class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5"
               >
                 <FileSignature class="w-4 h-4 mr-1.5" />
                 <span>Generate Document from Template</span>
@@ -1089,7 +1089,7 @@ watchEffect(() => {
             variant="primary"
             type="submit"
             :loading="isLoading"
-            class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 shadow-xs"
+            class="bg-primary hover:bg-primary-hover text-white px-6 py-2.5"
           >
             Complete Registration
           </BaseButton>

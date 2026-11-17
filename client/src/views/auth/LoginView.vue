@@ -58,7 +58,7 @@ async function handleLogin() {
  <div class="min-h-screen bg-canvas-soft flex items-center justify-center p-4 select-none">
  <div class="w-full max-w-md">
  <!-- Main Card -->
- <div class="bg-surface border border-hairline rounded-lg border border-hairline bg-surface p-6 sm:p-8 shadow-sm space-y-5">
+ <div class="bg-surface border border-hairline rounded-lg border border-hairline bg-surface p-6 sm:p-8 space-y-5">
  <!-- University Branding -->
  <div class="text-center space-y-2">
  <div class="inline-flex w-11 h-11 rounded-lg bg-primary text-white items-center justify-center font-bold text-base shadow-2xs">

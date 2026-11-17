@@ -517,7 +517,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-2.5 py-1 text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
- :class="viewMode === 'table' ? 'bg-surface text-primary shadow-xs font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+ :class="viewMode === 'table' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
  @click="viewMode = 'table'"
  >
  <List class="w-3.5 h-3.5" />
@@ -526,7 +526,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-2.5 py-1 text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
- :class="viewMode === 'cards' ? 'bg-surface text-primary shadow-xs font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+ :class="viewMode === 'cards' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
  @click="viewMode = 'cards'"
  >
  <LayoutGrid class="w-3.5 h-3.5" />

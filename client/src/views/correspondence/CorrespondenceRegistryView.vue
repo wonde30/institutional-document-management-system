@@ -1103,7 +1103,7 @@ onMounted(async () => {
  <BaseButton
  variant="primary"
  size="sm"
- class="bg-primary hover:bg-primary-hover text-white shadow-xs"
+ class="bg-primary hover:bg-primary-hover text-white"
  type="submit"
  :loading="isSubmittingDispatch"
  >
@@ -1192,7 +1192,7 @@ onMounted(async () => {
  <BaseButton
  variant="primary"
  size="sm"
- class="bg-primary hover:bg-primary-hover text-white shadow-xs"
+ class="bg-primary hover:bg-primary-hover text-white"
  type="submit"
  :loading="isSubmittingLinkedResponse"
  >

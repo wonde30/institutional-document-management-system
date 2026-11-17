@@ -226,7 +226,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
- :class="activeTab === 'tree' ? 'bg-surface text-primary shadow-xs' : 'text-ink-muted'"
+ :class="activeTab === 'tree' ? 'bg-surface text-primary' : 'text-ink-muted'"
  @click="activeTab = 'tree'"
  >
  <FolderTree class="w-3.5 h-3.5" />
@@ -235,7 +235,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
- :class="activeTab === 'table' ? 'bg-surface text-primary shadow-xs' : 'text-ink-muted'"
+ :class="activeTab === 'table' ? 'bg-surface text-primary' : 'text-ink-muted'"
  @click="activeTab = 'table'"
  >
  <TableIcon class="w-3.5 h-3.5" />

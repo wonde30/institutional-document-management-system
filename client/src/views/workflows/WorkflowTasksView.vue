@@ -256,7 +256,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="statusFilter === 'open' ? 'bg-surface text-primary shadow-xs font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+ :class="statusFilter === 'open' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
  @click="handleStatusChange('open')"
  >
  Active Tasks
@@ -264,7 +264,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="statusFilter === 'closed' ? 'bg-surface text-primary shadow-xs font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+ :class="statusFilter === 'closed' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
  @click="handleStatusChange('closed')"
  >
  Decision History
@@ -275,7 +275,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="scopeFilter === 'mine' ? 'bg-surface text-primary shadow-xs font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+ :class="scopeFilter === 'mine' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
  @click="handleTabChange('mine')"
  >
  Assigned to Me
@@ -283,7 +283,7 @@ onMounted(() => {
  <button
  type="button"
  class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="scopeFilter === 'office' ? 'bg-surface text-primary shadow-xs font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+ :class="scopeFilter === 'office' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
  @click="handleTabChange('office')"
  >
  My Office Tasks

@@ -306,7 +306,7 @@ onMounted(() => {
         <button
           type="button"
           class="px-3 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition cursor-pointer"
-          :class="selectedModule === 'all' ? 'bg-primary text-white shadow-xs' : 'bg-surface-muted text-ink-muted hover:bg-surface-hover'"
+          :class="selectedModule === 'all' ? 'bg-primary text-white' : 'bg-surface-muted text-ink-muted hover:bg-surface-hover'"
           @click="selectedModule = 'all'"
         >
           All Domains
@@ -316,7 +316,7 @@ onMounted(() => {
           :key="mod"
           type="button"
           class="px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap   transition cursor-pointer"
-          :class="selectedModule === mod ? 'bg-primary text-white shadow-xs' : 'bg-surface-muted text-ink-muted hover:bg-surface-hover'"
+          :class="selectedModule === mod ? 'bg-primary text-white' : 'bg-surface-muted text-ink-muted hover:bg-surface-hover'"
           @click="selectedModule = mod"
         >
           {{ mod }} ({{ groupedPermissions[mod]?.length || 0 }})

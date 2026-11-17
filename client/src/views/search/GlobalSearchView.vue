@@ -205,7 +205,7 @@ onMounted(() => {
  @click="selectedDomain = 'all'; executeSearch()"
  class="px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer"
  :class="selectedDomain === 'all'
- ? 'bg-primary text-white shadow-xs'
+ ? 'bg-primary text-white'
  : 'bg-surface border border-hairline text-ink-muted hover:text-ink dark:text-ink-faint dark:hover:text-white'"
  >
  All Domains
@@ -215,7 +215,7 @@ onMounted(() => {
  @click="selectedDomain = 'documents'; executeSearch()"
  class="px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer"
  :class="selectedDomain === 'documents'
- ? 'bg-primary text-white shadow-xs'
+ ? 'bg-primary text-white'
  : 'bg-surface border border-hairline text-ink-muted hover:text-ink dark:text-ink-faint dark:hover:text-white'"
  >
  Documents
@@ -225,7 +225,7 @@ onMounted(() => {
  @click="selectedDomain = 'correspondence'; executeSearch()"
  class="px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer"
  :class="selectedDomain === 'correspondence'
- ? 'bg-primary text-white shadow-xs'
+ ? 'bg-primary text-white'
  : 'bg-surface border border-hairline text-ink-muted hover:text-ink dark:text-ink-faint dark:hover:text-white'"
  >
  Correspondence
@@ -235,7 +235,7 @@ onMounted(() => {
  @click="selectedDomain = 'research'; executeSearch()"
  class="px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer"
  :class="selectedDomain === 'research'
- ? 'bg-primary text-white shadow-xs'
+ ? 'bg-primary text-white'
  : 'bg-surface border border-hairline text-ink-muted hover:text-ink dark:text-ink-faint dark:hover:text-white'"
  >
  Research

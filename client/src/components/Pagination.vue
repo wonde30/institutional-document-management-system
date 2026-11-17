@@ -96,7 +96,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
           type="button"
           class="inline-flex items-center justify-center w-8 h-8 text-xs font-medium rounded-md border transition-colors cursor-pointer"
           :class="page === current
-            ? 'bg-primary border-primary text-white font-semibold shadow-xs'
+            ? 'bg-primary border-primary text-white font-semibold'
             : 'bg-surface border-hairline text-ink-secondary hover:bg-canvas-soft'"
           :aria-label="`Page ${page}`"
           :aria-current="page === current ? 'page' : undefined"
