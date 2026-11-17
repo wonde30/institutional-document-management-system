@@ -83,10 +83,30 @@ function handleClickOutside(event: MouseEvent) {
  }
 }
 
+/**
+ * Handle organizational unit switch.
+ * The server validates the selection and recalculates the capability set.
+ */
+async function handleUnitChange(event: Event) {
+ const target = event.target as HTMLSelectElement
+ const unitId = Number(target.value)
+
+ if (!Number.isFinite(unitId) || unitId === authStore.activeUnitId) {
+  return
+ }
+
+ const switched = await authStore.switchUnit(unitId)
+
+ if (!switched) {
+  // Restore the control to the unit that is actually active.
+  target.value = authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''
+ }
+}
+
 const themeTooltip = computed(() => {
- if (themeStore.mode === 'system') return 'Theme: System (matches OS) — click to change'
- if (themeStore.mode === 'dark') return 'Theme: Dark — click to change'
- return 'Theme: Light — click to change'
+ if (themeStore.mode === 'system') return 'Theme: System (matches OS) ï¿½ click to change'
+ if (themeStore.mode === 'dark') return 'Theme: Dark ï¿½ click to change'
+ return 'Theme: Light ï¿½ click to change'
 })
 
 onMounted(() => {
@@ -255,7 +275,25 @@ async function handleLogout() {
  <div class="font-semibold text-ink truncate">{{ authStore.user?.name }}</div>
  <div class="text-xs text-ink-muted truncate">{{ authStore.user?.email }}</div>
   <div class="text-xs text-ink-muted truncate mt-0.5" v-if="authStore.primaryUnit?.position_title">{{ authStore.primaryUnit?.position_title }}</div>
- <div class="text-xs text-ink-muted truncate mt-0.5" v-if="authStore.activeUnit?.name || authStore.primaryUnit?.unit_name">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
+ 
+ <!-- Unit switcher: show when user has multiple units -->
+ <div v-if="authStore.availableUnits.length > 1" class="mt-2 pt-2 border-t border-hairline">
+ <label class="block text-xs font-medium text-ink-muted mb-1">
+ Organizational unit
+ </label>
+ <select
+ class="w-full rounded-md border border-hairline bg-surface px-2 py-1.5 text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-60"
+ :value="authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''"
+ :disabled="authStore.isSwitchingUnit"
+ @change="handleUnitChange"
+ >
+ <option v-for="unit in authStore.availableUnits" :key="unit.id" :value="unit.id">
+ {{ unit.name }}{{ unit.is_primary ? ' (primary)' : '' }}
+ </option>
+ </select>
+ </div>
+ <!-- Display-only unit when user has only one unit -->
+ <div v-else class="text-xs text-ink-muted truncate mt-0.5">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
  </div>
 
  <div class="py-1">

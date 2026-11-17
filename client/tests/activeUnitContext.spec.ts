@@ -231,18 +231,41 @@ describe('Active organizational unit context', () => {
     })
     await flushPromises()
 
-    // The unit context switcher is now in the avatar dropdown
-    // Find and open the avatar dropdown button
-    const avatarButton = wrapper.find('button[aria-label="Toggle light, dark, or system theme mode"]').element.parentElement?.parentElement?.querySelector('button:last-child')
+    // Find and click the avatar dropdown button
+    const avatarButton = wrapper.findAll('button').find(el => {
+      const text = el.text()
+      return text.includes(userInitials(authStore.user!))
+    })
     expect(avatarButton).toBeTruthy()
-    
-    // Click to open the dropdown
-    await wrapper.findAll('button').find(el => el.text().includes(userInitials(authStore.user!)))?.trigger('click')
+    await avatarButton!.trigger('click')
     await wrapper.vm.$nextTick()
+
+    // Verify the dropdown shows the unit switcher with multiple units
+    const selectElement = wrapper.find('select')
+    expect(selectElement.exists()).toBe(true)
     
-    // Verify the dropdown shows the active unit in the user info section
-    const dropdownText = wrapper.html()
-    expect(dropdownText).toContain('College A')
+    // Verify current unit is selected
+    expect((selectElement.element as HTMLSelectElement).value).toBe(String(collegeA.id))
+
+    // Mock the switch to collegeB
+    const switchedUser = contextUser({
+      permissions: ['roles.view'],
+      active_unit: collegeB,
+      active_unit_id: collegeB.id,
+    })
+    setActiveUnit.mockResolvedValue({ data: { success: true } })
+    me.mockResolvedValueOnce({ data: { success: true, user: switchedUser } })
+
+    // Simulate selecting a different unit
+    await selectElement.setValue(String(collegeB.id))
+    await flushPromises()
+
+    // Verify switchUnit was called with the correct unitId
+    expect(setActiveUnit).toHaveBeenCalledWith(collegeB.id)
+    
+    // Verify the active unit changed in the store
+    expect(authStore.activeUnitId).toBe(collegeB.id)
+    expect(authStore.activeUnit?.name).toBe('College B')
   })
 
   it('explains that a unit must be selected when scoped capabilities are held', async () => {
