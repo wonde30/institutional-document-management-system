@@ -123,18 +123,18 @@ onMounted(async () => {
 <template>
  <div class="space-y-5">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
  <FileText class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
  <span>Document Repository</span>
  </h1>
- <p class="mt-0.5 text-xs text-ink-muted">
- Search, view, and manage institutional records with version tracking and scoped security classifications.
+ <p class="mt-1 text-sm text-ink-muted">
+ Search, view, and manage institutional records with version tracking and scoped security classifications
  </p>
  </div>
 
- <div class="flex items-center gap-2.5">
+ <div class="flex items-center gap-2.5 shrink-0">
  <BaseButton
  v-if="authStore.hasPermission('documents.create')"
  variant="primary"
@@ -142,13 +142,13 @@ onMounted(async () => {
  @click="router.push('/documents/create')"
  >
  <Plus class="w-3.5 h-3.5 mr-1" />
- <span>Register Document</span>
+ Register document
  </BaseButton>
  </div>
  </div>
 
  <!-- Search & Filter Bar -->
- <div class="bg-surface border border-hairline rounded-lg p-3 sm:p-4 shadow-2xs space-y-3">
+ <div class="bg-surface border border-line rounded-lg p-3 sm:p-4 space-y-3">
  <div class="flex flex-col sm:flex-row items-center gap-3">
  <div class="flex-1 w-full">
  <SearchFilterBar
