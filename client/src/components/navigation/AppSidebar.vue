@@ -391,11 +391,6 @@ function handleLinkClick() {
  </div>
  </div>
  </nav>
-
- <!-- Sidebar Footer -->
- <div class="p-3 border-t border-hairline text-[11px] text-ink-muted flex items-center justify-center">
- <span class="text-[10px] text-ink-faint tracking-tight">© 2026 Wollo University</span>
- </div>
  </aside>
  </div>
 </template>
