@@ -36,14 +36,25 @@ export function formatFileSize(bytes?: number): string {
 
 /**
  * Format snake_case status strings to Sentence case for display
+ * Handles common acronyms (OCR, ID, PDF, WU, CC, API, URL, etc.) in uppercase
  * @example formatStatus('pending_review') => 'Pending review'
- * @example formatStatus('accepted') => 'Accepted'
+ * @example formatStatus('ocr_processing') => 'OCR processing'
+ * @example formatStatus('pdf_generated') => 'PDF generated'
  */
 export function formatStatus(status?: string | null): string {
   if (!status) return 'Unknown'
+  
+  const acronyms = new Set(['OCR', 'ID', 'PDF', 'WU', 'CC', 'API', 'URL', 'HTTP', 'HTTPS', 'JSON', 'XML', 'CSV', 'SQL', 'UUID', 'QR'])
+  
   return status
     .split('_')
     .map((word, index) => {
+      const upper = word.toUpperCase()
+      // Check if it's a known acronym
+      if (acronyms.has(upper)) {
+        return upper
+      }
+      // First word gets capitalized, rest stay lowercase
       if (index === 0) {
         return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
       }

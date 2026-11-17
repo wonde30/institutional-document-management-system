@@ -17,6 +17,7 @@ import Pagination from '@/components/Pagination.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { useToast } from '@/composables/useToast'
+import { formatStatus } from '@/utils/formatters'
 import {
  Users,
  UserPlus,
@@ -702,7 +703,7 @@ onMounted(() => {
  }"
  >
  <span class="w-1.5 h-1.5 rounded-full" :class="{ 'bg-[#1aae39]': item.status === 'active', 'bg-ink-muted': item.status === 'inactive', 'bg-[#e03e3e]': item.status === 'locked' }" />
- {{ item.status }}
+ {{ formatStatus(item.status) }}
  </span>
  </template>
 
@@ -843,7 +844,7 @@ onMounted(() => {
  }"
  >
  <span class="w-1.5 h-1.5 rounded-full" :class="{ 'bg-[#1aae39]': user.status === 'active', 'bg-ink-muted': user.status === 'inactive', 'bg-[#e03e3e]': user.status === 'locked' }" />
- {{ user.status }}
+ {{ formatStatus(user.status) }}
  </span>
  </div>
 
