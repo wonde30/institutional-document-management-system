@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { archiveApi } from '@/api/client'
@@ -527,7 +527,7 @@ onMounted(() => {
               <span class="truncate">{{ item.document?.reference_number || `Document #${item.document_id}` }}</span>
               <span
                 v-if="item.document?.lifecycle === 'tombstoned'"
-                class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 shrink-0"
+                class="px-1.5 py-0.2 rounded text-xs font-bold bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 shrink-0"
               >
                 TOMBSTONED
               </span>
@@ -535,9 +535,9 @@ onMounted(() => {
             <div class="font-semibold text-xs text-ink-secondary truncate" :title="item.document?.title">
               {{ item.document?.title || 'Document Record' }}
             </div>
-            <div class="text-[10px] text-ink-muted flex items-center gap-1.5 mt-0.5">
+            <div class="text-xs text-ink-muted flex items-center gap-1.5 mt-0.5">
               <span class="truncate max-w-[140px]">{{ item.document?.category?.name || 'Category' }}</span>
-              <span>â€¢</span>
+              <span>•</span>
               <ClassificationBadge :classification="item.document?.confidentiality" />
             </div>
           </div>
@@ -554,7 +554,7 @@ onMounted(() => {
             <div class="font-semibold text-ink-secondary">
               {{ item.retention_policy_version?.policy?.name || 'Statutory Schedule' }}
             </div>
-            <div class="text-[10px] text-ink-muted">
+            <div class="text-xs text-ink-muted">
               Version #{{ item.retention_policy_version_id }}
             </div>
           </div>
@@ -562,7 +562,7 @@ onMounted(() => {
 
         <template #cell-archived_at="{ value }">
           <span class="text-xs text-ink-muted">
-            {{ value ? new Date(value).toLocaleDateString() : 'â€”' }}
+            {{ value ? new Date(value).toLocaleDateString() : '—' }}
           </span>
         </template>
 
@@ -640,7 +640,7 @@ onMounted(() => {
           <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20 uppercase">
             {{ c.code }}
           </span>
-          <span v-if="c.parent" class="text-[10px] text-ink-muted">
+          <span v-if="c.parent" class="text-xs text-ink-muted">
             Sub of {{ c.parent.name }}
           </span>
         </div>
@@ -674,7 +674,7 @@ onMounted(() => {
                   {{ hold.code }}
                 </span>
                 <span
-                  class="text-[11px] font-medium px-2 py-0.5 rounded"
+                  class="text-xs font-medium px-2 py-0.5 rounded"
                   :class="hold.released_at ? 'bg-surface-muted text-ink-muted' : 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200'"
                 >
                   {{ hold.released_at ? 'Released' : 'Active Hold' }}
@@ -683,7 +683,7 @@ onMounted(() => {
               <p class="text-xs text-ink-secondary mt-1 font-medium">
                 {{ hold.reason }}
               </p>
-              <div class="text-[11px] text-ink-muted mt-1 flex flex-wrap items-center gap-3">
+              <div class="text-xs text-ink-muted mt-1 flex flex-wrap items-center gap-3">
                 <span>Placed: {{ new Date(hold.placed_at).toLocaleDateString() }}</span>
                 <span v-if="hold.placed_by_user">By: {{ hold.placed_by_user.name }}</span>
                 <span v-if="hold.released_at" class="text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -750,7 +750,7 @@ onMounted(() => {
             :options="[
               { label: 'General / All unassigned items', value: '' },
               ...entries.map(e => ({
-                label: `${e.document?.reference_number || 'Doc #' + e.document_id} â€” ${e.document?.title || ''}`,
+                label: `${e.document?.reference_number || 'Doc #' + e.document_id} — ${e.document?.title || ''}`,
                 value: e.document_id
               }))
             ]"
@@ -870,7 +870,7 @@ onMounted(() => {
             <div
               v-for="h in eligibilityInfo.active_holds"
               :key="h.id"
-              class="p-2 rounded bg-white/60 dark:bg-black/30 font-mono text-[11px]"
+              class="p-2 rounded bg-white/60 dark:bg-black/30 font-mono text-xs"
             >
               <strong>{{ h.code }}:</strong> {{ h.reason }}
             </div>
@@ -885,7 +885,7 @@ onMounted(() => {
           <CheckCircle2 class="w-5 h-5 text-emerald-600 shrink-0" />
           <div>
             <div class="font-bold">Eligible for Statutory Disposition</div>
-            <div class="text-[11px] text-emerald-700 dark:text-emerald-300">
+            <div class="text-xs text-emerald-700 dark:text-emerald-300">
               Retention period completed with zero active legal holds.
             </div>
           </div>
@@ -899,7 +899,7 @@ onMounted(() => {
             <AlertTriangle class="w-4 h-4 text-amber-600 shrink-0" />
             <span>Not Yet Eligible for Standard Disposal</span>
           </div>
-          <ul class="list-disc list-inside text-[11px] space-y-0.5 pt-1 text-amber-700 dark:text-amber-300">
+          <ul class="list-disc list-inside text-xs space-y-0.5 pt-1 text-amber-700 dark:text-amber-300">
             <li v-for="(reason, idx) in eligibilityInfo.reasons" :key="idx">{{ reason }}</li>
           </ul>
         </div>
@@ -982,9 +982,9 @@ onMounted(() => {
             {{ activeReviewEntry.document?.title || 'Archived Document' }}
           </div>
           <div class="font-mono text-ink-muted">
-            {{ activeReviewEntry.document?.reference_number }} Â· Collection: {{ activeReviewEntry.collection?.name || 'Archive' }}
+            {{ activeReviewEntry.document?.reference_number }} · Collection: {{ activeReviewEntry.collection?.name || 'Archive' }}
           </div>
-          <div class="text-[11px] text-ink-secondary">
+          <div class="text-xs text-ink-secondary">
             Current Review Target: {{ activeReviewEntry.next_review_at ? new Date(activeReviewEntry.next_review_at).toLocaleDateString() : 'Permanent' }}
           </div>
         </div>

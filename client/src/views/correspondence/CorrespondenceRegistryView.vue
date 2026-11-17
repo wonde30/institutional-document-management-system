@@ -699,7 +699,7 @@ onMounted(async () => {
  <div class="font-mono text-xs font-semibold text-primary">
  {{ item.document?.reference_number }}
  </div>
- <div v-if="item.external_reference" class="text-[10px] text-ink-muted font-mono">
+ <div v-if="item.external_reference" class="text-xs text-ink-muted font-mono">
  Ext: {{ item.external_reference }}
  </div>
  </div>
@@ -714,16 +714,16 @@ onMounted(async () => {
  <template #cell-sender_recipient="{ item }">
  <div class="space-y-0.5 text-xs">
  <div class="font-medium text-ink truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getSenderName(item)">
- <span class="text-[10px] uppercase font-bold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
+ <span class="text-xs uppercase font-bold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
  </div>
- <div class="text-[11px] text-ink-muted truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getRecipientName(item)">
- <span class="text-[10px] uppercase font-bold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
+ <div class="text-xs text-ink-muted truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getRecipientName(item)">
+ <span class="text-xs uppercase font-bold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
  </div>
  </div>
  </template>
 
  <template #cell-type="{ item }">
- <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
+ <span class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
  {{ item.type?.name }}
  </span>
  </template>
@@ -734,7 +734,7 @@ onMounted(async () => {
 
  <template #cell-status="{ item }">
  <span
- class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border inline-block"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border inline-block"
  :class="getRoutingStatus(item).class"
  >
  {{ getRoutingStatus(item).text }}
@@ -760,7 +760,7 @@ onMounted(async () => {
  v-if="getPendingMovementForUser(item)"
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2 bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/30 hover:bg-[#d6f0dc] dark:hover:bg-[#1b3d27]"
+ class="h-7 text-xs px-2 bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/30 hover:bg-[#d6f0dc] dark:hover:bg-[#1b3d27]"
  title="Acknowledge receipt of forwarded letter"
  @click="handleAcknowledgeMovement(item)"
  >
@@ -772,7 +772,7 @@ onMounted(async () => {
  v-if="selectedTab === 'outgoing' || item.type?.code === 'outgoing'"
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2 text-primary border-primary/30"
+ class="h-7 text-xs px-2 text-primary border-primary/30"
  title="Dispatch official outward letter"
  @click="openDispatchModal(item)"
  >
@@ -783,7 +783,7 @@ onMounted(async () => {
  <BaseButton
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2"
+ class="h-7 text-xs px-2"
  title="Forward to another unit"
  @click="openMovementModal(item)"
  >
@@ -794,7 +794,7 @@ onMounted(async () => {
  <BaseButton
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2"
+ class="h-7 text-xs px-2"
  title="Assign task directive"
  @click="openAssignmentModal(item)"
  >
@@ -806,7 +806,7 @@ onMounted(async () => {
  v-if="item.type?.code === 'incoming' && authStore.hasPermission('correspondence.register')"
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2 text-primary border-primary/30"
+ class="h-7 text-xs px-2 text-primary border-primary/30"
  title="Prepare linked outgoing response"
  @click="openLinkedResponseModal(item)"
  >
@@ -817,7 +817,7 @@ onMounted(async () => {
  <BaseButton
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2 text-rose-600 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+ class="h-7 text-xs px-2 text-rose-600 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/20"
  title="Formally close correspondence item"
  @click="openCloseModal(item)"
  >
@@ -828,7 +828,7 @@ onMounted(async () => {
  <BaseButton
  variant="ghost"
  size="sm"
- class="h-7 text-[11px] px-2 text-ink-muted hover:text-ink-secondary"
+ class="h-7 text-xs px-2 text-ink-muted hover:text-ink-secondary"
  title="Inspect correspondence trail and directives"
  @click="openInspectModal(item)"
  >
@@ -978,7 +978,7 @@ onMounted(async () => {
  class="w-full text-xs text-ink-secondary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-subtle file:text-primary dark:file:bg-[#172c42] dark:file:text-[#62aef0] hover:file:bg-[#d4e8fa] cursor-pointer"
  @change="handleCorrFileChange"
  />
- <div v-if="newCorrFileName" class="text-[11px] text-ink-muted mt-1 font-mono">
+ <div v-if="newCorrFileName" class="text-xs text-ink-muted mt-1 font-mono">
  Selected: {{ newCorrFileName }}
  </div>
  </div>
@@ -1072,7 +1072,7 @@ onMounted(async () => {
  <CheckCircle2 class="w-4 h-4 shrink-0" />
  <span>Policy-Driven Outgoing Authority</span>
  </div>
- <p class="text-ink text-[11px] leading-relaxed">
+ <p class="text-ink text-xs leading-relaxed">
  Dispatch is governed by originating office procedure. If procedure mandates workflow review, dispatch is bound strictly to the approved document version. Unapproved or revised drafts are blocked with HTTP 422.
  </p>
  </div>
@@ -1215,7 +1215,7 @@ onMounted(async () => {
  {{ inspectingCorr.document?.reference_number }}
  </div>
  <span
- class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border"
  :class="getRoutingStatus(inspectingCorr).class"
  >
  {{ getRoutingStatus(inspectingCorr).text }}
@@ -1231,19 +1231,19 @@ onMounted(async () => {
 
  <div class="grid grid-cols-2 gap-3 text-xs border-y border-hairline py-3">
  <div>
- <span class="text-ink-muted block text-[10px] uppercase font-bold">Originating Sender</span>
+ <span class="text-ink-muted block text-xs uppercase font-bold">Originating Sender</span>
  <span class="font-medium text-ink">{{ getSenderName(inspectingCorr) }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-[10px] uppercase font-bold">First Receiving Office</span>
+ <span class="text-ink-muted block text-xs uppercase font-bold">First Receiving Office</span>
  <span class="font-medium text-ink">{{ getRecipientName(inspectingCorr) }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-[10px] uppercase font-bold">Type & Priority</span>
+ <span class="text-ink-muted block text-xs uppercase font-bold">Type & Priority</span>
  <span class="font-medium text-ink">{{ inspectingCorr.type?.name }} &bull; {{ inspectingCorr.priority?.name }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-[10px] uppercase font-bold">External Reference</span>
+ <span class="text-ink-muted block text-xs uppercase font-bold">External Reference</span>
  <span class="font-mono text-ink">{{ inspectingCorr.external_reference || 'None (Internal)' }}</span>
  </div>
  </div>
@@ -1261,12 +1261,12 @@ onMounted(async () => {
  >
  <div class="flex items-center justify-between font-medium">
  <span>{{ m.from_unit?.name || 'Unit' }} &rarr; {{ m.to_unit?.name || 'Unit' }}</span>
- <span class="text-[10px] font-mono text-ink-muted">{{ formatDate(m.sent_at) }}</span>
+ <span class="text-xs font-mono text-ink-muted">{{ formatDate(m.sent_at) }}</span>
  </div>
- <div v-if="m.instruction" class="text-[11px] text-ink-secondary italic">
+ <div v-if="m.instruction" class="text-xs text-ink-secondary italic">
  Instruction: {{ m.instruction }}
  </div>
- <div class="text-[10px] text-ink-muted flex items-center gap-1.5">
+ <div class="text-xs text-ink-muted flex items-center gap-1.5">
  <span v-if="m.receipt?.acknowledged_at" class="text-emerald-600 font-semibold flex items-center gap-1">
  <CheckCheck class="w-3 h-3" /> Acknowledged by {{ m.receipt.acknowledged_by_user?.name || 'Officer' }}
  </span>
@@ -1294,12 +1294,12 @@ onMounted(async () => {
  >
  <div class="flex items-center justify-between font-medium">
  <span class="text-primary font-semibold">Assigned to: {{ a.assigned_user?.name || 'Officer' }} ({{ a.assigned_unit?.name || 'Unit' }})</span>
- <span v-if="a.due_at" class="text-[10px] text-amber-600 font-mono">Due: {{ formatDate(a.due_at) }}</span>
+ <span v-if="a.due_at" class="text-xs text-amber-600 font-mono">Due: {{ formatDate(a.due_at) }}</span>
  </div>
- <div class="text-[11px] text-ink-secondary">
+ <div class="text-xs text-ink-secondary">
  {{ a.instruction }}
  </div>
- <div class="text-[10px] text-ink-muted font-mono">
+ <div class="text-xs text-ink-muted font-mono">
  Assigned {{ formatDate(a.assigned_at) }}
  </div>
  </div>
@@ -1319,12 +1319,12 @@ onMounted(async () => {
  >
  <div class="flex items-center justify-between font-medium text-emerald-800 dark:text-emerald-300">
  <span>Method: {{ d.method?.name || 'Official Dispatch' }}</span>
- <span class="text-[10px] font-mono">{{ formatDate(d.dispatched_at) }}</span>
+ <span class="text-xs font-mono">{{ formatDate(d.dispatched_at) }}</span>
  </div>
- <div v-if="d.tracking_reference" class="text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
+ <div v-if="d.tracking_reference" class="text-xs font-mono text-emerald-700 dark:text-emerald-400">
  Tracking Ref: {{ d.tracking_reference }}
  </div>
- <div class="text-[10px] text-ink-muted">
+ <div class="text-xs text-ink-muted">
  Dispatched by {{ d.dispatched_by_user?.name || 'Authorized Officer' }}
  </div>
  </div>
@@ -1371,15 +1371,15 @@ onMounted(async () => {
          <AlertCircle class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
          <span>Closure Prerequisites Unfulfilled</span>
        </div>
-       <p class="text-[11px] text-amber-800 dark:text-amber-300">
+       <p class="text-xs text-amber-800 dark:text-amber-300">
          This outgoing correspondence cannot be formally closed until required dispatches are delivered and verified:
        </p>
-       <ul class="list-disc list-inside space-y-0.5 pl-1 text-[11px] font-mono">
+       <ul class="list-disc list-inside space-y-0.5 pl-1 text-xs font-mono">
          <li v-for="(blocker, idx) in activeCorrespondence.closure_blockers" :key="idx">
            {{ blocker }}
          </li>
        </ul>
-       <div class="text-[11px] font-medium text-amber-700 dark:text-amber-400 pt-1 border-t border-amber-200 dark:border-amber-800">
+       <div class="text-xs font-medium text-amber-700 dark:text-amber-400 pt-1 border-t border-amber-200 dark:border-amber-800">
          Rule: Dispatch != Delivery. Record signed proof-of-delivery or verified transmission first.
        </div>
      </div>

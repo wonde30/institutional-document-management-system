@@ -51,7 +51,7 @@ const iconComponent = computed(() => {
 
 <template>
  <div
- class="flex items-start justify-between p-3.5 rounded-lg border text-xs leading-relaxed font-medium transition-all shadow-xs"
+ class="flex items-start justify-between p-3.5 rounded-lg border text-xs leading-relaxed font-medium transition-all"
  :class="variantClasses"
  role="alert"
  >
@@ -62,7 +62,7 @@ const iconComponent = computed(() => {
  class="w-4 h-4 shrink-0 mt-0.5"
  />
  <div class="grow">
- <div v-if="title" class="font-semibold text-xs mb-0.5 uppercase tracking-wider">
+ <div v-if="title" class="font-semibold text-xs mb-0.5">
  {{ title }}
  </div>
  <div>

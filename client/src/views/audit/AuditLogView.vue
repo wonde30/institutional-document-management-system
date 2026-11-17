@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { auditApi } from '@/api/client'
 import type { AuditEvent, PaginationMeta } from '@/types'
@@ -153,18 +153,18 @@ onMounted(() => {
  >
  <template #cell-occurred_at="{ value }">
  <span class="font-mono text-xs text-ink-muted">
- {{ value ? new Date(value).toISOString().replace('T', ' ').slice(0, 19) : 'â€”' }}
+ {{ value ? new Date(value).toISOString().replace('T', ' ').slice(0, 19) : '—' }}
  </span>
  </template>
 
  <template #cell-actor="{ item }">
  <div v-if="item.actor" class="flex items-center gap-2">
- <div class="w-6 h-6 rounded-md bg-canvas-soft flex items-center justify-center text-[10px] font-bold text-ink-secondary">
+ <div class="w-6 h-6 rounded-md bg-canvas-soft flex items-center justify-center text-xs font-bold text-ink-secondary">
  {{ item.actor.name.slice(0, 2) }}
  </div>
  <div>
  <div class="text-xs font-semibold text-ink-secondary">{{ item.actor.name }}</div>
- <div class="text-[10px] text-ink-muted">{{ item.actor.email }}</div>
+ <div class="text-xs text-ink-muted">{{ item.actor.email }}</div>
  </div>
  </div>
  <span v-else class="text-xs text-ink-muted font-mono">System Actor</span>
@@ -178,7 +178,7 @@ onMounted(() => {
 
  <template #cell-target="{ item }">
  <div class="text-xs">
- <span class="font-semibold text-ink-secondary text-[11px]">{{ item.target_type }}</span>
+ <span class="font-semibold text-ink-secondary text-xs">{{ item.target_type }}</span>
  <span class="font-mono text-ink-muted ml-1">#{{ item.target_id }}</span>
  </div>
  </template>
@@ -232,13 +232,13 @@ onMounted(() => {
 
  <div class="p-3 rounded-lg bg-canvas-soft border border-hairline">
  <span class="text-ink-muted block mb-1 font-medium">IP Address</span>
- <span class="font-mono text-ink-secondary">{{ selectedEvent.ip_address || 'â€”' }}</span>
+ <span class="font-mono text-ink-secondary">{{ selectedEvent.ip_address || '—' }}</span>
  </div>
 
  <div class="p-3 rounded-lg bg-canvas-soft border border-hairline">
  <span class="text-ink-muted block mb-1 font-medium">Request UUID</span>
- <span class="font-mono text-ink-secondary text-[10px] break-all">
- {{ selectedEvent.request_id || 'â€”' }}
+ <span class="font-mono text-ink-secondary text-xs break-all">
+ {{ selectedEvent.request_id || '—' }}
  </span>
  </div>
  </div>
@@ -248,7 +248,7 @@ onMounted(() => {
  <Terminal class="w-3.5 h-3.5 text-primary" />
  Payload Details (JSON)
  </span>
- <pre class="p-3 rounded-lg bg-[#191919] text-emerald-400 font-mono text-[11px] overflow-x-auto max-h-60 border border-[#2e2e2e]">{{ formatJson(selectedEvent.details_json) }}</pre>
+ <pre class="p-3 rounded-lg bg-[#191919] text-emerald-400 font-mono text-xs overflow-x-auto max-h-60 border border-[#2e2e2e]">{{ formatJson(selectedEvent.details_json) }}</pre>
  </div>
  </div>
 

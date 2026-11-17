@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -300,7 +300,7 @@ function handleLinkClick() {
  aria-hidden="true"
  />
 
- <!-- Main Sidebar Container: 240px → drawer below 1280px -->
+ <!-- Main Sidebar Container: 240px ? drawer below 1280px -->
  <aside
  ref="asideRef"
  class="bg-surface text-ink-secondary shrink-0 z-40 flex flex-col transition-transform duration-300 select-none border-r border-hairline h-full"
@@ -321,7 +321,7 @@ function handleLinkClick() {
  <span class="text-xs font-semibold tracking-tight leading-tight text-ink group-hover:text-primary transition truncate">
  Wollo University
  </span>
- <small class="text-[10px] text-ink-muted truncate">
+ <small class="text-xs text-ink-muted truncate">
  Administrative DMS
  </small>
  </div>
@@ -433,7 +433,7 @@ function handleLinkClick() {
  <!-- Notification Count Badge -->
  <span
  v-if="item.to === '/notifications' && notifStore.unreadCount > 0"
- class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#e03e3e] text-white shrink-0"
+ class="px-1.5 py-0.2 rounded-full text-xs font-bold bg-[#e03e3e] text-white shrink-0"
  >
  {{ notifStore.unreadCount }}
  </span>

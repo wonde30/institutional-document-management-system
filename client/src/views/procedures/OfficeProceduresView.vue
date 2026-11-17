@@ -180,7 +180,7 @@ async function submitProcedure() {
  <div class="text-2xl font-bold text-ink-secondary mt-2">
  {{ procedures.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Enforced routing configurations</div>
+ <div class="text-xs text-ink-muted mt-0.5">Enforced routing configurations</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
@@ -191,7 +191,7 @@ async function submitProcedure() {
  <div class="text-2xl font-bold text-ink-secondary mt-2">
  {{ procedures.filter(p => p.receipt_mode === 'designated_registry').length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Central registry receipt gate</div>
+ <div class="text-xs text-ink-muted mt-0.5">Central registry receipt gate</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
@@ -202,7 +202,7 @@ async function submitProcedure() {
  <div class="text-2xl font-bold text-ink-secondary mt-2">
  {{ procedures.filter(p => p.issue_mode === 'direct_issue').length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Authorized executive bypass rules</div>
+ <div class="text-xs text-ink-muted mt-0.5">Authorized executive bypass rules</div>
  </div>
  </div>
 
@@ -237,7 +237,7 @@ async function submitProcedure() {
 
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
  <tr>
  <th class="py-3 px-4">Procedure Version</th>
  <th class="py-3 px-4">Office & Type</th>
@@ -258,13 +258,13 @@ async function submitProcedure() {
  </td>
  <td class="py-3 px-4">
  <div class="font-semibold">{{ proc.unit?.name || 'Department' }}</div>
- <div class="text-[11px] text-ink-muted">
+ <div class="text-xs text-ink-muted">
  {{ proc.correspondence_type?.name || 'Correspondence' }} · {{ proc.purpose_code }}
  </div>
  </td>
  <td class="py-3 px-4">
  <span
- class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium"
+ class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
  :class="proc.receipt_mode === 'designated_registry' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200' : 'bg-canvas-soft text-ink-secondary'"
  >
  {{ proc.receipt_mode === 'designated_registry' ? 'Designated Registry' : 'Direct Office' }}
@@ -272,7 +272,7 @@ async function submitProcedure() {
  </td>
  <td class="py-3 px-4">
  <span
- class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium"
+ class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
  :class="proc.issue_mode === 'direct_issue' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-primary-subtle text-primary'"
  >
  {{ proc.issue_mode === 'direct_issue' ? 'Direct Issue' : 'Workflow Review Required' }}
@@ -282,12 +282,12 @@ async function submitProcedure() {
  <div class="text-ink-secondary font-medium">
  {{ proc.confirmation_source || 'University Senate Directive' }}
  </div>
- <div class="text-[11px] text-ink-muted">
+ <div class="text-xs text-ink-muted">
  Confirmed by {{ proc.confirmed_by?.name || 'Authorized Officer' }}
  </div>
  </td>
  <td class="py-3 px-4 text-right">
- <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+ <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
  <CheckCircle2 class="w-3 h-3" />
  Active
  </span>
@@ -316,7 +316,7 @@ async function submitProcedure() {
  <h2 class="text-sm font-bold text-ink-secondary">
  Add Confirmed Office Procedure (F-PROCEDURE)
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Enforce verified receipt and issue paths for departmental correspondence
  </p>
  </div>

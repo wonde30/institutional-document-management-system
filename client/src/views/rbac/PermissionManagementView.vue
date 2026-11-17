@@ -222,27 +222,27 @@ onMounted(() => {
     <!-- Stats Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-[10px] uppercase font-bold text-ink-muted tracking-wider">Total Capabilities</div>
+        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Total Capabilities</div>
         <div class="text-2xl font-bold text-ink-secondary mt-1">{{ stats.total }}</div>
-        <div class="text-[11px] text-ink-muted mt-0.5">{{ availableModules.length }} functional domains</div>
+        <div class="text-xs text-ink-muted mt-0.5">{{ availableModules.length }} functional domains</div>
       </div>
 
       <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-[10px] uppercase font-bold text-ink-muted tracking-wider">Assignable</div>
+        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Assignable</div>
         <div class="text-2xl font-bold text-emerald-600 mt-1">{{ stats.assignable }}</div>
-        <div class="text-[11px] text-ink-muted mt-0.5">roles & unit grants</div>
+        <div class="text-xs text-ink-muted mt-0.5">roles & unit grants</div>
       </div>
 
       <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-[10px] uppercase font-bold text-ink-muted tracking-wider">Protected / Admin</div>
+        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Protected / Admin</div>
         <div class="text-2xl font-bold text-primary mt-1">{{ stats.protectedCount }}</div>
-        <div class="text-[11px] text-ink-muted mt-0.5">requires super_admin</div>
+        <div class="text-xs text-ink-muted mt-0.5">requires super_admin</div>
       </div>
 
       <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-[10px] uppercase font-bold text-ink-muted tracking-wider">Deactivated</div>
+        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Deactivated</div>
         <div class="text-2xl font-bold text-ink-muted mt-1">{{ stats.deactivated }}</div>
-        <div class="text-[11px] text-ink-muted mt-0.5">blocked from assignment</div>
+        <div class="text-xs text-ink-muted mt-0.5">blocked from assignment</div>
       </div>
     </div>
 
@@ -377,7 +377,7 @@ onMounted(() => {
                 {{ perm.name }}
               </div>
 
-              <p class="text-[11px] text-ink-muted mt-1 line-clamp-2">
+              <p class="text-xs text-ink-muted mt-1 line-clamp-2">
                 {{ perm.description || 'System-enforced RBAC capability.' }}
               </p>
             </div>
@@ -410,22 +410,22 @@ onMounted(() => {
               </div>
 
               <!-- Assignability / Action Controls -->
-              <div class="flex items-center justify-between text-[11px] pt-1">
+              <div class="flex items-center justify-between text-xs pt-1">
                 <span
                   v-if="perm.is_protected"
-                  class="text-[10px] text-primary font-semibold flex items-center gap-1"
+                  class="text-xs text-primary font-semibold flex items-center gap-1"
                 >
                   <Lock class="w-3 h-3" /> Protected Core
                 </span>
                 <span
                   v-else-if="perm.active"
-                  class="text-[10px] text-emerald-600 font-medium flex items-center gap-1"
+                  class="text-xs text-emerald-600 font-medium flex items-center gap-1"
                 >
                   <CheckCircle2 class="w-3 h-3" /> Assignable
                 </span>
                 <span
                   v-else
-                  class="text-[10px] text-rose-500 font-medium"
+                  class="text-xs text-rose-500 font-medium"
                 >
                   Deactivated
                 </span>
@@ -434,7 +434,7 @@ onMounted(() => {
                   <button
                     v-if="!perm.is_protected"
                     type="button"
-                    class="text-[10px] font-semibold hover:underline cursor-pointer"
+                    class="text-xs font-semibold hover:underline cursor-pointer"
                     :class="perm.active ? 'text-amber-600' : 'text-emerald-600'"
                     @click="togglePermissionStatus(perm)"
                   >

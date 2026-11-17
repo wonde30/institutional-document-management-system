@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, useSlots } from 'vue'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-vue-next'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
@@ -212,7 +212,7 @@ function handleSort(col: TableColumn) {
  <slot v-else-if="slots['cell-' + col.key]" :name="'cell-' + col.key" :item="item" :value="item[col.key]" />
  <slot v-else-if="col.key === 'actions' && slots.actions" name="actions" :item="item" />
  <template v-else>
- {{ item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '—' }}
+ {{ item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '�' }}
  </template>
  </td>
 

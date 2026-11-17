@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-vue-next'

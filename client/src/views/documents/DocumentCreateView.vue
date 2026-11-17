@@ -494,7 +494,7 @@ watchEffect(() => {
           <Building2 class="w-4 h-4 text-primary shrink-0" />
           <span>Wollo University Official Letter Drafter</span>
         </div>
-        <div class="text-[11px] text-ink-muted">
+        <div class="text-xs text-ink-muted">
           Generates authentic A4 institutional letters with Nyala Ethiopic typography, automatic Ethiopian calendar conversion, and server-authoritative audit tracking.
         </div>
       </div>
@@ -539,7 +539,7 @@ watchEffect(() => {
                   </label>
                   <div class="h-9 px-3 py-1.5 rounded-xl bg-surface-hover border border-hairline text-ink font-mono text-xs flex items-center justify-between">
                     <span>{{ ethiopianDateStr || 'Auto-computed' }}</span>
-                    <span class="text-[10px] text-primary bg-primary-subtle px-1.5 py-0.5 rounded font-semibold">Ethiopic</span>
+                    <span class="text-xs text-primary bg-primary-subtle px-1.5 py-0.5 rounded font-semibold">Ethiopic</span>
                   </div>
                 </div>
               </div>
@@ -626,12 +626,12 @@ watchEffect(() => {
                   <FileText class="w-4 h-4 text-primary" />
                   <span>Copy-Distribution / ግልባጭ፤ ({{ ccList.length }})</span>
                 </h2>
-                <span class="text-[11px] text-ink-faint">Appears on lower-left of letter</span>
+                <span class="text-xs text-ink-faint">Appears on lower-left of letter</span>
               </div>
 
               <!-- Quick Add Common Offices -->
               <div>
-                <label class="block text-[11px] font-semibold text-ink-faint mb-1.5 uppercase tracking-wider">
+                <label class="block text-xs font-semibold text-ink-faint mb-1.5 uppercase tracking-wider">
                   Quick-Add Common Offices:
                 </label>
                 <div class="flex flex-wrap gap-1.5">
@@ -639,7 +639,7 @@ watchEffect(() => {
                     v-for="office in commonOffices"
                     :key="office"
                     type="button"
-                    class="px-2 py-1 rounded-md text-[11px] bg-surface-hover hover:bg-primary-subtle hover:text-primary border border-hairline transition-all text-left truncate max-w-[280px] sm:max-w-xs"
+                    class="px-2 py-1 rounded-md text-xs bg-surface-hover hover:bg-primary-subtle hover:text-primary border border-hairline transition-all text-left truncate max-w-[280px] sm:max-w-xs"
                     @click="addCcItem(office)"
                   >
                     + {{ office }}
@@ -756,7 +756,7 @@ watchEffect(() => {
               <Eye class="w-3.5 h-3.5 text-primary" />
               <span>Real-Time A4 Document Preview</span>
             </span>
-            <span class="text-[11px] font-mono text-ink-faint">A4 Portrait (210×297mm)</span>
+            <span class="text-xs font-mono text-ink-faint">A4 Portrait (210×297mm)</span>
           </div>
 
           <OfficialLetterA4Preview
@@ -793,7 +793,7 @@ watchEffect(() => {
           <Layers class="w-4 h-4 text-primary shrink-0" />
           <span>Wollo University Institutional Template Intake</span>
         </div>
-        <div class="text-[11px] text-ink-muted">
+        <div class="text-xs text-ink-muted">
           Generates authentic institutional documents using pre-approved university templates with dynamic field mapping and live layout rendering.
         </div>
       </div>
@@ -822,12 +822,12 @@ watchEffect(() => {
               <div v-if="selectedTemplate" class="p-3 bg-surface-hover border border-hairline rounded-lg text-xs space-y-1.5">
                 <div class="flex items-center justify-between">
                   <span class="font-mono font-bold text-primary">{{ selectedTemplate.code }}</span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-subtle text-primary">
+                  <span class="px-2 py-0.5 rounded text-xs font-bold bg-primary-subtle text-primary">
                     v{{ selectedTemplate.published_version?.version_number || 1 }} Published
                   </span>
                 </div>
                 <div class="font-semibold text-ink">{{ selectedTemplate.name }}</div>
-                <div v-if="selectedTemplate.description" class="text-ink-muted text-[11px]">
+                <div v-if="selectedTemplate.description" class="text-ink-muted text-xs">
                   {{ selectedTemplate.description }}
                 </div>
               </div>
@@ -947,13 +947,13 @@ watchEffect(() => {
               <Eye class="w-3.5 h-3.5 text-primary" />
               <span>Live Generated Document Layout</span>
             </span>
-            <span class="text-[11px] font-mono text-ink-faint">Standard Template A4</span>
+            <span class="text-xs font-mono text-ink-faint">Standard Template A4</span>
           </div>
 
           <div class="bg-surface rounded-xl border border-hairline shadow-md overflow-hidden min-h-[500px]">
             <div class="border-b border-hairline bg-surface-hover px-4 py-2.5 flex items-center justify-between text-xs text-ink-secondary">
               <span class="font-semibold">{{ selectedTemplate?.name || 'Template Document' }}</span>
-              <span class="font-mono text-[10px] text-ink-muted">A4 Paper Simulation</span>
+              <span class="font-mono text-xs text-ink-muted">A4 Paper Simulation</span>
             </div>
             <div class="p-6 bg-white dark:bg-zinc-900 text-black dark:text-zinc-100 min-h-[460px]">
               <div v-html="templateLivePreviewHtml"></div>

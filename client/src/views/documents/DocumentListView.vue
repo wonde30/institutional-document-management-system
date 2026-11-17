@@ -169,7 +169,7 @@ onMounted(async () => {
  <span>Filters</span>
  <span
  v-if="activeFiltersCount > 0"
- class="ml-1 px-1.5 py-0.2 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold"
+ class="ml-1 px-1.5 py-0.2 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold"
  >
  {{ activeFiltersCount }}
  </span>
@@ -241,7 +241,7 @@ onMounted(async () => {
  <template #cell-title="{ item }">
  <div class="max-w-md lg:max-w-xl">
  <div class="text-xs font-semibold text-ink truncate">{{ item.title }}</div>
- <div v-if="item.summary" class="text-[11px] text-ink-muted truncate mt-0.5">{{ item.summary }}</div>
+ <div v-if="item.summary" class="text-xs text-ink-muted truncate mt-0.5">{{ item.summary }}</div>
  </div>
  </template>
 

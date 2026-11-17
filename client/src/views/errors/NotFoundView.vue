@@ -9,7 +9,7 @@ const router = useRouter()
 <template>
  <div class="min-h-[70vh] flex items-center justify-center p-4">
  <div class="max-w-md w-full bg-surface border border-hairline rounded-2xl shadow-xs p-8 text-center space-y-5">
- <div class="inline-flex w-14 h-14 rounded-2xl bg-canvas-soft text-ink-muted items-center justify-center border border-hairline">
+ <div class="inline-flex w-14 h-14 rounded-xl bg-canvas-soft text-ink-muted items-center justify-center border border-hairline">
  <FileQuestion class="w-7 h-7" />
  </div>
 

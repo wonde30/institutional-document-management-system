@@ -153,7 +153,7 @@ async function handleLogin() {
  </form>
 
  <!-- Support Info -->
- <div class="text-center text-[11px] text-ink-muted">
+ <div class="text-center text-xs text-ink-muted">
  Need access delegation? Contact the Information Technology Directorate through your unit's administrative officer.
  </div>
  </div>
@@ -173,7 +173,7 @@ async function handleLogin() {
  Terms of Use
  </router-link>
  </div>
- <p class="text-[11px]">
+ <p class="text-xs">
  Wollo University Integrated Repository &bull; Institutional Governance &bull; 2026
  </p>
  </div>

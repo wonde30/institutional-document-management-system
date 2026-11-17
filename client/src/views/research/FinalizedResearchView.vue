@@ -215,7 +215,7 @@ onMounted(() => {
  <div class="p-3.5 rounded-lg bg-canvas-soft border border-hairline text-xs text-ink-secondary flex items-start gap-2.5">
  <Info class="w-4 h-4 text-primary shrink-0 mt-0.5" />
  <p class="leading-relaxed">
- <strong>Institutional Boundary:</strong> Proposal submission, reviewer scoring, screening, and research approvals occur strictly outside this module. Authorized departments record finalized monographs and manage repository publication under department-scoped authority (<code class="font-mono text-[11px]">research.publish</code>).
+ <strong>Institutional Boundary:</strong> Proposal submission, reviewer scoring, screening, and research approvals occur strictly outside this module. Authorized departments record finalized monographs and manage repository publication under department-scoped authority (<code class="font-mono text-xs">research.publish</code>).
  </p>
  </div>
 
@@ -269,7 +269,7 @@ onMounted(() => {
  <div class="font-medium text-ink-secondary">
  {{ item.document?.title }}
  </div>
- <small class="block text-[11px] text-primary font-mono mt-0.5">
+ <small class="block text-xs text-primary font-mono mt-0.5">
  {{ item.document?.reference_number }}
  <span v-if="item.external_selection_reference" class="text-ink-muted">· Selection Ref: {{ item.external_selection_reference }}</span>
  </small>
@@ -282,7 +282,7 @@ onMounted(() => {
  </td>
  <td class="py-3 px-4">
  <span
- class="px-2 py-0.5 rounded text-[11px] font-semibold"
+ class="px-2 py-0.5 rounded text-xs font-semibold"
  :class="{
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]': isPublished(item),
  'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]': !isPublished(item),
@@ -423,7 +423,7 @@ onMounted(() => {
  >
  <div v-if="selectedResearch" class="space-y-4 text-xs">
  <div>
- <span class="block text-ink-muted font-mono text-[11px]">
+ <span class="block text-ink-muted font-mono text-xs">
  {{ selectedResearch.document?.reference_number }}
  </span>
  <h2 class="text-sm font-semibold text-ink-secondary mt-0.5">
@@ -439,19 +439,19 @@ onMounted(() => {
  </div>
  <div class="grid grid-cols-2 gap-3 pt-1">
  <div class="p-2.5 rounded-md bg-surface border border-hairline">
- <span class="block text-[10px] uppercase font-bold text-ink-muted">1. University Evaluation</span>
+ <span class="block text-xs uppercase font-bold text-ink-muted">1. University Evaluation</span>
  <span class="font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 block">Approved Externally</span>
- <span class="text-[10px] text-ink-muted block mt-0.5">
+ <span class="text-xs text-ink-muted block mt-0.5">
  Ref: {{ selectedResearch.external_selection_reference || '—' }}
  </span>
  </div>
 
  <div class="p-2.5 rounded-md bg-surface border border-hairline">
- <span class="block text-[10px] uppercase font-bold text-ink-muted">2. Repository State</span>
+ <span class="block text-xs uppercase font-bold text-ink-muted">2. Repository State</span>
  <span class="font-semibold capitalize text-primary mt-0.5 block">
  {{ isPublished(selectedResearch) ? 'Published' : 'Ready to publish' }}
  </span>
- <span class="text-[10px] text-ink-muted block mt-0.5">
+ <span class="text-xs text-ink-muted block mt-0.5">
  Scoped to {{ selectedResearch.document?.ownerUnit?.name || '—' }}
  </span>
  </div>

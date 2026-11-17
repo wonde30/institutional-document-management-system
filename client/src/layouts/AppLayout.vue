@@ -1,4 +1,4 @@
-ï»¿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -84,9 +84,9 @@ function handleClickOutside(event: MouseEvent) {
 }
 
 const themeTooltip = computed(() => {
- if (themeStore.mode === 'system') return 'Theme: System (matches OS) â€” click to change'
- if (themeStore.mode === 'dark') return 'Theme: Dark â€” click to change'
- return 'Theme: Light â€” click to change'
+ if (themeStore.mode === 'system') return 'Theme: System (matches OS) — click to change'
+ if (themeStore.mode === 'dark') return 'Theme: Dark — click to change'
+ return 'Theme: Light — click to change'
 })
 
 onMounted(() => {
@@ -147,7 +147,7 @@ async function handleLogout() {
  <span class="text-sm font-semibold tracking-tight leading-tight text-ink">
  Wollo University
  </span>
- <small class="text-[11px] font-normal text-ink-muted">
+ <small class="text-xs font-normal text-ink-muted">
  Administrative DMS
  </small>
  </div>
@@ -163,8 +163,8 @@ async function handleLogout() {
  title="Search documents, letters, research"
  >
  <Search class="w-3.5 h-3.5" />
- <span class="hidden md:inline text-[11px]">Search records...</span>
- <kbd class="hidden md:inline text-[10px] bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">{{ isMac ? 'âŒ˜K' : 'Ctrl K' }}</kbd>
+ <span class="hidden md:inline text-xs">Search records...</span>
+ <kbd class="hidden md:inline text-xs bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">{{ isMac ? '?K' : 'Ctrl K' }}</kbd>
  </router-link>
 
  <!-- Tri-Mode Theme Toggle (Light / Dark / System) -->
@@ -205,7 +205,7 @@ async function handleLogout() {
  </span>
  <router-link
  to="/notifications"
- class="text-[11px] text-primary font-medium hover:underline"
+ class="text-xs text-primary font-medium hover:underline"
  @click="showNotifDropdown = false"
  >
  View all
@@ -222,7 +222,7 @@ async function handleLogout() {
  <div class="font-medium text-ink">
  {{ notif.event?.type_code || 'Security notice' }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">
+ <div class="text-xs text-ink-muted mt-0.5">
  {{ notif.created_at ? new Date(notif.created_at).toLocaleTimeString() : 'Recent' }}
  </div>
  </div>
@@ -253,9 +253,9 @@ async function handleLogout() {
  >
  <div class="px-4 py-2.5">
  <div class="font-semibold text-ink truncate">{{ authStore.user?.name }}</div>
- <div class="text-[11px] text-ink-muted truncate">{{ authStore.user?.email }}</div>
-  <div class="text-[11px] text-ink-muted truncate mt-0.5" v-if="authStore.primaryUnit?.position_title">{{ authStore.primaryUnit?.position_title }}</div>
- <div class="text-[11px] text-ink-muted truncate mt-0.5" v-if="authStore.activeUnit?.name || authStore.primaryUnit?.unit_name">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
+ <div class="text-xs text-ink-muted truncate">{{ authStore.user?.email }}</div>
+  <div class="text-xs text-ink-muted truncate mt-0.5" v-if="authStore.primaryUnit?.position_title">{{ authStore.primaryUnit?.position_title }}</div>
+ <div class="text-xs text-ink-muted truncate mt-0.5" v-if="authStore.activeUnit?.name || authStore.primaryUnit?.unit_name">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
  </div>
 
  <div class="py-1">

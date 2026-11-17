@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -963,7 +963,7 @@ async function deleteRetentionPolicy(id: number) {
                     <span class="font-medium text-ink text-sm">{{ def.name }}</span>
                     <span
                       :class="[
-                        'text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                        'text-xs font-semibold px-1.5 py-0.5 rounded',
                         def.active ? 'bg-success/10 text-success' : 'bg-surface-muted text-ink-muted'
                       ]"
                     >
@@ -1122,7 +1122,7 @@ async function deleteRetentionPolicy(id: number) {
                   <div class="flex items-center gap-2.5">
                     <span
                       :class="[
-                        'px-2 py-0.5 rounded text-[11px] font-medium',
+                        'px-2 py-0.5 rounded text-xs font-medium',
                         stage.is_initial
                           ? 'bg-primary/10 text-primary'
                           : stage.is_terminal
@@ -1179,7 +1179,7 @@ async function deleteRetentionPolicy(id: number) {
                       <ArrowRight class="w-3.5 h-3.5 text-ink-muted" />
                       <span class="font-semibold text-primary">{{ t.toState?.name || 'Stage ' + t.to_state_id }}</span>
                       <span class="text-ink-muted">({{ t.approval_policy }} policy)</span>
-                      <span v-if="t.prohibit_self_approval" class="px-1.5 py-0.5 rounded bg-warning/10 text-warning text-[10px]">
+                      <span v-if="t.prohibit_self_approval" class="px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs">
                         Anti-Self-Approval
                       </span>
                     </div>
@@ -1229,7 +1229,7 @@ async function deleteRetentionPolicy(id: number) {
                 <span class="font-semibold text-ink text-sm">{{ policy.name }}</span>
                 <span
                   :class="[
-                    'text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                    'text-xs font-semibold px-1.5 py-0.5 rounded',
                     policy.active ? 'bg-success/10 text-success' : 'bg-surface-muted text-ink-muted'
                   ]"
                 >
@@ -1370,7 +1370,7 @@ async function deleteRetentionPolicy(id: number) {
             <tr v-for="p in routingPolicies" :key="p.id" class="hover:bg-surface-subtle/50 transition-colors">
               <td class="p-3">
                 <div class="font-semibold text-ink">{{ p.name }}</div>
-                <div class="text-[10px] font-mono text-ink-muted">{{ p.code }}</div>
+                <div class="text-xs font-mono text-ink-muted">{{ p.code }}</div>
               </td>
               <td class="p-3">{{ p.fromUnit?.name || 'Any Origin Unit' }}</td>
               <td class="p-3 font-medium text-primary">{{ p.toUnit?.name }}</td>
@@ -1419,7 +1419,7 @@ async function deleteRetentionPolicy(id: number) {
                 <span class="font-semibold text-ink text-sm">{{ policy.name }}</span>
                 <span
                   :class="[
-                    'text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                    'text-xs font-semibold px-1.5 py-0.5 rounded',
                     policy.active ? 'bg-success/10 text-success' : 'bg-surface-muted text-ink-muted'
                   ]"
                 >
@@ -1462,7 +1462,7 @@ async function deleteRetentionPolicy(id: number) {
               <span>Disposition Action:</span>
               <span
                 :class="[
-                  'px-1.5 py-0.5 rounded font-semibold text-[10px]',
+                  'px-1.5 py-0.5 rounded font-semibold text-xs',
                   policy.activeVersion?.disposition_action === 'retain'
                     ? 'bg-primary/10 text-primary'
                     : policy.activeVersion?.disposition_action === 'review'

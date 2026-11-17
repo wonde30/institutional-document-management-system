@@ -293,7 +293,7 @@ onMounted(() => {
             <td class="p-3.5 text-ink-muted">{{ cat.description || '—' }}</td>
             <td class="p-3.5">
               <span
-                class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                class="px-2 py-0.5 rounded text-xs font-semibold"
                 :class="cat.active ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'"
               >
                 {{ cat.active ? 'Active' : 'Deactivated' }}
@@ -312,7 +312,7 @@ onMounted(() => {
                 <button
                   type="button"
                   @click="handleToggleStatus(cat)"
-                  class="px-2 py-0.5 rounded text-[10px] font-medium border border-hairline hover:bg-canvas-soft transition"
+                  class="px-2 py-0.5 rounded text-xs font-medium border border-hairline hover:bg-canvas-soft transition"
                 >
                   {{ cat.active ? 'Deactivate' : 'Activate' }}
                 </button>
@@ -342,7 +342,7 @@ onMounted(() => {
             <td class="p-3.5 text-ink-muted">{{ c.description || '—' }}</td>
             <td class="p-3.5">
               <span
-                class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                class="px-2 py-0.5 rounded text-xs font-semibold"
                 :class="c.active ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'"
               >
                 {{ c.active ? 'Active' : 'Deactivated' }}
@@ -361,7 +361,7 @@ onMounted(() => {
                 <button
                   type="button"
                   @click="handleToggleStatus(c)"
-                  class="px-2 py-0.5 rounded text-[10px] font-medium border border-hairline hover:bg-canvas-soft transition"
+                  class="px-2 py-0.5 rounded text-xs font-medium border border-hairline hover:bg-canvas-soft transition"
                 >
                   {{ c.active ? 'Deactivate' : 'Activate' }}
                 </button>
@@ -389,7 +389,7 @@ onMounted(() => {
             <td class="p-3.5 text-ink-muted">{{ t.description || '—' }}</td>
             <td class="p-3.5">
               <span
-                class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                class="px-2 py-0.5 rounded text-xs font-semibold"
                 :class="t.active ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'"
               >
                 {{ t.active ? 'Active' : 'Deactivated' }}
@@ -408,7 +408,7 @@ onMounted(() => {
                 <button
                   type="button"
                   @click="handleToggleStatus(t)"
-                  class="px-2 py-0.5 rounded text-[10px] font-medium border border-hairline hover:bg-canvas-soft transition"
+                  class="px-2 py-0.5 rounded text-xs font-medium border border-hairline hover:bg-canvas-soft transition"
                 >
                   {{ t.active ? 'Deactivate' : 'Activate' }}
                 </button>
@@ -436,7 +436,7 @@ onMounted(() => {
             <td class="p-3.5 text-ink-muted">{{ p.description || '—' }}</td>
             <td class="p-3.5">
               <span
-                class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                class="px-2 py-0.5 rounded text-xs font-semibold"
                 :class="p.active ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'"
               >
                 {{ p.active ? 'Active' : 'Deactivated' }}
@@ -455,7 +455,7 @@ onMounted(() => {
                 <button
                   type="button"
                   @click="handleToggleStatus(p)"
-                  class="px-2 py-0.5 rounded text-[10px] font-medium border border-hairline hover:bg-canvas-soft transition"
+                  class="px-2 py-0.5 rounded text-xs font-medium border border-hairline hover:bg-canvas-soft transition"
                 >
                   {{ p.active ? 'Deactivate' : 'Activate' }}
                 </button>
@@ -483,7 +483,7 @@ onMounted(() => {
             <td class="p-3.5 text-ink-muted">{{ d.description || '—' }}</td>
             <td class="p-3.5">
               <span
-                class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                class="px-2 py-0.5 rounded text-xs font-semibold"
                 :class="d.active ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'"
               >
                 {{ d.active ? 'Active' : 'Deactivated' }}
@@ -502,7 +502,7 @@ onMounted(() => {
                 <button
                   type="button"
                   @click="handleToggleStatus(d)"
-                  class="px-2 py-0.5 rounded text-[10px] font-medium border border-hairline hover:bg-canvas-soft transition"
+                  class="px-2 py-0.5 rounded text-xs font-medium border border-hairline hover:bg-canvas-soft transition"
                 >
                   {{ d.active ? 'Deactivate' : 'Activate' }}
                 </button>
@@ -534,10 +534,10 @@ onMounted(() => {
             class="font-mono text-xs"
             required
           />
-          <p v-if="!editingItem" class="text-[11px] text-ink-muted mt-1">
+          <p v-if="!editingItem" class="text-xs text-ink-muted mt-1">
             Unique machine identifier. Alphanumeric, lowercase, underscores. Immutable once created.
           </p>
-          <p v-else class="text-[11px] text-ink-muted mt-1">
+          <p v-else class="text-xs text-ink-muted mt-1">
             Technical codes are immutable to maintain historical workflow and document references.
           </p>
         </div>

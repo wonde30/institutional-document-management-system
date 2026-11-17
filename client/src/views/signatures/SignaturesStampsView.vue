@@ -295,7 +295,7 @@ async function submitApplyStamp() {
  <div class="text-2xl font-semibold text-ink-secondary mt-2">
  {{ signatures.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Pending & completed requests</div>
+ <div class="text-xs text-ink-muted mt-0.5">Pending & completed requests</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
@@ -306,7 +306,7 @@ async function submitApplyStamp() {
  <div class="text-2xl font-semibold text-ink-secondary mt-2">
  {{ stamps.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Authorized departmental seals</div>
+ <div class="text-xs text-ink-muted mt-0.5">Authorized departmental seals</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
@@ -318,7 +318,7 @@ async function submitApplyStamp() {
  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
  Authentic PKI Active
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">X.509 PKCS#7 Detached ByteRange Verification</div>
+ <div class="text-xs text-ink-muted mt-0.5">X.509 PKCS#7 Detached ByteRange Verification</div>
  </div>
  </div>
 
@@ -385,7 +385,7 @@ async function submitApplyStamp() {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
  <tr>
  <th class="py-3 px-4">Request ID</th>
  <th class="py-3 px-4">Document Reference & Title</th>
@@ -408,30 +408,30 @@ async function submitApplyStamp() {
  <div class="font-medium text-ink-secondary">
  {{ sig.document_version?.document?.title || 'Unnamed document' }}
  </div>
- <div class="text-[11px] text-ink-muted font-mono">
+ <div class="text-xs text-ink-muted font-mono">
  {{ sig.document_version?.document?.reference_number || '—' }}<span v-if="sig.document_version?.version_number"> · Revision {{ sig.document_version.version_number }}</span>
  </div>
  </td>
  <td class="py-3 px-4">
  <div class="font-medium text-ink-secondary">{{ sig.signer?.name || '—' }}</div>
- <div class="text-[11px] text-ink-muted">{{ sig.signer?.email }}</div>
+ <div class="text-xs text-ink-muted">{{ sig.signer?.email }}</div>
  </td>
  <td class="py-3 px-4 text-ink-muted">
  {{ sig.purpose || 'Official Endorsement' }}
  </td>
  <td class="py-3 px-4">
  <div v-if="sig.digital_signature" class="space-y-1">
- <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20">
+ <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20">
  <CheckCircle2 class="w-3 h-3" />
  Signed ({{ sig.digital_signature.signature_format }})
  </span>
- <div class="text-[10px] text-ink-muted font-mono">
+ <div class="text-xs text-ink-muted font-mono">
  {{ new Date(sig.digital_signature.signed_at).toLocaleString() }}
  </div>
  </div>
  <span
  v-else
- class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20"
+ class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-semibold bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20"
  >
  <Clock class="w-3 h-3" />
  Pending Signer
@@ -444,7 +444,7 @@ async function submitApplyStamp() {
  v-if="!sig.digital_signature && (authStore.user?.id === sig.signer_id || authStore.hasPermission('signatures.request'))"
  type="button"
  :disabled="executingId === sig.id"
- class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary hover:bg-primary-hover text-white text-[11px] font-semibold transition disabled:opacity-50"
+ class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-semibold transition disabled:opacity-50"
  @click="handleExecuteSignature(sig)"
  >
  <PenLine class="w-3 h-3" />
@@ -456,7 +456,7 @@ async function submitApplyStamp() {
  v-if="sig.digital_signature"
  type="button"
  :disabled="verifyingId === sig.digital_signature.id"
- class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-hairline text-primary text-[11px] font-medium hover:bg-canvas-soft transition disabled:opacity-50"
+ class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-hairline text-primary text-xs font-medium hover:bg-canvas-soft transition disabled:opacity-50"
  @click="handleInspectVerification(sig.digital_signature)"
  >
  <ShieldCheck class="w-3 h-3" />
@@ -489,7 +489,7 @@ async function submitApplyStamp() {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
  <tr>
  <th class="py-3 px-4">Seal ID</th>
  <th class="py-3 px-4">Stamp Name</th>
@@ -515,7 +515,7 @@ async function submitApplyStamp() {
  </td>
  <td class="py-3 px-4">
  <span
- class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold"
+ class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
  :class="stamp.active ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20' : 'bg-surface-muted text-ink-muted '"
  >
  <CheckCircle2 v-if="stamp.active" class="w-3 h-3" />
@@ -533,7 +533,7 @@ async function submitApplyStamp() {
  <Stamp class="w-3.5 h-3.5" />
  <span>Apply Seal</span>
  </button>
- <span v-else class="text-[11px] text-ink-muted">Retired</span>
+ <span v-else class="text-xs text-ink-muted">Retired</span>
  </td>
  </tr>
 
@@ -607,7 +607,7 @@ async function submitApplyStamp() {
 
  <div class="overflow-x-auto">
  <table class="w-full text-left text-xs">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase">
  <tr>
  <th class="py-2.5 px-3">Identity Ref</th>
  <th class="py-2.5 px-3">User</th>
@@ -618,22 +618,22 @@ async function submitApplyStamp() {
  </thead>
  <tbody class="divide-y divide-hairline">
  <tr v-for="id in identities" :key="id.id" class="hover:bg-surface-hover transition-colors">
- <td class="py-2.5 px-3 font-mono text-[11px] text-primary">
+ <td class="py-2.5 px-3 font-mono text-xs text-primary">
  {{ id.provider_identity_reference }}
  </td>
  <td class="py-2.5 px-3">
  <div class="font-medium text-ink-secondary">{{ id.user_name }}</div>
- <div class="text-[10px] text-ink-muted">{{ id.user_email }}</div>
+ <div class="text-xs text-ink-muted">{{ id.user_email }}</div>
  </td>
- <td class="py-2.5 px-3 font-mono text-[11px] text-ink-muted">
+ <td class="py-2.5 px-3 font-mono text-xs text-ink-muted">
  {{ id.provider_code }}
  </td>
- <td class="py-2.5 px-3 text-[11px] text-ink-muted">
+ <td class="py-2.5 px-3 text-xs text-ink-muted">
  {{ id.valid_from ? new Date(id.valid_from).toLocaleDateString() : 'N/A' }} — {{ id.valid_until ? new Date(id.valid_until).toLocaleDateString() : 'N/A' }}
  </td>
  <td class="py-2.5 px-3 text-right">
  <span
- class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+ class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
  :class="id.active ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]' : 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373]'"
  >
  {{ id.active ? 'Active' : 'Revoked' }}
@@ -664,7 +664,7 @@ async function submitApplyStamp() {
  <h2 class="text-sm font-semibold text-ink-secondary">
  Request Document Signature (F-SIGNATURE)
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Pin exact revision and assign authorized executive signer
  </p>
  </div>
@@ -767,7 +767,7 @@ async function submitApplyStamp() {
  <h2 class="text-sm font-semibold text-ink-secondary">
  Independent Cryptographic Verification
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Authentic PKCS#7 detached digital signature integrity check
  </p>
  </div>
@@ -792,7 +792,7 @@ async function submitApplyStamp() {
  <div class="flex items-center justify-between p-2.5 rounded-md bg-canvas-soft border border-hairline">
  <span class="font-medium text-ink-muted">Overall Cryptographic Status:</span>
  <span
- class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold uppercase tracking-wider text-[11px]"
+ class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold uppercase tracking-wider text-xs"
  :class="selectedVerification.outcome === 'valid' ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]' : 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373]'"
  >
  {{ selectedVerification.outcome }}
@@ -801,7 +801,7 @@ async function submitApplyStamp() {
 
  <div class="grid grid-cols-2 gap-3">
  <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
- <div class="text-[10px] text-ink-muted font-medium uppercase">ByteRange Integrity</div>
+ <div class="text-xs text-ink-muted font-medium uppercase">ByteRange Integrity</div>
  <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mt-1 flex items-center gap-1">
  <CheckCircle2 class="w-3.5 h-3.5" />
  Unbroken (Tamper Passed)
@@ -809,14 +809,14 @@ async function submitApplyStamp() {
  </div>
 
  <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
- <div class="text-[10px] text-ink-muted font-medium uppercase">Timestamp Status</div>
+ <div class="text-xs text-ink-muted font-medium uppercase">Timestamp Status</div>
  <div class="text-xs font-semibold text-ink-secondary mt-1">
  {{ selectedVerification.timestamp_status || 'Offline Test Token' }}
  </div>
  </div>
  </div>
 
- <div class="space-y-1.5 p-3 rounded-md bg-canvas-soft border border-hairline font-mono text-[11px]">
+ <div class="space-y-1.5 p-3 rounded-md bg-canvas-soft border border-hairline font-mono text-xs">
  <div><span class="text-ink-muted">Signer Subject DN:</span> {{ selectedVerification.details?.signer_certificate?.subject_dn || 'N/A' }}</div>
  <div><span class="text-ink-muted">Issuer CA DN:</span> {{ selectedVerification.details?.signer_certificate?.issuer_dn || 'N/A' }}</div>
  <div><span class="text-ink-muted">Observed SHA-256:</span> <span class="break-all">{{ selectedVerification.details?.observed_sha256 }}</span></div>
@@ -850,7 +850,7 @@ async function submitApplyStamp() {
  <h2 class="text-sm font-semibold text-ink-secondary">
  Apply Official Office Seal
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Affix authorized departmental seal onto document version
  </p>
  </div>
@@ -866,7 +866,7 @@ async function submitApplyStamp() {
 
  <div class="p-3 bg-canvas-soft border border-hairline rounded-md text-xs space-y-1">
  <div class="font-medium text-ink-secondary">Selected Stamp: {{ selectedStampForApplication.name }}</div>
- <div class="text-ink-muted text-[11px]">Designated Unit: {{ selectedStampForApplication.unit?.name || 'Institutional Office' }}</div>
+ <div class="text-ink-muted text-xs">Designated Unit: {{ selectedStampForApplication.unit?.name || 'Institutional Office' }}</div>
  </div>
 
  <form class="space-y-4" @submit.prevent="submitApplyStamp">

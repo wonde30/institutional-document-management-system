@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { institutionalApi, documentsApi } from '@/api/client'
 import { downloadBlob } from '@/utils/formatters'
@@ -350,39 +350,39 @@ onMounted(() => {
  <!-- Real-Time Completeness Analytics Panel -->
  <div v-if="summary" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
  <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
- <div class="text-[11px] font-medium text-ink-muted">Total Standards</div>
+ <div class="text-xs font-medium text-ink-muted">Total Standards</div>
  <div class="text-lg font-semibold text-ink-secondary mt-1">{{ summary.metrics.total_standards }}</div>
- <div class="text-[10px] text-ink-muted mt-0.5">HERQA 10 Framework</div>
+ <div class="text-xs text-ink-muted mt-0.5">HERQA 10 Framework</div>
  </div>
 
  <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
- <div class="text-[11px] font-medium text-ink-muted">Covered Standards</div>
+ <div class="text-xs font-medium text-ink-muted">Covered Standards</div>
  <div class="text-lg font-semibold text-primary mt-1">{{ summary.metrics.covered_standards }} / {{ summary.metrics.total_standards }}</div>
- <div class="text-[10px] text-ink-muted mt-0.5">{{ summary.metrics.submission_rate_percent }}% Submitted</div>
+ <div class="text-xs text-ink-muted mt-0.5">{{ summary.metrics.submission_rate_percent }}% Submitted</div>
  </div>
 
  <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
- <div class="text-[11px] font-medium text-ink-muted">Accepted Evidence</div>
+ <div class="text-xs font-medium text-ink-muted">Accepted Evidence</div>
  <div class="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mt-1">{{ summary.metrics.accepted_standards }}</div>
- <div class="text-[10px] text-ink-muted mt-0.5">{{ summary.metrics.acceptance_rate_percent }}% Acceptance Rate</div>
+ <div class="text-xs text-ink-muted mt-0.5">{{ summary.metrics.acceptance_rate_percent }}% Acceptance Rate</div>
  </div>
 
  <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
- <div class="text-[11px] font-medium text-ink-muted">Pending Review</div>
+ <div class="text-xs font-medium text-ink-muted">Pending Review</div>
  <div class="text-lg font-semibold text-amber-600 dark:text-amber-400 mt-1">{{ summary.metrics.pending_review }}</div>
- <div class="text-[10px] text-ink-muted mt-0.5">Awaiting Quality Assurance Review</div>
+ <div class="text-xs text-ink-muted mt-0.5">Awaiting Quality Assurance Review</div>
  </div>
 
  <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
- <div class="text-[11px] font-medium text-ink-muted">Needs Revision</div>
+ <div class="text-xs font-medium text-ink-muted">Needs Revision</div>
  <div class="text-lg font-semibold text-orange-600 dark:text-orange-400 mt-1">{{ summary.metrics.needs_revision }}</div>
- <div class="text-[10px] text-ink-muted mt-0.5">Feedback Provided</div>
+ <div class="text-xs text-ink-muted mt-0.5">Feedback Provided</div>
  </div>
 
  <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
- <div class="text-[11px] font-medium text-ink-muted">Total Dossiers</div>
+ <div class="text-xs font-medium text-ink-muted">Total Dossiers</div>
  <div class="text-lg font-semibold text-ink-secondary mt-1">{{ summary.metrics.total_evidence_records }}</div>
- <div class="text-[10px] text-ink-muted mt-0.5">Database Mappings</div>
+ <div class="text-xs text-ink-muted mt-0.5">Database Mappings</div>
  </div>
  </div>
 
@@ -451,7 +451,7 @@ onMounted(() => {
  <div class="font-semibold text-ink-secondary">
  {{ item.standard?.code }}
  </div>
- <div class="text-[11px] text-ink-muted line-clamp-1">
+ <div class="text-xs text-ink-muted line-clamp-1">
  {{ item.standard?.title }}
  </div>
  </td>
@@ -460,7 +460,7 @@ onMounted(() => {
  <div class="font-medium text-ink-secondary">
  {{ item.document_version?.document?.title || 'Document Version #' + item.document_version_id }}
  </div>
- <small class="block text-[11px] text-primary font-mono mt-0.5">
+ <small class="block text-xs text-primary font-mono mt-0.5">
  Ref: {{ item.document_version?.document?.reference_number || 'N/A' }}
  </small>
  </td>
@@ -476,7 +476,7 @@ onMounted(() => {
  <td class="py-3 px-4">
  <div v-if="item.latest_review">
  <span
- class="px-2 py-0.5 rounded text-[11px] font-semibold"
+ class="px-2 py-0.5 rounded text-xs font-semibold"
  :class="{
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20': item.latest_review.decision === 'accepted',
  'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243] border border-[#dd5b00]/20': item.latest_review.decision === 'needs_revision',
@@ -485,12 +485,12 @@ onMounted(() => {
  >
  {{ item.latest_review.decision.replace('_', ' ') }}
  </span>
- <p v-if="item.latest_review.comment" class="text-[11px] text-ink-muted mt-1 italic line-clamp-1">
+ <p v-if="item.latest_review.comment" class="text-xs text-ink-muted mt-1 italic line-clamp-1">
  "{{ item.latest_review.comment }}"
  </p>
  </div>
  <div v-else>
- <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-muted text-ink-muted">
+ <span class="px-2 py-0.5 rounded text-xs font-medium bg-surface-muted text-ink-muted">
  PENDING REVIEW
  </span>
  </div>
@@ -559,7 +559,7 @@ onMounted(() => {
  :key="doc.id"
  :value="doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id"
  >
- {{ doc.reference_number }} â€” {{ doc.title }} (Ver ID: {{ doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id }})
+ {{ doc.reference_number }} — {{ doc.title }} (Ver ID: {{ doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id }})
  </option>
  </select>
  </div>
@@ -573,7 +573,7 @@ onMounted(() => {
  type="number"
  placeholder="e.g. 1"
  />
- <p class="text-[11px] text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-1">
  Selected or specified numerical ID of the finalized document version in the institutional repository.
  </p>
  </div>

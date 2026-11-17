@@ -636,9 +636,9 @@ onMounted(() => {
  <div>
  <div class="font-medium text-ink-secondary text-xs flex items-center gap-1.5">
  {{ item.name }}
- <span class="text-[10px] text-ink-muted font-mono font-normal">v{{ item.authz_version }}</span>
+ <span class="text-xs text-ink-muted font-mono font-normal">v{{ item.authz_version }}</span>
  </div>
- <div class="text-[11px] text-ink-muted flex items-center gap-1">
+ <div class="text-xs text-ink-muted flex items-center gap-1">
  <Mail class="w-3 h-3 text-ink-muted" />
  {{ item.email }}
  </div>
@@ -652,7 +652,7 @@ onMounted(() => {
  <Building2 class="w-3.5 h-3.5 text-ink-muted" />
  {{ item.primary_membership.unit_name || item.primary_membership.unit_code }}
  </div>
- <div v-if="item.primary_membership.position_title" class="text-[11px] text-ink-muted">
+ <div v-if="item.primary_membership.position_title" class="text-xs text-ink-muted">
  {{ item.primary_membership.position_title }}
  </div>
  </div>
@@ -664,13 +664,13 @@ onMounted(() => {
  <span
  v-for="(role, idx) in item.roles || []"
  :key="idx"
- class="text-[10px] font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline inline-flex items-center gap-1 group"
+ class="text-xs font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline inline-flex items-center gap-1 group"
  >
  <span>{{ role.role_name || role.role_code }}</span>
  <span v-if="role.scope_kind" class="text-[9px] text-primary font-medium uppercase ml-0.5">({{ role.scope_kind }})</span>
  <button type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke role assignment" @click.stop="handleRevokeRole(item, role)">&times;</button>
  </span>
- <span v-if="!item.roles || item.roles.length === 0" class="text-[11px] text-ink-muted">
+ <span v-if="!item.roles || item.roles.length === 0" class="text-xs text-ink-muted">
  None assigned
  </span>
  </div>
@@ -681,13 +681,13 @@ onMounted(() => {
  <span
  v-for="(dp, idx) in item.direct_permissions || []"
  :key="idx"
- class="text-[10px] font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20 inline-flex items-center gap-1 group"
+ class="text-xs font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20 inline-flex items-center gap-1 group"
  :title="`Direct Single-User Permission in ${dp.scope_kind} scope`"
  >
  <span>{{ dp.permission_code }}</span>
  <button type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke direct permission override" @click.stop="handleRevokeDirectPermission(item, dp)">&times;</button>
  </span>
- <span v-if="!item.direct_permissions || item.direct_permissions.length === 0" class="text-[11px] text-ink-muted">
+ <span v-if="!item.direct_permissions || item.direct_permissions.length === 0" class="text-xs text-ink-muted">
  None
  </span>
  </div>
@@ -695,7 +695,7 @@ onMounted(() => {
 
  <template #cell-status="{ item }">
  <span
- class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider inline-flex items-center gap-1"
  :class="{
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20': item.status === 'active',
  'bg-surface-muted text-ink-muted border border-hairline': item.status === 'inactive',
@@ -827,7 +827,7 @@ onMounted(() => {
  <h3 class="font-semibold text-sm text-ink-secondary leading-tight">
  {{ user.name }}
  </h3>
- <div class="text-[11px] text-ink-muted flex items-center gap-1 mt-0.5">
+ <div class="text-xs text-ink-muted flex items-center gap-1 mt-0.5">
  <Mail class="w-3 h-3 text-ink-muted" />
  {{ user.email }}
  </div>
@@ -836,7 +836,7 @@ onMounted(() => {
 
  <!-- Status Badge -->
  <span
- class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 shrink-0"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider inline-flex items-center gap-1 shrink-0"
  :class="{
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20': user.status === 'active',
  'bg-surface-muted text-ink-muted border border-hairline': user.status === 'inactive',
@@ -854,14 +854,14 @@ onMounted(() => {
  <Building2 class="w-3.5 h-3.5 text-primary" />
  <span>{{ user.primary_membership?.unit_name || user.primary_membership?.unit_code || 'No Primary Unit' }}</span>
  </div>
- <div v-if="user.primary_membership?.position_title" class="text-[11px] text-ink-muted mt-0.5 pl-5">
+ <div v-if="user.primary_membership?.position_title" class="text-xs text-ink-muted mt-0.5 pl-5">
  {{ user.primary_membership.position_title }}
  </div>
  </div>
 
  <!-- Assigned Roles -->
  <div class="space-y-1">
- <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
+ <div class="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
  <Shield class="w-3 h-3 text-ink-muted" />
  Scoped Roles
  </div>
@@ -869,12 +869,12 @@ onMounted(() => {
  <span
  v-for="(r, idx) in user.roles || []"
  :key="idx"
- class="text-[10px] font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline"
+ class="text-xs font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline"
  >
  {{ r.role_name || r.role_code }}
  <span v-if="r.scope_kind" class="text-[9px] text-primary font-medium uppercase ml-0.5">({{ r.scope_kind }})</span>
  </span>
- <span v-if="!user.roles || user.roles.length === 0" class="text-[11px] text-ink-muted italic">
+ <span v-if="!user.roles || user.roles.length === 0" class="text-xs text-ink-muted italic">
  No roles assigned
  </span>
  </div>
@@ -882,7 +882,7 @@ onMounted(() => {
 
  <!-- Direct Single-User Permissions -->
  <div class="space-y-1">
- <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
+ <div class="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
  <KeyRound class="w-3 h-3 text-amber-500" />
  Single-User Direct Overrides
  </div>
@@ -890,23 +890,23 @@ onMounted(() => {
  <span
  v-for="(dp, idx) in user.direct_permissions || []"
  :key="idx"
- class="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20"
+ class="text-xs font-semibold px-2 py-0.5 rounded bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20"
  >
  {{ dp.permission_code }}
  </span>
- <span v-if="!user.direct_permissions || user.direct_permissions.length === 0" class="text-[11px] text-ink-muted italic">
+ <span v-if="!user.direct_permissions || user.direct_permissions.length === 0" class="text-xs text-ink-muted italic">
  No individual overrides
  </span>
  </div>
  </div>
 
  <!-- Registration Date & Authz Version -->
- <div class="flex items-center justify-between text-[11px] text-ink-muted pt-1 border-t border-hairline">
+ <div class="flex items-center justify-between text-xs text-ink-muted pt-1 border-t border-hairline">
  <span class="flex items-center gap-1">
  <Calendar class="w-3 h-3" />
  {{ user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A' }}
  </span>
- <span class="font-mono text-[10px]">Session Guard: v{{ user.authz_version }}</span>
+ <span class="font-mono text-xs">Session Guard: v{{ user.authz_version }}</span>
  </div>
  </div>
 
@@ -1034,7 +1034,7 @@ onMounted(() => {
  Initial Primary Organizational Unit (Optional)
  </div>
  <div>
- <label class="block text-[11px] text-ink-muted mb-1">Department / Office</label>
+ <label class="block text-xs text-ink-muted mb-1">Department / Office</label>
  <select
  v-model="userForm.unit_id"
  class="w-full text-xs rounded-md border border-hairline bg-surface text-ink-secondary px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
@@ -1045,7 +1045,7 @@ onMounted(() => {
  </div>
 
  <div>
- <label class="block text-[11px] text-ink-muted mb-1">Position / Job Title</label>
+ <label class="block text-xs text-ink-muted mb-1">Position / Job Title</label>
  <BaseInput v-model="userForm.position_title" placeholder="e.g. Dean, Senior Lecturer, Registrar Officer" />
  </div>
  </div>
@@ -1161,7 +1161,7 @@ onMounted(() => {
  <div>
  <span class="font-semibold text-primary">{{ dp.permission_code }}</span>
  <span class="text-ink-muted ml-1.5">({{ dp.permission_name || 'Permission' }})</span>
- <span class="text-[10px] uppercase font-semibold text-ink-muted ml-2">[{{ dp.scope_kind }}]</span>
+ <span class="text-xs uppercase font-semibold text-ink-muted ml-2">[{{ dp.scope_kind }}]</span>
  </div>
  <button
  type="button"
@@ -1357,7 +1357,7 @@ onMounted(() => {
  <Building2 class="w-4 h-4 text-primary" />
  Evaluation Scope Context
  </div>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Inspect effective permissions for this staff member either globally or within an organizational unit.
  </p>
  </div>
@@ -1385,7 +1385,7 @@ onMounted(() => {
  <AlertCircle class="w-4 h-4 text-amber-600 dark:text-amber-400" />
  Access Configuration Warnings ({{ lineageData.warnings.length }})
  </div>
- <ul class="text-[11px] text-amber-700 dark:text-amber-300 space-y-0.5 list-disc list-inside">
+ <ul class="text-xs text-amber-700 dark:text-amber-300 space-y-0.5 list-disc list-inside">
  <li v-for="(warn, wIdx) in lineageData.warnings" :key="wIdx">
  {{ warn }}
  </li>
@@ -1395,24 +1395,24 @@ onMounted(() => {
  <!-- Summary KPI Row -->
  <div v-if="lineageData" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Effective Capabilities</div>
+ <div class="text-xs uppercase font-semibold text-ink-muted tracking-wider">Effective Capabilities</div>
  <div class="text-lg font-bold text-emerald-600 mt-0.5">{{ lineageData.effective_count }}</div>
- <div class="text-[10px] text-ink-muted">in {{ lineageData.target_unit_name || 'Global Scope' }}</div>
+ <div class="text-xs text-ink-muted">in {{ lineageData.target_unit_name || 'Global Scope' }}</div>
  </div>
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Assigned Roles</div>
+ <div class="text-xs uppercase font-semibold text-ink-muted tracking-wider">Assigned Roles</div>
  <div class="text-lg font-bold text-ink-secondary mt-0.5">{{ selectedUser?.roles?.length || 0 }}</div>
- <div class="text-[10px] text-ink-muted">catalog roles assigned</div>
+ <div class="text-xs text-ink-muted">catalog roles assigned</div>
  </div>
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Direct Overrides</div>
+ <div class="text-xs uppercase font-semibold text-ink-muted tracking-wider">Direct Overrides</div>
  <div class="text-lg font-bold text-amber-600 mt-0.5">{{ selectedUser?.direct_permissions?.length || 0 }}</div>
- <div class="text-[10px] text-ink-muted">single-user grants</div>
+ <div class="text-xs text-ink-muted">single-user grants</div>
  </div>
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Scopes Held</div>
+ <div class="text-xs uppercase font-semibold text-ink-muted tracking-wider">Scopes Held</div>
  <div class="text-lg font-bold text-primary mt-0.5">{{ lineageData.scopes_held?.length || 0 }}</div>
- <div class="text-[10px] text-ink-muted">distinct scopes</div>
+ <div class="text-xs text-ink-muted">distinct scopes</div>
  </div>
  </div>
 
@@ -1466,7 +1466,7 @@ onMounted(() => {
  <!-- Lineage Table -->
  <div v-else class="border border-hairline rounded-lg overflow-hidden">
  <table class="w-full text-left text-xs">
- <thead class="bg-surface-muted text-ink-muted uppercase tracking-wider text-[10px] font-semibold border-b border-hairline">
+ <thead class="bg-surface-muted text-ink-muted uppercase tracking-wider text-xs font-semibold border-b border-hairline">
  <tr>
  <th class="px-3 py-2">Permission & Description</th>
  <th class="px-3 py-2">Lineage Path (User &rarr; Source &rarr; Scope)</th>
@@ -1490,30 +1490,30 @@ onMounted(() => {
  </span>
  {{ item.permission_code }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
+ <div class="text-xs text-ink-muted mt-0.5 line-clamp-1">
  {{ item.permission_name }}
  </div>
  </td>
 
  <!-- Lineage Path (Visual User -> Source -> Permission -> Scope) -->
  <td class="px-3 py-2.5 align-top">
- <div class="flex items-center flex-wrap gap-1 text-[11px]">
+ <div class="flex items-center flex-wrap gap-1 text-xs">
  <span class="font-medium text-ink-secondary">{{ selectedUser?.name?.split(' ')[0] || 'User' }}</span>
  <ArrowRight class="w-3 h-3 text-ink-muted shrink-0" />
  <span
- class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+ class="px-1.5 py-0.5 rounded text-xs font-semibold"
  :class="item.source_type === 'direct' ? 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]' : 'bg-surface-muted text-ink-secondary border border-hairline'"
  >
  {{ item.source_name }}
  </span>
  <ArrowRight class="w-3 h-3 text-ink-muted shrink-0" />
- <span class="font-mono text-[10px] text-ink-secondary">{{ item.permission_code }}</span>
+ <span class="font-mono text-xs text-ink-secondary">{{ item.permission_code }}</span>
  </div>
  </td>
 
  <!-- Scope -->
  <td class="px-3 py-2.5 align-top">
- <div class="text-[11px] font-medium text-ink-secondary flex items-center gap-1">
+ <div class="text-xs font-medium text-ink-secondary flex items-center gap-1">
  <span
  class="uppercase text-[9px] font-semibold px-1 py-0.2 rounded"
  :class="{
@@ -1532,20 +1532,20 @@ onMounted(() => {
 
  <!-- Validity / Expiration -->
  <td class="px-3 py-2.5 align-top whitespace-nowrap">
- <div v-if="item.expires_at" class="text-[11px]" :class="item.is_expired ? 'text-rose-600 font-semibold' : 'text-ink-muted'">
+ <div v-if="item.expires_at" class="text-xs" :class="item.is_expired ? 'text-rose-600 font-semibold' : 'text-ink-muted'">
  <div class="flex items-center gap-1">
  <Clock class="w-3 h-3" />
  {{ new Date(item.expires_at).toLocaleDateString() }}
  </div>
- <div v-if="item.is_expired" class="text-[10px] text-rose-500 font-medium">Expired</div>
+ <div v-if="item.is_expired" class="text-xs text-rose-500 font-medium">Expired</div>
  </div>
- <span v-else class="text-[11px] text-ink-muted">Indefinite</span>
+ <span v-else class="text-xs text-ink-muted">Indefinite</span>
  </td>
 
  <!-- Status Badge -->
  <td class="px-3 py-2.5 align-top text-right whitespace-nowrap">
  <span
- class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider inline-flex items-center gap-1"
  :class="{
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20': item.is_effective,
  'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373] border border-[#e03e3e]/20': item.status_label === 'Expired',
@@ -1566,7 +1566,7 @@ onMounted(() => {
 
  <template #footer>
  <div class="flex items-center justify-between">
- <div class="text-[11px] text-ink-muted flex items-center gap-1">
+ <div class="text-xs text-ink-muted flex items-center gap-1">
  <Info class="w-3.5 h-3.5" />
  Dynamic lineage is evaluated instantly in real-time; permissions apply without re-login.
  </div>

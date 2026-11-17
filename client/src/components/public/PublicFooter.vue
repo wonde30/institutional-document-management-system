@@ -26,7 +26,7 @@ import { Building2, ShieldCheck, FileText, ExternalLink } from 'lucide-vue-next'
             Web-based Integrated Document Repository, Digital Archive, and Inter-Office Communication Management System. Providing secure document preservation, audited correspondence routing, and verifiable accreditation compliance for higher education administration.
           </p>
 
-          <div class="text-[11px] text-slate-400 space-y-0.5">
+          <div class="text-xs text-slate-400 space-y-0.5">
             <p>Federal Democratic Republic of Ethiopia &bull; Ministry of Education</p>
             <p>Categorized as an Applied University under national higher education reform.</p>
           </div>
@@ -94,7 +94,7 @@ import { Building2, ShieldCheck, FileText, ExternalLink } from 'lucide-vue-next'
         <p>
           &copy; {{ new Date().getFullYear() }} Wollo University. All administrative and operational rights reserved.
         </p>
-        <p class="font-mono text-[11px] text-slate-400">
+        <p class="font-mono text-xs text-slate-400">
           WU-DMS Architecture &bull; 118 Normalized Tables &bull; Strict Scoped RBAC
         </p>
       </div>

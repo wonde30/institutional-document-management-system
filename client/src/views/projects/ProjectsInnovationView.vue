@@ -187,7 +187,7 @@ async function submitProposal() {
  <div class="text-2xl font-semibold text-ink-secondary mt-2">
  {{ proposals.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Concept notes & grant submissions</div>
+ <div class="text-xs text-ink-muted mt-0.5">Concept notes & grant submissions</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
@@ -198,7 +198,7 @@ async function submitProposal() {
  <div class="text-2xl font-semibold text-ink-secondary mt-2">
  {{ activeProjects.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Approved and running initiatives</div>
+ <div class="text-xs text-ink-muted mt-0.5">Approved and running initiatives</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
@@ -209,7 +209,7 @@ async function submitProposal() {
  <div class="text-base font-semibold text-ink-secondary mt-2">
  Institutional Procedure Required
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Direct approval without confirmed policy is blocked</div>
+ <div class="text-xs text-ink-muted mt-0.5">Direct approval without confirmed policy is blocked</div>
  </div>
  </div>
 
@@ -276,7 +276,7 @@ async function submitProposal() {
  <!-- Proposals Table -->
  <div v-else-if="activeTab === 'proposals'" class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
  <tr>
  <th class="py-3 px-4">Proposal Reference</th>
  <th class="py-3 px-4">Title & Concept</th>
@@ -299,12 +299,12 @@ async function submitProposal() {
  <div class="font-medium text-ink-secondary">
  {{ p.document?.title || 'Untitled Proposal' }}
  </div>
- <div class="text-[11px] text-ink-muted truncate max-w-md">
+ <div class="text-xs text-ink-muted truncate max-w-md">
  {{ p.document?.summary || 'No concept notes registered' }}
  </div>
  </td>
  <td class="py-3 px-4">
- <span class="px-2 py-0.5 rounded text-[11px] bg-surface-muted text-ink-muted">
+ <span class="px-2 py-0.5 rounded text-xs bg-surface-muted text-ink-muted">
  {{ p.projectType?.name || p.project_type?.name || 'Academic Research' }}
  </span>
  </td>
@@ -315,7 +315,7 @@ async function submitProposal() {
  {{ (typeof p.recorded_by === 'object' ? p.recorded_by?.name : p.recordedBy?.name) || 'Faculty Member' }}
  </td>
  <td class="py-3 px-4 text-right">
- <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20">
+ <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20">
  <Clock class="w-3 h-3" />
  Institutional Procedure Required
  </span>
@@ -337,7 +337,7 @@ async function submitProposal() {
  <!-- Approved Projects Table -->
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
  <tr>
  <th class="py-3 px-4">Project Code</th>
  <th class="py-3 px-4">Approved Title</th>
@@ -365,7 +365,7 @@ async function submitProposal() {
  {{ p.starts_on || 'Current' }} → {{ p.ends_on || 'Indefinite' }}
  </td>
  <td class="py-3 px-4 text-right">
- <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20">
+ <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20">
  <CheckCircle2 class="w-3 h-3" />
  Active
  </span>
@@ -397,7 +397,7 @@ async function submitProposal() {
  <h2 class="text-sm font-semibold text-ink-secondary">
  Record Project Proposal (F-PROJECT)
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Submit concept note for departmental procedure screening
  </p>
  </div>
@@ -469,7 +469,7 @@ async function submitProposal() {
  />
  </div>
 
- <div class="p-3 rounded-md bg-[#fff4e6] dark:bg-[#382412] border border-[#dd5b00]/30 text-[11px] text-[#dd5b00] dark:text-[#ff9243]">
+ <div class="p-3 rounded-md bg-[#fff4e6] dark:bg-[#382412] border border-[#dd5b00]/30 text-xs text-[#dd5b00] dark:text-[#ff9243]">
  <strong>Rule invariant:</strong> Approval requires formal departmental confirmation. Direct operational status cannot be self-selected.
  </div>
 

@@ -199,7 +199,7 @@ onMounted(() => {
 
  <!-- Domain Filters -->
  <div class="flex items-center gap-2 pt-1 flex-wrap text-xs">
- <span class="text-ink-muted font-medium text-[11px]">Domain:</span>
+ <span class="text-ink-muted font-medium text-xs">Domain:</span>
  <button
  type="button"
  @click="selectedDomain = 'all'; executeSearch()"
@@ -274,7 +274,7 @@ onMounted(() => {
  <span class="font-mono text-xs font-semibold text-primary">
  {{ item.reference || '—' }}
  </span>
- <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
+ <span class="px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
  {{ item.domain }}
  </span>
  </div>
@@ -290,7 +290,7 @@ onMounted(() => {
  {{ item.snippet || 'No summary is recorded for this record.' }}
  </p>
 
- <div class="flex items-center gap-4 text-[11px] text-ink-muted pt-1">
+ <div class="flex items-center gap-4 text-xs text-ink-muted pt-1">
  <span class="flex items-center gap-1">
  <Building2 class="w-3.5 h-3.5" />
  {{ item.office || '—' }}

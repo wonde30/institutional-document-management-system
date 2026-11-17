@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -405,10 +405,10 @@ onMounted(loadAll)
                 :disabled="isUploading || isExecuting"
                 @update:model-value="(value: string) => { importDataset = value; inspection = null; executionResult = null }"
               />
-              <p v-if="selectedImportDataset" class="text-[11px] text-ink-muted">
+              <p v-if="selectedImportDataset" class="text-xs text-ink-muted">
                 {{ selectedImportDataset.description }}
               </p>
-              <p v-if="selectedImportDataset?.required_headers?.length" class="text-[11px] text-ink-muted">
+              <p v-if="selectedImportDataset?.required_headers?.length" class="text-xs text-ink-muted">
                 Required columns: {{ selectedImportDataset.required_headers.join(', ') }}
               </p>
             </div>
@@ -425,7 +425,7 @@ onMounted(loadAll)
                 class="block w-full text-xs text-ink-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-subtle file:text-primary hover:file:bg-primary/20 dark:file:bg-[#172c42] dark:file:text-[#62aef0]"
                 @change="handleFileChange"
               />
-              <p class="text-[11px] text-ink-muted">
+              <p class="text-xs text-ink-muted">
                 Maximum file size {{ Math.round(maxImportKilobytes / 1024) }} MB.
               </p>
             </div>
@@ -433,8 +433,8 @@ onMounted(loadAll)
 
           <!-- Upload progress -->
           <div v-if="isUploading" class="space-y-1.5">
-            <div class="flex items-center justify-between text-[11px] text-ink-muted">
-              <span>Uploading the dataset fileâ€¦</span>
+            <div class="flex items-center justify-between text-xs text-ink-muted">
+              <span>Uploading the dataset file…</span>
               <span>{{ uploadPercent }}%</span>
             </div>
             <div class="h-1.5 w-full rounded-full bg-canvas-soft overflow-hidden">
@@ -467,7 +467,7 @@ onMounted(loadAll)
         <div v-if="inspection" class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
           <div class="flex items-start justify-between gap-3">
             <h2 class="text-sm font-semibold text-ink-secondary">Validation preview</h2>
-            <span class="text-[11px] font-medium px-1.5 py-0.5 rounded">
+            <span class="text-xs font-medium px-1.5 py-0.5 rounded">
               Nothing has been created yet
             </span>
           </div>
@@ -507,8 +507,8 @@ onMounted(loadAll)
                 </thead>
                 <tbody class="divide-y divide-hairline text-ink-secondary">
                   <tr v-for="(rowError, index) in inspection.errors" :key="index">
-                    <td class="p-2.5 font-mono text-[11px]">{{ rowError.row_number }}</td>
-                    <td class="p-2.5 font-mono text-[11px]">{{ rowError.column_name || 'â€”' }}</td>
+                    <td class="p-2.5 font-mono text-xs">{{ rowError.row_number }}</td>
+                    <td class="p-2.5 font-mono text-xs">{{ rowError.column_name || '—' }}</td>
                     <td class="p-2.5">{{ rowError.message }}</td>
                   </tr>
                 </tbody>
@@ -516,7 +516,7 @@ onMounted(loadAll)
             </div>
             <a
               :href="dataTransferApi.importErrorsUrl(inspection.id)"
-              class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               <Download class="w-3.5 h-3.5" />
               Download the error report
@@ -575,7 +575,7 @@ onMounted(loadAll)
         <div class="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
           <div class="p-4 border-b border-hairline flex items-center justify-between">
             <h2 class="text-sm font-semibold text-ink-secondary">Import runs</h2>
-            <span class="text-[11px] text-ink-muted">{{ importHistory.length }} operation(s)</span>
+            <span class="text-xs text-ink-muted">{{ importHistory.length }} operation(s)</span>
           </div>
 
           <EmptyState
@@ -601,7 +601,7 @@ onMounted(loadAll)
                   <FileSpreadsheet class="w-4 h-4 text-primary" />
                   {{ operation.original_filename }}
                 </td>
-                <td class="p-3.5 font-mono text-[11px]">{{ operation.dataset }}</td>
+                <td class="p-3.5 font-mono text-xs">{{ operation.dataset }}</td>
                 <td class="p-3.5">
                   <span class="text-ink">{{ operation.imported_rows }} imported</span>
                   <span v-if="operation.failed_rows > 0" class="text-[#e03e3e] ml-1.5">
@@ -613,7 +613,7 @@ onMounted(loadAll)
                 </td>
                 <td class="p-3.5">
                   <span
-                    class="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                    class="px-2 py-0.5 rounded text-xs font-semibold border"
                     :class="statusClass(operation.status)"
                   >
                     {{ formatStatus(operation.status) }}
@@ -672,7 +672,7 @@ onMounted(loadAll)
                 :disabled="isGenerating"
                 @update:model-value="(value: string) => { exportDataset = value; exportFilters = {} }"
               />
-              <p v-if="selectedExportDataset" class="text-[11px] text-ink-muted">
+              <p v-if="selectedExportDataset" class="text-xs text-ink-muted">
                 {{ selectedExportDataset.description }}
               </p>
             </div>
@@ -712,7 +712,7 @@ onMounted(loadAll)
         <div class="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
           <div class="p-4 border-b border-hairline flex items-center justify-between">
             <h2 class="text-sm font-semibold text-ink-secondary">Export runs</h2>
-            <span class="text-[11px] text-ink-muted">{{ exportHistory.length }} operation(s)</span>
+            <span class="text-xs text-ink-muted">{{ exportHistory.length }} operation(s)</span>
           </div>
 
           <EmptyState
@@ -734,11 +734,11 @@ onMounted(loadAll)
             </thead>
             <tbody class="divide-y divide-hairline text-ink-secondary">
               <tr v-for="operation in exportHistory" :key="operation.id" class="hover:bg-surface-hover transition-colors">
-                <td class="p-3.5 font-medium font-mono text-[11px]">{{ operation.dataset }}</td>
+                <td class="p-3.5 font-medium font-mono text-xs">{{ operation.dataset }}</td>
                 <td class="p-3.5">{{ operation.record_count }} rows</td>
-                <td class="p-3.5 font-mono text-[11px]">{{ formatBytes(operation.file_size) }}</td>
+                <td class="p-3.5 font-mono text-xs">{{ formatBytes(operation.file_size) }}</td>
                 <td class="p-3.5 text-ink-muted">
-                  {{ operation.expires_at ? new Date(operation.expires_at).toLocaleString() : 'â€”' }}
+                  {{ operation.expires_at ? new Date(operation.expires_at).toLocaleString() : '—' }}
                 </td>
                 <td class="p-3.5 text-right">
                   <button
@@ -750,7 +750,7 @@ onMounted(loadAll)
                     <Download class="w-3.5 h-3.5" />
                     Download
                   </button>
-                  <span v-else class="text-[11px] text-ink-faint italic">Expired</span>
+                  <span v-else class="text-xs text-ink-faint italic">Expired</span>
                 </td>
               </tr>
             </tbody>

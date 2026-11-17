@@ -79,19 +79,19 @@ function handleCtaClick() {
             <div class="mt-8 pt-6 border-t border-hairline grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">118</span>
-                <span class="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Normalized Tables</span>
+                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Normalized Tables</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">3NF</span>
-                <span class="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Relational Baseline</span>
+                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Relational Baseline</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">100%</span>
-                <span class="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Audited Lifecycle</span>
+                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Audited Lifecycle</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">Multi-Unit</span>
-                <span class="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Scoped RBAC</span>
+                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Scoped RBAC</span>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ function handleCtaClick() {
       <section id="context" class="py-12 sm:py-16 bg-canvas-soft">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
               Institutional Context
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -160,7 +160,7 @@ function handleCtaClick() {
       <section id="modules" class="py-12 sm:py-16 bg-surface border-t border-b border-hairline">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
               Functional Architecture
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -181,7 +181,7 @@ function handleCtaClick() {
                 <h4 class="text-sm font-bold text-ink">Document Repository</h4>
               </div>
               <p class="text-xs text-ink-muted leading-relaxed">
-                Centralized storage with deterministic reference sequences (<span class="font-mono text-[11px] text-primary font-semibold">WU/DOC/YEAR/SEQ</span>), categorical tagging, version releases, and secure file handling.
+                Centralized storage with deterministic reference sequences (<span class="font-mono text-xs text-primary font-semibold">WU/DOC/YEAR/SEQ</span>), categorical tagging, version releases, and secure file handling.
               </p>
             </div>
 
@@ -293,7 +293,7 @@ function handleCtaClick() {
                 <h4 class="text-xs font-bold uppercase tracking-wider text-ink">
                   HERQA Standard Mappings (Active Cycle)
                 </h4>
-                <span class="text-[10px] font-mono text-primary bg-primary-subtle px-2 py-0.5 rounded font-semibold">
+                <span class="text-xs font-mono text-primary bg-primary-subtle px-2 py-0.5 rounded font-semibold">
                   2026 Institutional Audit
                 </span>
               </div>
@@ -304,7 +304,7 @@ function handleCtaClick() {
                     <span class="font-mono font-bold text-primary">HERQA-01</span>
                     <span class="ml-2 font-medium text-ink-secondary">Vision, Mission and Educational Goals</span>
                   </div>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">Verified</span>
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">Verified</span>
                 </div>
 
                 <div class="p-2.5 rounded-md bg-canvas-soft flex items-center justify-between border border-hairline">
@@ -312,7 +312,7 @@ function handleCtaClick() {
                     <span class="font-mono font-bold text-primary">HERQA-02</span>
                     <span class="ml-2 font-medium text-ink-secondary">Governance, Leadership and Management</span>
                   </div>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">Verified</span>
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">Verified</span>
                 </div>
 
                 <div class="p-2.5 rounded-md bg-canvas-soft flex items-center justify-between border border-hairline">
@@ -320,7 +320,7 @@ function handleCtaClick() {
                     <span class="font-mono font-bold text-primary">HERQA-03</span>
                     <span class="ml-2 font-medium text-ink-secondary">Academic Programs and Curriculum Design</span>
                   </div>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">Verified</span>
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">Verified</span>
                 </div>
 
                 <div class="p-2.5 rounded-md bg-canvas-soft flex items-center justify-between border border-hairline">
@@ -328,7 +328,7 @@ function handleCtaClick() {
                     <span class="font-mono font-bold text-primary">HERQA-06</span>
                     <span class="ml-2 font-medium text-ink-secondary">Research, Innovation and Community Service</span>
                   </div>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]">Review Pending</span>
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]">Review Pending</span>
                 </div>
               </div>
             </div>
@@ -340,7 +340,7 @@ function handleCtaClick() {
       <section id="governance" class="py-12 sm:py-16 bg-surface border-t border-hairline">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
               Information Security
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -389,7 +389,7 @@ function handleCtaClick() {
       <section id="stakeholders" class="py-12 sm:py-16 bg-canvas-soft">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-[11px] font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
               Participating Offices
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -403,42 +403,42 @@ function handleCtaClick() {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-xs">
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">University Management</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">President, Vice Presidents, Directors</div>
+              <div class="text-xs text-ink-muted mt-0.5">President, Vice Presidents, Directors</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Academic Leadership</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">Colleges, Institutes (KIoT), Deans, Heads</div>
+              <div class="text-xs text-ink-muted mt-0.5">Colleges, Institutes (KIoT), Deans, Heads</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Registrar &amp; Records</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">Student administration &amp; central registry</div>
+              <div class="text-xs text-ink-muted mt-0.5">Student administration &amp; central registry</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Administrative Directorates</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">Human Resources, Finance &amp; Procurement</div>
+              <div class="text-xs text-ink-muted mt-0.5">Human Resources, Finance &amp; Procurement</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Research &amp; Community</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">Directorate of Research &amp; Publication</div>
+              <div class="text-xs text-ink-muted mt-0.5">Directorate of Research &amp; Publication</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Records Officers &amp; Archivists</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">Preservation, retention, physical indexing</div>
+              <div class="text-xs text-ink-muted mt-0.5">Preservation, retention, physical indexing</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Information Technology</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">System administrators, backup operators</div>
+              <div class="text-xs text-ink-muted mt-0.5">System administrators, backup operators</div>
             </div>
 
             <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
               <div class="font-bold text-ink">Academic &amp; Support Staff</div>
-              <div class="text-[11px] text-ink-muted mt-0.5">Departmental tasks &amp; internal memoranda</div>
+              <div class="text-xs text-ink-muted mt-0.5">Departmental tasks &amp; internal memoranda</div>
             </div>
           </div>
         </div>

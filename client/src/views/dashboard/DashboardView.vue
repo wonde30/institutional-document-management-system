@@ -1,4 +1,4 @@
-ï»¿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardApi, workflowApi } from '@/api/client'
@@ -203,16 +203,16 @@ watch(() => authStore.activeUnitId, () => {
                 class="p-3.5 hover:bg-surface-hover transition"
               >
                 <div class="flex items-center justify-between gap-2 mb-1">
-                  <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]">
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]">
                     {{ t.state?.name || 'Open task' }}
                   </span>
-                  <span class="text-[10px] text-ink-faint font-mono">TASK #{{ t.id }}</span>
+                  <span class="text-xs text-ink-faint font-mono">TASK #{{ t.id }}</span>
                 </div>
 
                 <h3 class="text-xs font-semibold text-ink">
                   {{ (t.instance?.documentVersion || t.instance?.document_version)?.document?.title || 'Workflow task' }}
                 </h3>
-                <small class="block text-[11px] text-ink-muted mt-0.5 mb-2 font-mono">
+                <small class="block text-xs text-ink-muted mt-0.5 mb-2 font-mono">
                   {{ (t.instance?.documentVersion || t.instance?.document_version)?.document?.reference_number || 'No linked document reference' }}
                 </small>
 
@@ -251,9 +251,9 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ doc.title }}</div>
-                  <div class="text-[10px] text-ink-faint font-mono">{{ doc.reference_number }} Â· {{ doc.owner_unit?.name || 'Unit' }}</div>
+                  <div class="text-xs text-ink-faint font-mono">{{ doc.reference_number }} · {{ doc.owner_unit?.name || 'Unit' }}</div>
                 </div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   Action Pending
                 </span>
               </div>
@@ -279,15 +279,15 @@ watch(() => authStore.activeUnitId, () => {
                   <div class="font-medium text-ink truncate">
                     {{ (dec.task?.instance?.document_version || (dec.task?.instance as any)?.documentVersion)?.document?.title || `Task #${dec.task?.id}` }}
                   </div>
-                  <div class="text-[10px] text-ink-muted">
-                    Decided by <span class="font-semibold text-ink-secondary">{{ dec.decided_by?.name || 'Officer' }}</span> Â· {{ new Date(dec.decided_at).toLocaleDateString() }}
+                  <div class="text-xs text-ink-muted">
+                    Decided by <span class="font-semibold text-ink-secondary">{{ dec.decided_by?.name || 'Officer' }}</span> · {{ new Date(dec.decided_at).toLocaleDateString() }}
                   </div>
-                  <div v-if="dec.reason" class="text-[10px] text-ink-faint italic truncate mt-0.5 font-mono">
+                  <div v-if="dec.reason" class="text-xs text-ink-faint italic truncate mt-0.5 font-mono">
                     "{{ dec.reason }}"
                   </div>
                 </div>
                 <span
-                  class="px-2 py-0.5 rounded text-[11px] font-semibold shrink-0"
+                  class="px-2 py-0.5 rounded text-xs font-semibold shrink-0"
                   :class="dec.decision === 'approve' ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]' : dec.decision === 'reject' ? 'bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171]' : 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]'"
                 >
                   {{ dec.decision }}
@@ -316,9 +316,9 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ doc.title }}</div>
-                  <div class="text-[10px] text-ink-faint font-mono">{{ doc.reference_number }}</div>
+                  <div class="text-xs text-ink-faint font-mono">{{ doc.reference_number }}</div>
                 </div>
-                <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
+                <span class="px-2 py-0.5 rounded-md text-xs font-medium bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
                   {{ doc.lifecycle }}
                 </span>
               </div>
@@ -382,9 +382,9 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ corr.document?.title || corr.external_reference || 'Outgoing Letter' }}</div>
-                  <div class="text-[11px] text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference }}</div>
+                  <div class="text-xs text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference }}</div>
                 </div>
-                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0] shrink-0">
+                <span class="px-2 py-0.5 rounded text-xs font-medium bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0] shrink-0">
                   Pending dispatch
                 </span>
               </router-link>
@@ -411,7 +411,7 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ corr.document?.title || corr.external_reference || 'Correspondence record' }}</div>
-                  <div class="text-[11px] text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference || '' }}</div>
+                  <div class="text-xs text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference || '' }}</div>
                 </div>
                 <span class="text-xs text-ink-faint shrink-0 font-mono">{{ corr.correspondence_date }}</span>
               </router-link>

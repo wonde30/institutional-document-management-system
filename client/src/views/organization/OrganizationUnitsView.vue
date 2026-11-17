@@ -308,7 +308,7 @@ onMounted(() => {
 
  <div class="flex items-center gap-2">
  <span
- class="text-[11px] px-2 py-0.5 rounded font-medium"
+ class="text-xs px-2 py-0.5 rounded font-medium"
  :class="unit.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'"
  >
  {{ unit.active ? 'Active' : 'Inactive' }}
@@ -363,7 +363,7 @@ onMounted(() => {
  <span class="text-xs font-semibold text-ink-secondary">
  {{ child.name }}
  </span>
- <span class="text-[11px] px-1.5 py-0.2 rounded bg-canvas-soft text-ink-secondary">
+ <span class="text-xs px-1.5 py-0.2 rounded bg-canvas-soft text-ink-secondary">
  {{ child.unit_type?.name }}
  </span>
  </div>
@@ -454,7 +454,7 @@ onMounted(() => {
  </td>
  <td class="px-4 py-3">
  <span
- class="px-2 py-0.5 rounded text-[11px] font-semibold"
+ class="px-2 py-0.5 rounded text-xs font-semibold"
  :class="unit.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'"
  >
  {{ unit.active ? 'Active' : 'Inactive' }}

@@ -107,15 +107,15 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
  <div class="p-3 rounded-lg border border-hairline bg-surface">
  <div class="font-mono font-bold text-xs text-primary">HttpOnly</div>
- <div class="text-[11px] text-ink-muted mt-0.5">Prevents script access</div>
+ <div class="text-xs text-ink-muted mt-0.5">Prevents script access</div>
  </div>
  <div class="p-3 rounded-lg border border-hairline bg-surface">
  <div class="font-mono font-bold text-xs text-primary">SameSite=Lax</div>
- <div class="text-[11px] text-ink-muted mt-0.5">Protects against CSRF</div>
+ <div class="text-xs text-ink-muted mt-0.5">Protects against CSRF</div>
  </div>
  <div class="p-3 rounded-lg border border-hairline bg-surface">
  <div class="font-mono font-bold text-xs text-primary">Zero Trackers</div>
- <div class="text-[11px] text-ink-muted mt-0.5">No 3rd party advertising</div>
+ <div class="text-xs text-ink-muted mt-0.5">No 3rd party advertising</div>
  </div>
  </div>
  </section>

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -246,7 +246,7 @@ onMounted(loadSettings)
           type="button"
           role="tab"
           :aria-selected="activeCategory === category.id"
-          class="px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+          class="px-3 py-1.5 rounded-[6px] text-xs font-semibold border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
           :class="
             activeCategory === category.id
               ? 'bg-primary text-white border-primary'
@@ -260,7 +260,7 @@ onMounted(loadSettings)
 
       <div
         v-if="activeCategory && categories[activeCategory]"
-        class="text-[11px] text-ink-muted"
+        class="text-xs text-ink-muted"
       >
         {{ categories[activeCategory].description }}
       </div>
@@ -275,7 +275,7 @@ onMounted(loadSettings)
           <BaseButton
             v-if="activeCategory"
             variant="outline"
-            class="text-[11px]"
+            class="text-xs"
             :disabled="isSaving"
             @click="requestReset('category', activeCategory, categories[activeCategory]?.label ?? activeCategory)"
           >
@@ -302,10 +302,10 @@ onMounted(loadSettings)
                 <label class="block text-xs font-semibold text-ink-secondary">
                   {{ setting.label }}
                 </label>
-                <p class="text-[11px] text-ink-muted mt-0.5">{{ setting.description }}</p>
+                <p class="text-xs text-ink-muted mt-0.5">{{ setting.description }}</p>
               </div>
               <span
-                class="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded wu-badge"
+                class="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded wu-badge"
                 :class="
                   setting.editable
                     ? 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]'
@@ -346,12 +346,12 @@ onMounted(loadSettings)
                   @update:model-value="(value: string | number) => (draft[setting.key] = value)"
                 />
 
-                <p v-if="fieldErrors[setting.key]" class="text-[11px] text-[#e03e3e] dark:text-[#f87171]">
+                <p v-if="fieldErrors[setting.key]" class="text-xs text-[#e03e3e] dark:text-[#f87171]">
                   {{ fieldErrors[setting.key] }}
                 </p>
               </div>
 
-              <div class="text-[11px] text-ink-muted space-y-1">
+              <div class="text-xs text-ink-muted space-y-1">
                 <p>
                   <span class="font-semibold text-ink-secondary">Default:</span>
                   {{ setting.default }}
@@ -372,7 +372,7 @@ onMounted(loadSettings)
             <div v-if="setting.editable" class="flex justify-end">
               <BaseButton
                 variant="outline"
-                class="text-[11px]"
+                class="text-xs"
                 :disabled="isSaving"
                 @click="requestReset('setting', setting.key, setting.label)"
               >
@@ -390,7 +390,7 @@ onMounted(loadSettings)
           <Lock class="w-4 h-4 text-primary" />
           Deployment Boundary
         </h2>
-        <p class="text-[11px] text-ink-muted">
+        <p class="text-xs text-ink-muted">
           These values are managed by the deployment environment. They are shown for reference and
           cannot be edited here.
         </p>
@@ -401,12 +401,12 @@ onMounted(loadSettings)
             :key="entry.key"
             class="flex items-baseline justify-between gap-3 py-1 border-b border-hairline/60"
           >
-            <span class="text-[11px] text-ink-secondary">{{ entry.label }}</span>
+            <span class="text-xs text-ink-secondary">{{ entry.label }}</span>
             <span
-              class="text-[11px] font-mono text-right"
+              class="text-xs font-mono text-right"
               :class="entry.sensitive ? 'text-ink-faint italic' : 'text-ink'"
             >
-              {{ entry.sensitive ? 'managed externally' : entry.value || 'â€”' }}
+              {{ entry.sensitive ? 'managed externally' : entry.value || '—' }}
             </span>
           </div>
         </div>
@@ -433,8 +433,8 @@ onMounted(loadSettings)
         </div>
 
         <div class="flex items-center justify-between gap-3">
-          <p class="text-[11px] text-ink-muted" role="status" aria-live="polite">
-            <template v-if="isSaving">Saving configurationâ€¦</template>
+          <p class="text-xs text-ink-muted" role="status" aria-live="polite">
+            <template v-if="isSaving">Saving configuration…</template>
             <template v-else-if="hasUnsavedChanges">
               {{ dirtyKeys.length }} unsaved change{{ dirtyKeys.length === 1 ? '' : 's' }}
             </template>
@@ -484,7 +484,7 @@ onMounted(loadSettings)
           </template>
         </p>
 
-        <p class="text-[11px] text-ink-muted">
+        <p class="text-xs text-ink-muted">
           The change is recorded in the security audit trail.
         </p>
 

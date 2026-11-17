@@ -312,7 +312,7 @@ onMounted(() => {
  <div class="font-medium text-ink-secondary truncate" :title="item.document?.title">
  {{ item.document?.title }}
  </div>
- <small class="block text-[11px] text-primary font-mono mt-0.5 truncate">
+ <small class="block text-xs text-primary font-mono mt-0.5 truncate">
  Physical code: {{ item.physical_reference }}
  </small>
  </td>
@@ -321,7 +321,7 @@ onMounted(() => {
  </td>
  <td class="py-3 px-4">
  <span
- class="px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider"
  :class="{
  'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]': item.retention_requirement === 'required',
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]': item.retention_requirement === 'not_required',
@@ -330,14 +330,14 @@ onMounted(() => {
  >
  {{ item.retention_requirement.replace('_', ' ') }}
  </span>
- <span v-if="isDisposed(item)" class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold">
+ <span v-if="isDisposed(item)" class="ml-1.5 px-1.5 py-0.5 rounded text-xs bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold">
  Disposed
  </span>
  </td>
  <td class="py-3 px-4">
  <span
  v-if="latestScan(item)"
- class="inline-flex items-center gap-1 text-[11px] font-medium"
+ class="inline-flex items-center gap-1 text-xs font-medium"
  :class="latestScan(item)?.verification_status === 'accepted'
  ? 'text-emerald-600 dark:text-emerald-400'
  : latestScan(item)?.verification_status === 'rejected'
@@ -347,7 +347,7 @@ onMounted(() => {
  <CheckCircle2 class="w-3.5 h-3.5" />
  {{ latestScan(item)?.verification_status }}
  </span>
- <span v-else class="text-[11px] text-ink-muted">No scan on file</span>
+ <span v-else class="text-xs text-ink-muted">No scan on file</span>
  </td>
  <td class="py-3 px-4 text-right">
  <div class="flex items-center justify-end gap-2">
@@ -532,7 +532,7 @@ onMounted(() => {
  <AlertTriangle class="w-4 h-4 shrink-0" />
  Statutory Physical Disposal Barrier
  </div>
- <p class="text-[11px] leading-relaxed">
+ <p class="text-xs leading-relaxed">
  Physical shredding of paper records marked "retention required" is barred without official Senate Executive or Legal Counsel order. An independent verification certificate will be recorded in the audit ledger.
  </p>
  </div>
@@ -568,7 +568,7 @@ onMounted(() => {
  placeholder="Order identifier or official directive reference"
  required
  />
- <p class="text-[11px] text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-1">
  This record requires physical retention. Disposal is only permitted with an explicit executive disposal order.
  </p>
  </div>

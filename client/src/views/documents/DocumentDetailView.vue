@@ -867,12 +867,12 @@ onMounted(() => {
 
  <!-- Loading Skeleton -->
  <div v-if="isLoading" class="space-y-6">
- <LoadingSkeleton class="h-44 rounded-2xl" />
- <LoadingSkeleton class="h-64 rounded-2xl" />
+ <LoadingSkeleton class="h-44 rounded-lg" />
+ <LoadingSkeleton class="h-64 rounded-lg" />
  </div>
 
  <!-- Error State -->
- <div v-else-if="errorMessage" class="p-8 rounded-2xl bg-surface border border-hairline text-center space-y-4 max-w-md mx-auto shadow-xs">
+ <div v-else-if="errorMessage" class="p-8 rounded-lg bg-surface border border-hairline text-center space-y-4 max-w-md mx-auto shadow-xs">
  <div v-if="errorCode === 403" class="w-12 h-12 rounded-full bg-[#fff4e6] dark:bg-[#3b220c] text-[#dd5b00] dark:text-[#f59e0b] flex items-center justify-center mx-auto">
  <Lock class="w-6 h-6" />
  </div>
@@ -909,7 +909,7 @@ onMounted(() => {
  <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted">
  Official Wollo University Letter Presentation
  </h2>
- <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+ <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
  A4 Authentic Standard
  </span>
  </div>
@@ -969,7 +969,7 @@ onMounted(() => {
  <div class="text-sm font-bold text-ink">
  {{ wf.workflow_definition?.name || 'Administrative Approval Workflow' }}
  </div>
- <div class="text-[11px] text-ink-muted flex items-center gap-2 mt-0.5">
+ <div class="text-xs text-ink-muted flex items-center gap-2 mt-0.5">
  <span>Instance #{{ wf.id }}</span>
  <span>&bull;</span>
  <span v-if="wf.version_number">Target: Revision v{{ wf.version_number }}.0</span>
@@ -989,7 +989,7 @@ onMounted(() => {
  <div class="space-y-1">
  <div class="flex items-center gap-2">
  <span
- class="px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider"
  :class="t.closed_at ? 'bg-surface-muted text-ink-muted border border-hairline' : 'bg-primary-subtle text-primary border border-primary/20'"
  >
  {{ t.state?.name || 'Pending Decision' }}
@@ -999,11 +999,11 @@ onMounted(() => {
  <span v-if="t.decision.decided_by">by {{ t.decision.decided_by.name }}</span>
  </span>
  </div>
- <div class="text-[11px] text-ink-muted flex items-center gap-2">
+ <div class="text-xs text-ink-muted flex items-center gap-2">
  <span>Assignee: {{ t.assigned_user?.name || t.assigned_role?.name || t.assigned_unit?.name || 'Unassigned' }}</span>
  <span v-if="t.due_at">&bull; Due: {{ formatDate(t.due_at) }}</span>
  </div>
- <div v-if="t.decision?.reason" class="text-[11px] text-ink-secondary bg-surface-muted p-2 rounded mt-1 font-mono">
+ <div v-if="t.decision?.reason" class="text-xs text-ink-secondary bg-surface-muted p-2 rounded mt-1 font-mono">
  Note: {{ t.decision.reason }}
  </div>
  </div>
@@ -1080,7 +1080,7 @@ onMounted(() => {
  v-if="document.versions && document.versions.length >= 2"
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2.5"
+ class="h-7 text-xs px-2.5"
  @click="openCompareModal"
  >
  <GitCompare class="w-3.5 h-3.5 mr-1 text-primary" /> Compare Versions
@@ -1107,7 +1107,7 @@ onMounted(() => {
  {{ ver.change_note || 'Initial version' }}
  </span>
  </div>
- <div class="text-[11px] text-ink-faint flex items-center gap-2">
+ <div class="text-xs text-ink-faint flex items-center gap-2">
  <span>Committed: {{ formatDate(ver.created_at) }}</span>
  <span>&bull;</span>
  <span>By: {{ ver.creator?.name || `Staff #${ver.created_by}` }}</span>
@@ -1128,7 +1128,7 @@ onMounted(() => {
  <span class="font-medium text-ink truncate block">
  {{ vf.file_object?.original_filename || `document_v${ver.version_number}.pdf` }}
  </span>
- <div class="text-[10px] text-ink-faint flex items-center gap-2 mt-0.5 font-mono">
+ <div class="text-xs text-ink-faint flex items-center gap-2 mt-0.5 font-mono">
  <span>{{ formatFileSize(vf.file_object?.byte_size) }}</span>
  <span v-if="vf.file_object?.sha256" class="truncate" :title="vf.file_object.sha256">
  &bull; SHA-256: {{ vf.file_object.sha256.substring(0, 12) }}...
@@ -1141,7 +1141,7 @@ onMounted(() => {
  <BaseButton
  size="sm"
  variant="ghost"
- class="h-7 text-[11px] px-2 text-ink-muted hover:text-ink"
+ class="h-7 text-xs px-2 text-ink-muted hover:text-ink"
  :loading="verifyingFileId === vf.file_object_id"
  title="Verify cryptographic SHA-256 integrity against storage"
  @click="verifyFileIntegrity(vf.file_object_id)"
@@ -1154,7 +1154,7 @@ onMounted(() => {
  <BaseButton
  size="sm"
  variant="outline"
- class="h-7 text-[11px] px-2.5"
+ class="h-7 text-xs px-2.5"
  :loading="downloadingFileId === vf.file_object_id"
  @click="handleDownloadFile(vf.file_object_id, vf.file_object?.original_filename || `document_v${ver.version_number}.pdf`)"
  >
@@ -1185,7 +1185,7 @@ onMounted(() => {
  v-if="authStore.hasPermission('documents.update')"
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2"
+ class="h-7 text-xs px-2"
  @click="showAddRelationModal = true"
  >
  <Plus class="w-3.5 h-3.5 mr-1" /> Link Document
@@ -1195,20 +1195,20 @@ onMounted(() => {
  <div v-if="(document.outgoing_relations && document.outgoing_relations.length > 0) || (document.incoming_relations && document.incoming_relations.length > 0)" class="space-y-3">
  <!-- Outgoing Relations -->
  <div v-if="document.outgoing_relations && document.outgoing_relations.length > 0" class="space-y-2">
- <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Referenced by this document</div>
+ <div class="text-xs font-bold uppercase tracking-wider text-ink-muted">Referenced by this document</div>
  <div v-for="rel in document.outgoing_relations" :key="rel.target_id" class="flex items-center justify-between p-3 rounded-xl bg-surface-hover border border-hairline text-xs">
  <div class="flex items-center gap-2.5">
- <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-primary-subtle text-primary">
+ <span class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-primary-subtle text-primary">
  {{ rel.relation_type?.name || 'References' }}
  </span>
  <span class="font-mono text-xs font-semibold text-primary">{{ rel.target_document?.reference_number }}</span>
  <span class="text-ink font-medium">{{ rel.target_document?.title }}</span>
  </div>
  <div class="flex items-center gap-1.5">
- <BaseButton variant="ghost" size="sm" class="h-6 text-[10px] px-2" @click="router.push(`/documents/${rel.target_id}`)">
+ <BaseButton variant="ghost" size="sm" class="h-6 text-xs px-2" @click="router.push(`/documents/${rel.target_id}`)">
  Open
  </BaseButton>
- <BaseButton v-if="authStore.hasPermission('documents.update')" variant="ghost" size="sm" class="h-6 text-[10px] px-1.5 text-rose-500" @click="removeRelation(rel.target_id)">
+ <BaseButton v-if="authStore.hasPermission('documents.update')" variant="ghost" size="sm" class="h-6 text-xs px-1.5 text-rose-500" @click="removeRelation(rel.target_id)">
  Unlink
  </BaseButton>
  </div>
@@ -1217,16 +1217,16 @@ onMounted(() => {
 
  <!-- Incoming Relations -->
  <div v-if="document.incoming_relations && document.incoming_relations.length > 0" class="space-y-2">
- <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Referenced by other documents</div>
+ <div class="text-xs font-bold uppercase tracking-wider text-ink-muted">Referenced by other documents</div>
  <div v-for="rel in document.incoming_relations" :key="rel.source_id" class="flex items-center justify-between p-3 rounded-xl bg-surface-hover border border-hairline text-xs">
  <div class="flex items-center gap-2.5">
- <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-zinc-200 dark:bg-zinc-800 text-ink-secondary">
+ <span class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-zinc-200 dark:bg-zinc-800 text-ink-secondary">
  {{ rel.relation_type?.name || 'Referenced By' }}
  </span>
  <span class="font-mono text-xs font-semibold text-primary">{{ rel.source_document?.reference_number }}</span>
  <span class="text-ink font-medium">{{ rel.source_document?.title }}</span>
  </div>
- <BaseButton variant="ghost" size="sm" class="h-6 text-[10px] px-2" @click="router.push(`/documents/${rel.source_id}`)">
+ <BaseButton variant="ghost" size="sm" class="h-6 text-xs px-2" @click="router.push(`/documents/${rel.source_id}`)">
  Open
  </BaseButton>
  </div>
@@ -1271,7 +1271,7 @@ onMounted(() => {
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div class="flex items-center gap-2 flex-wrap">
                 <span
-                  class="px-2 py-0.5 rounded text-[11px] font-semibold uppercase"
+                  class="px-2 py-0.5 rounded text-xs font-semibold uppercase"
                   :class="{
                     'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]': ext.processing_status === 'completed',
                     'bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0] animate-pulse': ext.processing_status === 'processing',
@@ -1286,7 +1286,7 @@ onMounted(() => {
                 </span>
                 <span
                   v-if="ext.human_verified"
-                  class="px-2 py-0.5 rounded text-[10px] font-medium bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]"
+                  class="px-2 py-0.5 rounded text-xs font-medium bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]"
                 >
                   ✓ Verified by Staff
                 </span>
@@ -1357,14 +1357,14 @@ onMounted(() => {
                 <span class="font-medium text-xs text-ink">
                   {{ sig.signer?.name || 'Authorized Institutional Signer' }}
                 </span>
-                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
                   {{ sig.verification_status || 'Verified' }}
                 </span>
-                <span class="px-2 py-0.5 rounded text-[10px] font-mono text-ink-muted bg-surface-muted">
+                <span class="px-2 py-0.5 rounded text-xs font-mono text-ink-muted bg-surface-muted">
                   {{ sig.trust_tier || 'Development Certificate' }}
                 </span>
               </div>
-              <div class="text-[11px] text-ink-muted">
+              <div class="text-xs text-ink-muted">
                 Signed: {{ formatDate(sig.signed_at || sig.created_at) }} · Format: {{ sig.signature_format || 'PAdES-B-LT' }}
               </div>
             </div>
@@ -1422,25 +1422,25 @@ onMounted(() => {
 
  <span
  v-if="m.receipt"
- class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399] border border-[#1aae39]/20 flex items-center gap-1"
+ class="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399] border border-[#1aae39]/20 flex items-center gap-1"
  >
  <CheckCheck class="w-3 h-3" />
  <span>Acknowledged on {{ formatDate(m.receipt.acknowledged_at) }}</span>
  </span>
  <span
  v-else
- class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b] border border-[#dd5b00]/20 flex items-center gap-1"
+ class="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b] border border-[#dd5b00]/20 flex items-center gap-1"
  >
  <Clock class="w-3 h-3" />
  <span>Pending Office Receipt</span>
  </span>
  </div>
 
- <p v-if="m.instruction" class="text-ink-secondary italic text-[11px]">
+ <p v-if="m.instruction" class="text-ink-secondary italic text-xs">
  &ldquo;{{ m.instruction }}&rdquo;
  </p>
 
- <div class="text-[10px] text-ink-faint flex items-center gap-2 pt-1 border-t border-hairline-subtle">
+ <div class="text-xs text-ink-faint flex items-center gap-2 pt-1 border-t border-hairline-subtle">
  <span>Dispatched: {{ formatDate(m.sent_at) }}</span>
  <span v-if="m.sent_by_user">&bull; Sent by: {{ m.sent_by_user.name }}</span>
  <span v-if="m.due_at">&bull; Due: {{ formatDate(m.due_at) }}</span>
@@ -1476,7 +1476,7 @@ onMounted(() => {
  </div>
  <span
  v-if="a.due_at"
- class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary-subtle text-primary border border-primary/20"
+ class="px-2 py-0.5 rounded-full text-xs font-semibold bg-primary-subtle text-primary border border-primary/20"
  >
  Due: {{ formatDate(a.due_at) }}
  </span>
@@ -1486,7 +1486,7 @@ onMounted(() => {
  {{ a.instruction || (a as any).instructions }}
  </p>
 
- <div class="text-[10px] text-ink-faint flex items-center gap-2 pt-1 border-t border-hairline-subtle">
+ <div class="text-xs text-ink-faint flex items-center gap-2 pt-1 border-t border-hairline-subtle">
  <span>Assigned on: {{ formatDate(a.assigned_at) }}</span>
  <span v-if="a.assigned_by_user">&bull; By: {{ a.assigned_by_user.name }}</span>
  </div>
@@ -1524,19 +1524,19 @@ onMounted(() => {
  Retention: {{ orig.retention_requirement.toUpperCase() }}
  </span>
  </div>
- <span class="text-[11px] text-ink-faint">
+ <span class="text-xs text-ink-faint">
  Registered: {{ formatDate(orig.created_at) }}
  </span>
  </div>
 
  <div v-if="orig.custody_events && orig.custody_events.length > 0" class="pt-2 border-t border-hairline-subtle space-y-2">
- <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <div class="text-xs font-semibold text-ink-muted uppercase tracking-wider">
  Custody Chain Log
  </div>
  <div
  v-for="ce in orig.custody_events"
  :key="ce.id"
- class="flex items-center justify-between text-[11px] bg-surface p-2 rounded-lg border border-hairline"
+ class="flex items-center justify-between text-xs bg-surface p-2 rounded-lg border border-hairline"
  >
  <div class="flex items-center gap-2">
  <span class="font-semibold text-ink capitalize">{{ ce.action }}</span>
@@ -1547,7 +1547,7 @@ onMounted(() => {
  &bull; Custodian: {{ ce.custodian.name }}
  </span>
  </div>
- <span class="text-ink-faint font-mono text-[10px]">
+ <span class="text-ink-faint font-mono text-xs">
  {{ formatDate(ce.occurred_at) }}
  </span>
  </div>
@@ -1582,15 +1582,15 @@ onMounted(() => {
  <div class="space-y-0.5">
  <div class="font-bold text-ink flex items-center gap-2">
  <span>Reference: {{ document.archive_entry?.archive_reference || document.reference_number }}</span>
- <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+ <span class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
  {{ document.lifecycle }}
  </span>
  </div>
- <div class="text-[11px] text-ink-muted">
+ <div class="text-xs text-ink-muted">
  Collection: {{ document.archive_entry?.collection?.name || 'General University Records Collection' }}
  </div>
  </div>
- <span v-if="document.archive_entry?.archived_at" class="text-[11px] text-ink-faint">
+ <span v-if="document.archive_entry?.archived_at" class="text-xs text-ink-faint">
  Archived: {{ formatDate(document.archive_entry.archived_at) }}
  </span>
  </div>
@@ -1636,7 +1636,7 @@ onMounted(() => {
  {{ ev.title }}
  </span>
  <span
- class="px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+ class="px-2 py-0.5 rounded-full text-xs font-semibold border"
  :class="getEventBadgeColor(ev.event_type)"
  >
  {{ ev.event_type.replace(/_/g, ' ') }}
@@ -1647,26 +1647,26 @@ onMounted(() => {
  </p>
  </div>
 
- <span class="text-[11px] font-mono text-ink-faint shrink-0 whitespace-nowrap">
+ <span class="text-xs font-mono text-ink-faint shrink-0 whitespace-nowrap">
  {{ formatDate(ev.timestamp) }}
  </span>
  </div>
 
- <div class="flex items-center gap-3 text-[11px] text-ink-faint flex-wrap">
+ <div class="flex items-center gap-3 text-xs text-ink-faint flex-wrap">
  <span v-if="ev.actor" class="flex items-center gap-1 font-medium text-ink-secondary">
  <User class="w-3 h-3" />
  {{ ev.actor.name }}
  </span>
- <span v-if="ev.metadata?.action" class="font-mono text-[10px]">
+ <span v-if="ev.metadata?.action" class="font-mono text-xs">
  Action: {{ ev.metadata.action }}
  </span>
- <span v-if="ev.metadata?.version_number" class="font-mono text-[10px]">
+ <span v-if="ev.metadata?.version_number" class="font-mono text-xs">
  v{{ ev.metadata.version_number }}
  </span>
- <span v-if="ev.metadata?.from_unit" class="text-[10px]">
+ <span v-if="ev.metadata?.from_unit" class="text-xs">
  {{ ev.metadata.from_unit }} &rarr; {{ ev.metadata.to_unit }}
  </span>
- <span v-if="ev.metadata?.is_fulfilling !== undefined" class="text-[10px]">
+ <span v-if="ev.metadata?.is_fulfilling !== undefined" class="text-xs">
  Fulfilling: {{ ev.metadata.is_fulfilling ? 'Yes' : 'No' }}
  </span>
  </div>
@@ -2132,7 +2132,7 @@ onMounted(() => {
               {{ comparisonResult.comparison.content_identical ? 'Content Identical (Zero Binary Drift)' : 'Material Revision Detected' }}
             </span>
           </div>
-          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wider bg-white/60 dark:bg-black/30">
+          <span class="px-2 py-0.5 rounded text-xs font-mono font-semibold uppercase tracking-wider bg-white/60 dark:bg-black/30">
             Delta: {{ comparisonResult.comparison.version_delta > 0 ? '+' : '' }}{{ comparisonResult.comparison.version_delta }} version(s)
           </span>
         </div>
@@ -2143,17 +2143,17 @@ onMounted(() => {
           <div class="p-3 rounded-xl bg-surface border border-hairline space-y-2">
             <div class="font-bold text-ink flex items-center justify-between">
               <span>Version {{ comparisonResult.version_a.version_number }}.0</span>
-              <span class="text-[10px] text-ink-faint font-mono">{{ formatDate(comparisonResult.version_a.created_at) }}</span>
+              <span class="text-xs text-ink-faint font-mono">{{ formatDate(comparisonResult.version_a.created_at) }}</span>
             </div>
-            <div class="text-[11px] text-ink-secondary">
+            <div class="text-xs text-ink-secondary">
               Note: {{ comparisonResult.version_a.change_note || 'None' }}
             </div>
-            <div class="text-[10px] text-ink-muted">
+            <div class="text-xs text-ink-muted">
               Committed by: {{ comparisonResult.version_a.creator?.name || 'Staff' }}
             </div>
             <div class="border-t border-hairline pt-2 space-y-1">
-              <span class="text-[10px] font-bold uppercase text-ink-muted">Files ({{ comparisonResult.version_a.files.length }})</span>
-              <div v-for="f in comparisonResult.version_a.files" :key="f.id" class="text-[11px] font-mono truncate">
+              <span class="text-xs font-bold uppercase text-ink-muted">Files ({{ comparisonResult.version_a.files.length }})</span>
+              <div v-for="f in comparisonResult.version_a.files" :key="f.id" class="text-xs font-mono truncate">
                 {{ f.filename }} ({{ formatFileSize(f.byte_size) }})
               </div>
             </div>
@@ -2163,17 +2163,17 @@ onMounted(() => {
           <div class="p-3 rounded-xl bg-surface border border-hairline space-y-2">
             <div class="font-bold text-ink flex items-center justify-between">
               <span>Version {{ comparisonResult.version_b.version_number }}.0</span>
-              <span class="text-[10px] text-ink-faint font-mono">{{ formatDate(comparisonResult.version_b.created_at) }}</span>
+              <span class="text-xs text-ink-faint font-mono">{{ formatDate(comparisonResult.version_b.created_at) }}</span>
             </div>
-            <div class="text-[11px] text-ink-secondary">
+            <div class="text-xs text-ink-secondary">
               Note: {{ comparisonResult.version_b.change_note || 'None' }}
             </div>
-            <div class="text-[10px] text-ink-muted">
+            <div class="text-xs text-ink-muted">
               Committed by: {{ comparisonResult.version_b.creator?.name || 'Staff' }}
             </div>
             <div class="border-t border-hairline pt-2 space-y-1">
-              <span class="text-[10px] font-bold uppercase text-ink-muted">Files ({{ comparisonResult.version_b.files.length }})</span>
-              <div v-for="f in comparisonResult.version_b.files" :key="f.id" class="text-[11px] font-mono truncate">
+              <span class="text-xs font-bold uppercase text-ink-muted">Files ({{ comparisonResult.version_b.files.length }})</span>
+              <div v-for="f in comparisonResult.version_b.files" :key="f.id" class="text-xs font-mono truncate">
                 {{ f.filename }} ({{ formatFileSize(f.byte_size) }})
               </div>
             </div>

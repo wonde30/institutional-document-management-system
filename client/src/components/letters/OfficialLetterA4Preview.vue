@@ -83,7 +83,7 @@ const paragraphs = computed(() => {
 <template>
   <div class="a4-document-container bg-white text-slate-900 shadow-lg border border-slate-200 rounded-sm p-6 sm:p-10 max-w-[780px] mx-auto select-text font-serif leading-relaxed text-[13px] relative overflow-hidden">
     <!-- Institutional Asset Warning in Draft Preview -->
-    <div v-if="!emblemUrl" class="mb-3 px-3 py-1.5 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between font-sans">
+    <div v-if="!emblemUrl" class="mb-3 px-3 py-1.5 rounded bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-sans">
       <div class="flex items-center gap-1.5">
         <span class="font-bold">&#9888; Institutional Asset Notice:</span>
         <span>Approved Wollo University emblem is pending installation. Draft preview only &mdash; final issuance requires approved emblem.</span>
@@ -97,8 +97,8 @@ const paragraphs = computed(() => {
       <div class="col-span-5 text-left leading-tight text-slate-800">
         <div class="font-bold text-[14px] text-[#002855]">{{ uniAm }}</div>
         <div class="font-bold text-[12px] text-slate-800 mt-0.5">{{ facultyAm }}</div>
-        <div class="text-[11px] text-slate-700 mt-0.5">{{ deptAm }}</div>
-        <div class="text-[11px] text-slate-700">{{ locationAm }}</div>
+        <div class="text-xs text-slate-700 mt-0.5">{{ deptAm }}</div>
+        <div class="text-xs text-slate-700">{{ locationAm }}</div>
       </div>
 
       <!-- Center: Approved Wollo University Emblem or Reserved Institutional Frame -->
@@ -123,9 +123,9 @@ const paragraphs = computed(() => {
       <!-- Right: English Unit Hierarchy -->
       <div class="col-span-5 text-right leading-tight text-slate-800">
         <div class="font-bold text-[13px] text-[#002855] uppercase">{{ uniEn }}</div>
-        <div class="font-bold text-[11px] text-slate-800 uppercase mt-0.5">{{ facultyEn }}</div>
-        <div class="text-[11px] text-slate-700 mt-0.5">{{ deptEn }}</div>
-        <div class="text-[11px] text-slate-700">{{ locationEn }}</div>
+        <div class="font-bold text-xs text-slate-800 uppercase mt-0.5">{{ facultyEn }}</div>
+        <div class="text-xs text-slate-700 mt-0.5">{{ deptEn }}</div>
+        <div class="text-xs text-slate-700">{{ locationEn }}</div>
       </div>
     </div>
 
@@ -184,7 +184,7 @@ const paragraphs = computed(() => {
     <!-- Lower Section: CC Distribution (Left) & Signatory + Stamp (Right) -->
     <div class="grid grid-cols-12 gap-4 items-start pt-3 border-t border-slate-100 my-4">
       <!-- CC Distribution List (Lower Left) -->
-      <div class="col-span-7 text-[11px] leading-normal text-slate-800">
+      <div class="col-span-7 text-xs leading-normal text-slate-800">
         <div v-if="ccList && ccList.length > 0">
           <div class="font-bold underline mb-1 text-[11.5px]">ግልባጭ፤</div>
           <ul class="space-y-0.5">
@@ -207,7 +207,7 @@ const paragraphs = computed(() => {
 
         <!-- Authentic Signature Block -->
         <!-- When digitally signed with cryptographic proof -->
-        <div v-if="isDigitallySigned" class="my-2 p-2 rounded border border-sky-300 bg-sky-50 text-left text-[10px] text-sky-900 font-sans leading-tight">
+        <div v-if="isDigitallySigned" class="my-2 p-2 rounded border border-sky-300 bg-sky-50 text-left text-xs text-sky-900 font-sans leading-tight">
           <div class="font-bold text-sky-800 flex items-center gap-1">
             <span>&#128274; DIGITALLY SIGNED &amp; VERIFIED</span>
           </div>
@@ -220,7 +220,7 @@ const paragraphs = computed(() => {
         </div>
 
         <div class="font-bold text-[12.5px] text-slate-900">{{ signatoryName || 'Authorized Signatory' }}</div>
-        <div v-if="signatoryTitleAm" class="font-bold text-[11px] text-slate-800 mt-0.5">{{ signatoryTitleAm }}</div>
+        <div v-if="signatoryTitleAm" class="font-bold text-xs text-slate-800 mt-0.5">{{ signatoryTitleAm }}</div>
         <div v-if="signatoryTitleEn" class="text-[10.5px] text-slate-600">{{ signatoryTitleEn }}</div>
 
         <!-- Official Circular Unit Stamp or Reserved Boundary -->

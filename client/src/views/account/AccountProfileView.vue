@@ -167,7 +167,7 @@ function handleSavePreferences() {
  </div>
  <div>
  <span class="block text-ink-muted">Account Status</span>
- <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border border-[#1aae39]/20">
+ <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border border-[#1aae39]/20">
  <CheckCircle2 class="w-3 h-3" /> Active Institutional Account
  </span>
  </div>
@@ -181,7 +181,7 @@ function handleSavePreferences() {
  <span
  v-for="role in (authStore.userRoles.length ? authStore.userRoles : ['Staff'])"
  :key="role"
- class="px-2 py-0.5 rounded text-[11px] font-medium bg-primary-subtle text-primary border border-primary/20"
+ class="px-2 py-0.5 rounded text-xs font-medium bg-primary-subtle text-primary border border-primary/20"
  >
  {{ role }}
  </span>
@@ -207,13 +207,13 @@ function handleSavePreferences() {
  <div class="font-medium text-ink">
  {{ unit.name }}
  </div>
- <div class="text-ink-muted text-[11px]">
+ <div class="text-ink-muted text-xs">
  Code: {{ unit.code }} · Type: {{ unit.unit_type || 'Academic / Administrative' }}
  </div>
  </div>
  <span
  v-if="unit.id === (authStore.primaryUnit?.unit_id || authStore.activeUnitId)"
- class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]"
+ class="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]"
  >
  {{ unit.id === authStore.primaryUnit?.unit_id ? 'Primary Office' : 'Active Office' }}
  </span>
@@ -227,11 +227,11 @@ function handleSavePreferences() {
  <div class="font-medium text-ink">
  {{ authStore.primaryUnit?.unit_name || authStore.activeUnit?.name || 'Central Administration' }}
  </div>
- <div class="text-ink-muted text-[11px]">
+ <div class="text-ink-muted text-xs">
  Role: {{ authStore.userRoles[0] || 'Institutional Staff' }} · Scope: Unit
  </div>
  </div>
- <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]">
+ <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]">
  Primary Office
  </span>
  </div>
@@ -333,7 +333,7 @@ function handleSavePreferences() {
  { value: 'UTC', label: 'Coordinated Universal Time (UTC)' },
  ]"
  />
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  All database timestamps are stored canonically in UTC and rendered in your configured timezone.
  </p>
  </div>

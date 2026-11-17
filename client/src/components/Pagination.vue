@@ -1,4 +1,4 @@
-ï»¿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
 import type { PaginationMeta } from '@/types'
 
@@ -68,7 +68,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
     <!-- Item count summary -->
     <div class="hidden sm:block text-xs text-ink-muted">
       Showing
-      <strong class="font-semibold text-ink">{{ fromItem }}</strong>â€“<strong class="font-semibold text-ink">{{ toItem }}</strong>
+      <strong class="font-semibold text-ink">{{ fromItem }}</strong>–<strong class="font-semibold text-ink">{{ toItem }}</strong>
       of
       <strong class="font-semibold text-ink">{{ totalItems }}</strong>
     </div>
@@ -82,7 +82,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
         aria-label="Previous page"
         @click="emit('page-change', current - 1)"
       >
-        â€¹ Prev
+        ‹ Prev
       </button>
 
       <template v-for="page in pageNumbers" :key="String(page) + '-' + (page === '...' ? Math.random() : '')">
@@ -90,7 +90,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
           v-if="page === '...'"
           class="px-1.5 py-1.5 text-xs text-ink-faint select-none"
           aria-hidden="true"
-        >â€¦</span>
+        >…</span>
         <button
           v-else
           type="button"
@@ -113,7 +113,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
         aria-label="Next page"
         @click="emit('page-change', current + 1)"
       >
-        Next â€º
+        Next ›
       </button>
     </div>
   </nav>

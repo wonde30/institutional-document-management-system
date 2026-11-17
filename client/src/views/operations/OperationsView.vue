@@ -96,7 +96,7 @@ onMounted(() => {
  <div class="text-sm font-bold text-ink-secondary mt-2 font-mono">
  Local POSIX Storage
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Encrypted at rest · Strict SHA-256</div>
+ <div class="text-xs text-ink-muted mt-0.5">Encrypted at rest · Strict SHA-256</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
@@ -107,7 +107,7 @@ onMounted(() => {
  <div class="text-2xl font-bold text-ink-secondary mt-2">
  {{ backups.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Verified daily manifest</div>
+ <div class="text-xs text-ink-muted mt-0.5">Verified daily manifest</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
@@ -118,7 +118,7 @@ onMounted(() => {
  <div class="text-2xl font-bold text-ink-secondary mt-2">
  {{ restoreDrills.length }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Successful simulated restores</div>
+ <div class="text-xs text-ink-muted mt-0.5">Successful simulated restores</div>
  </div>
 
  <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
@@ -129,7 +129,7 @@ onMounted(() => {
  <div class="text-2xl font-bold text-ink-secondary mt-2">
  {{ integrityChecks.length > 0 ? '100% Valid' : 'Continuous' }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">Zero byte corruption detected</div>
+ <div class="text-xs text-ink-muted mt-0.5">Zero byte corruption detected</div>
  </div>
  </div>
 
@@ -140,11 +140,11 @@ onMounted(() => {
  <h2 class="text-xs font-bold text-ink-secondary uppercase tracking-wider">
  Verified Backup Runs
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Repository snapshots and cryptographic manifest hashes
  </p>
  </div>
- <span class="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+ <span class="text-xs text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
  Automated Cron Enabled
  </span>
  </div>
@@ -154,7 +154,7 @@ onMounted(() => {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
  <tr>
  <th class="py-3 px-4">Job Reference</th>
  <th class="py-3 px-4">Started At</th>
@@ -178,11 +178,11 @@ onMounted(() => {
  <td class="py-3 px-4 text-ink-muted">
  {{ b.completed_at ? new Date(b.completed_at).toLocaleString() : 'Recent' }}
  </td>
- <td class="py-3 px-4 font-mono text-[11px] text-ink-muted truncate max-w-xs">
+ <td class="py-3 px-4 font-mono text-xs text-ink-muted truncate max-w-xs">
  {{ b.manifest_reference }}
  </td>
  <td class="py-3 px-4 text-right">
- <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+ <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
  <CheckCircle2 class="w-3 h-3" />
  {{ b.verification_status || 'Verified Valid' }}
  </span>
@@ -208,7 +208,7 @@ onMounted(() => {
  <h2 class="text-xs font-bold text-ink-secondary uppercase tracking-wider">
  Quarterly Restore Drill Ledger
  </h2>
- <p class="text-[11px] text-ink-muted">
+ <p class="text-xs text-ink-muted">
  Demonstrated point-in-time recovery without data loss
  </p>
  </div>
@@ -226,7 +226,7 @@ onMounted(() => {
  <span class="font-bold text-ink-secondary">
  Drill #{{ drill.id }} — Simulated Cold Standby Recovery
  </span>
- <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+ <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
  <CheckCircle2 class="w-3 h-3" />
  Passed
  </span>
@@ -234,7 +234,7 @@ onMounted(() => {
  <p class="text-ink-muted">
  {{ drill.notes || 'Full table schema and SHA-256 byte reconciliation verified with zero checksum divergence.' }}
  </p>
- <div class="text-[11px] text-ink-muted flex items-center gap-3">
+ <div class="text-xs text-ink-muted flex items-center gap-3">
  <span>Started: {{ drill.started_at ? new Date(drill.started_at).toLocaleString() : 'Past Quarter' }}</span>
  <span>·</span>
  <span>Completed: {{ drill.completed_at ? new Date(drill.completed_at).toLocaleString() : 'Past Quarter' }}</span>

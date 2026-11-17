@@ -345,11 +345,11 @@ onMounted(() => {
           <div class="flex items-start justify-between gap-3 mb-2">
             <div>
               <div class="flex items-center gap-1.5">
-                <span class="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20 uppercase">
+                <span class="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20 uppercase">
                   {{ role.code }}
                 </span>
                 <span
-                  class="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                  class="text-xs font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
                   :class="role.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-surface-muted text-ink-muted'"
                 >
                   {{ role.active ? 'Active' : 'Inactive' }}
@@ -361,7 +361,7 @@ onMounted(() => {
             </div>
 
             <span
-              class="text-[10px] font-semibold px-2 py-0.5 rounded shrink-0"
+              class="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
               :class="role.is_system ? 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243] border border-[#dd5b00]/20' : 'bg-surface-muted text-ink-muted'"
             >
               {{ role.is_system ? 'System' : 'Custom' }}
@@ -394,13 +394,13 @@ onMounted(() => {
             <button
               v-if="role.code !== 'super_admin'"
               type="button"
-              class="text-[11px] font-semibold transition-colors cursor-pointer"
+              class="text-xs font-semibold transition-colors cursor-pointer"
               :class="role.active ? 'text-amber-600 hover:text-amber-800' : 'text-emerald-600 hover:text-emerald-800'"
               @click="toggleRoleActive(role)"
             >
               {{ role.active ? 'Deactivate' : 'Activate' }}
             </button>
-            <span v-else class="text-[10px] text-ink-muted italic">Protected core role</span>
+            <span v-else class="text-xs text-ink-muted italic">Protected core role</span>
 
             <BaseButton variant="outline" size="sm" @click="openEditModal(role)">
               <Edit2 class="w-3.5 h-3.5 mr-1" />
@@ -494,7 +494,7 @@ onMounted(() => {
                 </span>
                 <button
                   type="button"
-                  class="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                  class="text-xs font-semibold text-primary hover:underline cursor-pointer"
                   @click="toggleModule(String(moduleName))"
                 >
                   {{ isModuleSelected(String(moduleName)) ? 'Deselect All' : 'Select All' }}
@@ -524,7 +524,7 @@ onMounted(() => {
                         critical
                       </span>
                     </div>
-                    <div class="text-[10px] text-ink-muted line-clamp-1">
+                    <div class="text-xs text-ink-muted line-clamp-1">
                       {{ perm.name }}
                     </div>
                   </div>
@@ -576,7 +576,7 @@ onMounted(() => {
 
         <div v-else class="border border-hairline rounded-lg overflow-x-auto">
           <table class="w-full text-left text-xs min-w-[500px]">
-            <thead class="bg-surface-muted text-ink-muted uppercase tracking-wider text-[10px] font-semibold border-b border-hairline">
+            <thead class="bg-surface-muted text-ink-muted uppercase tracking-wider text-xs font-semibold border-b border-hairline">
               <tr>
                 <th class="px-3 py-2">Staff Member</th>
                 <th class="px-3 py-2">Assigned Scope</th>
@@ -589,7 +589,7 @@ onMounted(() => {
               <tr v-for="user in roleUsersList" :key="user.user_id" class="hover:bg-surface-hover/50">
                 <td class="px-3 py-2.5">
                   <div class="font-medium text-ink-secondary">{{ user.name }}</div>
-                  <div class="text-[11px] text-ink-muted">{{ user.email }}</div>
+                  <div class="text-xs text-ink-muted">{{ user.email }}</div>
                 </td>
                 <td class="px-3 py-2.5">
                   <div class="flex items-center gap-1 font-medium text-ink-secondary">
@@ -618,7 +618,7 @@ onMounted(() => {
                 </td>
                 <td class="px-3 py-2.5 text-right">
                   <span
-                    class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1"
+                    class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider inline-flex items-center gap-1"
                     :class="user.status === 'active' && !user.is_expired ? 'bg-[#e8f7ec] text-[#1aae39]' : 'bg-surface-muted text-ink-muted'"
                   >
                     {{ user.status === 'active' && !user.is_expired ? 'Active' : 'Inactive' }}

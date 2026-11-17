@@ -51,7 +51,7 @@ onMounted(() => {
             <span class="text-sm sm:text-base font-bold tracking-tight text-ink group-hover:text-primary transition-colors leading-tight">
               Wollo University
             </span>
-            <span class="text-[11px] font-medium text-ink-muted leading-tight">
+            <span class="text-xs font-medium text-ink-muted leading-tight">
               Administrative &amp; Document Management System
             </span>
           </div>

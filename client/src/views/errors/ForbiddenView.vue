@@ -9,7 +9,7 @@ const router = useRouter()
 <template>
  <div class="min-h-[70vh] flex items-center justify-center p-4">
  <div class="max-w-md w-full bg-surface border border-hairline rounded-2xl shadow-xs p-8 text-center space-y-5">
- <div class="inline-flex w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 items-center justify-center border border-amber-200 dark:border-amber-900">
+ <div class="inline-flex w-14 h-14 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 items-center justify-center border border-amber-200 dark:border-amber-900">
  <ShieldAlert class="w-7 h-7" />
  </div>
 
