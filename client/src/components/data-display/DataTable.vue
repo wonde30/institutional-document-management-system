@@ -182,7 +182,7 @@ function handleSort(col: TableColumn) {
  v-else
  v-for="(item, index) in safeItems"
  :key="item && typeof item === 'object' && item[idKey] !== undefined ? item[idKey] : index"
- class="min-h-[44px] hover:bg-surface-hover transition group cursor-pointer"
+ class="min-h-[44px] hover:bg-canvas-soft transition group cursor-pointer"
  :class="{ 'bg-primary-subtle/50': item && typeof item === 'object' && selectedIds.includes(item[idKey]) }"
  @click="emit('rowClick', item)"
  >
