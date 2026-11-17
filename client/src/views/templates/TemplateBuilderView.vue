@@ -639,7 +639,7 @@ onMounted(() => {
       size="lg"
       @close="showPreviewModal = false"
     >
-      <div class="bg-surface p-6 rounded-xl border border-hairline shadow-inner overflow-auto max-h-[60vh] text-ink">
+      <div class="bg-surface p-6 rounded-xl border border-hairline overflow-auto max-h-[60vh] text-ink">
         <div v-html="previewHtml"></div>
       </div>
       <div class="flex justify-end pt-4 border-t border-hairline mt-4">

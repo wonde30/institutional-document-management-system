@@ -61,7 +61,7 @@ async function handleLogin() {
  <div class="bg-surface border border-hairline rounded-lg border border-hairline bg-surface p-6 sm:p-8 space-y-5">
  <!-- University Branding -->
  <div class="text-center space-y-2">
- <div class="inline-flex w-11 h-11 rounded-lg bg-primary text-white items-center justify-center font-bold text-base shadow-2xs">
+ <div class="inline-flex w-11 h-11 rounded-lg bg-primary text-white items-center justify-center font-bold text-base ">
  WU
  </div>
  <div>

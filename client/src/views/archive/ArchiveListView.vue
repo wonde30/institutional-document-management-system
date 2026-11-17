@@ -395,7 +395,7 @@ onMounted(() => {
 
     <!-- Stat Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="bg-surface p-3.5 rounded-lg border border-hairline shadow-2xs flex items-center gap-3">
+      <div class="bg-surface p-3.5 rounded-lg border border-hairline flex items-center gap-3">
         <div class="p-3 bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] rounded-md">
           <FolderArchive class="w-5 h-5" />
         </div>
@@ -405,7 +405,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="bg-surface p-3.5 rounded-lg border border-hairline shadow-2xs flex items-center gap-3">
+      <div class="bg-surface p-3.5 rounded-lg border border-hairline flex items-center gap-3">
         <div class="p-3 bg-primary-subtle text-primary rounded-md">
           <Layers class="w-5 h-5" />
         </div>
@@ -415,7 +415,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="bg-surface p-3.5 rounded-lg border border-hairline shadow-2xs flex items-center gap-3">
+      <div class="bg-surface p-3.5 rounded-lg border border-hairline flex items-center gap-3">
         <div class="p-3 bg-[#fdebee] dark:bg-[#381619] text-[#e03e3e] dark:text-[#ff7373] rounded-md">
           <Scale class="w-5 h-5" />
         </div>

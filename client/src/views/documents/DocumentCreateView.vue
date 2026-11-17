@@ -950,7 +950,7 @@ watchEffect(() => {
             <span class="text-xs font-mono text-ink-faint">Standard Template A4</span>
           </div>
 
-          <div class="bg-surface rounded-xl border border-hairline shadow-md overflow-hidden min-h-[500px]">
+          <div class="bg-surface rounded-xl border border-hairline overflow-hidden min-h-[500px]">
             <div class="border-b border-hairline bg-surface-hover px-4 py-2.5 flex items-center justify-between text-xs text-ink-secondary">
               <span class="font-semibold">{{ selectedTemplate?.name || 'Template Document' }}</span>
               <span class="font-mono text-xs text-ink-muted">A4 Paper Simulation</span>

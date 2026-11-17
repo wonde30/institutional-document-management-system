@@ -81,7 +81,7 @@ const paragraphs = computed(() => {
 </script>
 
 <template>
-  <div class="a4-document-container bg-white text-slate-900 shadow-lg border border-slate-200 rounded-sm p-6 sm:p-10 max-w-[780px] mx-auto select-text font-serif leading-relaxed text-[13px] relative overflow-hidden">
+  <div class="a4-document-container bg-white text-slate-900 border border-slate-200 rounded-sm p-6 sm:p-10 max-w-[780px] mx-auto select-text font-serif leading-relaxed text-[13px] relative overflow-hidden">
     <!-- Institutional Asset Warning in Draft Preview -->
     <div v-if="!emblemUrl" class="mb-3 px-3 py-1.5 rounded bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-sans">
       <div class="flex items-center gap-1.5">

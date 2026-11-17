@@ -9,7 +9,7 @@ import { Building2, ShieldCheck, FileText, ExternalLink } from 'lucide-vue-next'
         <!-- Col 1: Institutional Identity -->
         <div class="space-y-3.5 md:col-span-2">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
+            <div class="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">
               WU
             </div>
             <div>

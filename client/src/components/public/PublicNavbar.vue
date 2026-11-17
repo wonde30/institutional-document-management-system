@@ -44,7 +44,7 @@ onMounted(() => {
       <div class="flex items-center justify-between h-14 sm:h-16">
         <!-- University Crest & Title -->
         <router-link to="/" class="flex items-center gap-3 group">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-2xs group-hover:bg-primary-hover transition-colors shrink-0">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm sm:text-base group-hover:bg-primary-hover transition-colors shrink-0">
             WU
           </div>
           <div class="flex flex-col">

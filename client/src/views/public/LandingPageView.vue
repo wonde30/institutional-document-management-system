@@ -60,7 +60,7 @@ function handleCtaClick() {
               <BaseButton
                 variant="primary"
                 size="md"
-                class="text-xs sm:text-sm font-semibold py-2 px-4 sm:px-5 rounded-lg shadow-2xs"
+                class="text-xs sm:text-sm font-semibold py-2 px-4 sm:px-5 rounded-lg"
                 @click="handleCtaClick"
               >
                 <span>{{ authStore.isAuthenticated ? 'Enter Workspace' : 'Sign In to Workspace' }}</span>
@@ -77,19 +77,19 @@ function handleCtaClick() {
 
             <!-- Technical Scope Fact Sheet (Tested Proposal Metrics) -->
             <div class="mt-8 pt-6 border-t border-hairline grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
+              <div class="p-3 rounded-lg border border-hairline bg-surface">
                 <span class="block text-2xl font-bold font-mono text-primary">118</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Normalized Tables</span>
               </div>
-              <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
+              <div class="p-3 rounded-lg border border-hairline bg-surface">
                 <span class="block text-2xl font-bold font-mono text-primary">3NF</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Relational Baseline</span>
               </div>
-              <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
+              <div class="p-3 rounded-lg border border-hairline bg-surface">
                 <span class="block text-2xl font-bold font-mono text-primary">100%</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Audited Lifecycle</span>
               </div>
-              <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
+              <div class="p-3 rounded-lg border border-hairline bg-surface">
                 <span class="block text-2xl font-bold font-mono text-primary">Multi-Unit</span>
                 <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Scoped RBAC</span>
               </div>
@@ -115,7 +115,7 @@ function handleCtaClick() {
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
             <!-- Card 1 -->
-            <div class="bg-surface p-5 rounded-lg border border-hairline shadow-2xs space-y-2.5 hover:border-primary/40 transition">
+            <div class="bg-surface p-5 rounded-lg border border-hairline space-y-2.5 hover:border-primary/40 transition">
               <div class="w-9 h-9 rounded-md bg-primary-subtle text-primary flex items-center justify-center shrink-0">
                 <FileText class="w-4 h-4" />
               </div>
@@ -128,7 +128,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Card 2 -->
-            <div class="bg-surface p-5 rounded-lg border border-hairline shadow-2xs space-y-2.5 hover:border-primary/40 transition">
+            <div class="bg-surface p-5 rounded-lg border border-hairline space-y-2.5 hover:border-primary/40 transition">
               <div class="w-9 h-9 rounded-md bg-primary-subtle text-primary flex items-center justify-center shrink-0">
                 <Mail class="w-4 h-4" />
               </div>
@@ -141,7 +141,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Card 3 -->
-            <div class="bg-surface p-5 rounded-lg border border-hairline shadow-2xs space-y-2.5 hover:border-primary/40 transition">
+            <div class="bg-surface p-5 rounded-lg border border-hairline space-y-2.5 hover:border-primary/40 transition">
               <div class="w-9 h-9 rounded-md bg-primary-subtle text-primary flex items-center justify-center shrink-0">
                 <Archive class="w-4 h-4" />
               </div>
@@ -173,7 +173,7 @@ function handleCtaClick() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             <!-- Module 1: Document Repository -->
-            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition shadow-2xs space-y-2">
+            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition space-y-2">
               <div class="flex items-center gap-2.5">
                 <div class="p-2 rounded-md bg-primary-subtle text-primary shrink-0">
                   <FileText class="w-4 h-4" />
@@ -186,7 +186,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Module 2: Correspondence Management -->
-            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition shadow-2xs space-y-2">
+            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition space-y-2">
               <div class="flex items-center gap-2.5">
                 <div class="p-2 rounded-md bg-primary-subtle text-primary shrink-0">
                   <Send class="w-4 h-4" />
@@ -199,7 +199,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Module 3: Inter-Office Routing -->
-            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition shadow-2xs space-y-2">
+            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition space-y-2">
               <div class="flex items-center gap-2.5">
                 <div class="p-2 rounded-md bg-primary-subtle text-primary shrink-0">
                   <Layers class="w-4 h-4" />
@@ -212,7 +212,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Module 4: Digital Archiving -->
-            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition shadow-2xs space-y-2">
+            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition space-y-2">
               <div class="flex items-center gap-2.5">
                 <div class="p-2 rounded-md bg-primary-subtle text-primary shrink-0">
                   <Archive class="w-4 h-4" />
@@ -225,7 +225,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Module 5: Accreditation Quality Assurance -->
-            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition shadow-2xs space-y-2">
+            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition space-y-2">
               <div class="flex items-center gap-2.5">
                 <div class="p-2 rounded-md bg-primary-subtle text-primary shrink-0">
                   <Award class="w-4 h-4" />
@@ -238,7 +238,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Module 6: Signatures & PKI -->
-            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition shadow-2xs space-y-2">
+            <div class="p-4 sm:p-5 rounded-lg border border-hairline bg-surface hover:border-primary/40 transition space-y-2">
               <div class="flex items-center gap-2.5">
                 <div class="p-2 rounded-md bg-primary-subtle text-primary shrink-0">
                   <FileCheck class="w-4 h-4" />
@@ -288,7 +288,7 @@ function handleCtaClick() {
             </div>
 
             <!-- Accreditation Standards Preview Panel -->
-            <div class="lg:col-span-6 bg-surface rounded-lg border border-hairline p-5 shadow-2xs space-y-3">
+            <div class="lg:col-span-6 bg-surface rounded-lg border border-hairline p-5 space-y-3">
               <div class="flex items-center justify-between pb-2.5 border-b border-hairline">
                 <h4 class="text-xs font-bold   text-ink">
                   HERQA Standard Mappings (Active Cycle)
@@ -352,7 +352,7 @@ function handleCtaClick() {
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
-            <div class="p-5 rounded-lg border border-hairline bg-surface shadow-2xs space-y-2.5 hover:border-primary/40 transition">
+            <div class="p-5 rounded-lg border border-hairline bg-surface space-y-2.5 hover:border-primary/40 transition">
               <div class="w-9 h-9 rounded-md bg-primary-subtle text-primary flex items-center justify-center shrink-0">
                 <ShieldCheck class="w-4 h-4" />
               </div>
@@ -362,7 +362,7 @@ function handleCtaClick() {
               </p>
             </div>
 
-            <div class="p-5 rounded-lg border border-hairline bg-surface shadow-2xs space-y-2.5 hover:border-primary/40 transition">
+            <div class="p-5 rounded-lg border border-hairline bg-surface space-y-2.5 hover:border-primary/40 transition">
               <div class="w-9 h-9 rounded-md bg-primary-subtle text-primary flex items-center justify-center shrink-0">
                 <Lock class="w-4 h-4" />
               </div>
@@ -372,7 +372,7 @@ function handleCtaClick() {
               </p>
             </div>
 
-            <div class="p-5 rounded-lg border border-hairline bg-surface shadow-2xs space-y-2.5 hover:border-primary/40 transition">
+            <div class="p-5 rounded-lg border border-hairline bg-surface space-y-2.5 hover:border-primary/40 transition">
               <div class="w-9 h-9 rounded-md bg-primary-subtle text-primary flex items-center justify-center shrink-0">
                 <Database class="w-4 h-4" />
               </div>
@@ -401,42 +401,42 @@ function handleCtaClick() {
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-xs">
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">University Management</div>
               <div class="text-xs text-ink-muted mt-0.5">President, Vice Presidents, Directors</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Academic Leadership</div>
               <div class="text-xs text-ink-muted mt-0.5">Colleges, Institutes (KIoT), Deans, Heads</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Registrar &amp; Records</div>
               <div class="text-xs text-ink-muted mt-0.5">Student administration &amp; central registry</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Administrative Directorates</div>
               <div class="text-xs text-ink-muted mt-0.5">Human Resources, Finance &amp; Procurement</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Research &amp; Community</div>
               <div class="text-xs text-ink-muted mt-0.5">Directorate of Research &amp; Publication</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Records Officers &amp; Archivists</div>
               <div class="text-xs text-ink-muted mt-0.5">Preservation, retention, physical indexing</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Information Technology</div>
               <div class="text-xs text-ink-muted mt-0.5">System administrators, backup operators</div>
             </div>
 
-            <div class="p-3.5 rounded-lg bg-surface border border-hairline shadow-2xs hover:border-primary/30 transition">
+            <div class="p-3.5 rounded-lg bg-surface border border-hairline hover:border-primary/30 transition">
               <div class="font-bold text-ink">Academic &amp; Support Staff</div>
               <div class="text-xs text-ink-muted mt-0.5">Departmental tasks &amp; internal memoranda</div>
             </div>
@@ -447,7 +447,7 @@ function handleCtaClick() {
       <!-- Section 7: Final Institutional Call to Action -->
       <section id="access" class="py-12 sm:py-16 bg-surface border-t border-hairline">
         <div class="max-w-3xl mx-auto px-4 text-center space-y-4 sm:space-y-5">
-          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-base mx-auto shadow-2xs">
+          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-base mx-auto">
             WU
           </div>
 
@@ -463,7 +463,7 @@ function handleCtaClick() {
             <BaseButton
               variant="primary"
               size="md"
-              class="text-xs sm:text-sm font-semibold py-2 px-5 sm:px-6 rounded-lg shadow-2xs"
+              class="text-xs sm:text-sm font-semibold py-2 px-5 sm:px-6 rounded-lg"
               @click="handleCtaClick"
             >
               <span>{{ authStore.isAuthenticated ? 'Enter Workspace' : 'Sign In with Institutional ID' }}</span>
