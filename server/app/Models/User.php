@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -599,5 +600,247 @@ class User extends Authenticatable
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Inspect and resolve complete permission lineage for this user.
+     *
+     * Provides full audit trace: User -> Role/Direct Grant -> Permission -> Scope,
+     * evaluating whether each grant is effective, expired, out of scope, or deactivated.
+     *
+     * @param int|null $unitId Target unit to evaluate scope against (null for global evaluation)
+     * @return array<string, mixed>
+     */
+    public function getPermissionLineage(?int $unitId = null): array
+    {
+        $targetUnit = $unitId !== null ? OrganizationUnit::find($unitId) : null;
+        $subtreeUnitIds = $this->resolveSubtreeUnitIds($unitId);
+
+        $userRoles = $this->userRoles()
+            ->with(['role.permissions', 'scope.unit', 'grantedBy'])
+            ->get();
+
+        $userPerms = $this->userPermissions()
+            ->with(['permission', 'scope.unit', 'grantor'])
+            ->get();
+
+        $lineage = [];
+        $warnings = [];
+        $effectiveCodes = [];
+        $scopesHeld = [];
+
+        // 1. Process Role Grants
+        foreach ($userRoles as $ur) {
+            $role = $ur->role;
+            $scope = $ur->scope;
+            $isRoleExpired = $ur->expires_at && $ur->expires_at->isPast();
+            $isRoleActive = $role && $role->active;
+
+            if ($isRoleExpired) {
+                $warnings[] = "Role assignment '{$role?->name}' expired on {$ur->expires_at->toIso8601String()}.";
+            }
+            if ($role && ! $role->active) {
+                $warnings[] = "Assigned role '{$role->name}' is deactivated in the catalog.";
+            }
+
+            $scopeApplies = $this->scopeAppliesToUnit($scope, $unitId, $subtreeUnitIds);
+
+            if ($scope) {
+                $scopeKey = "{$scope->kind}_{$scope->unit_id}";
+                $scopesHeld[$scopeKey] = [
+                    'id' => $scope->id,
+                    'kind' => $scope->kind,
+                    'unit_id' => $scope->unit_id,
+                    'unit_name' => $scope->unit?->name ?? ($scope->kind === 'global' ? 'Global Scope' : null),
+                ];
+            }
+
+            if ($role) {
+                foreach ($role->permissions as $p) {
+                    $isPermActive = (bool) $p->active;
+                    $isEffective = (! $isRoleExpired) && $isRoleActive && $isPermActive && $scopeApplies;
+
+                    if ($isEffective) {
+                        $effectiveCodes[$p->code] = true;
+                    }
+
+                    $statusLabel = 'Effective';
+                    if ($isRoleExpired) {
+                        $statusLabel = 'Expired';
+                    } elseif (! $isRoleActive) {
+                        $statusLabel = 'Role Inactive';
+                    } elseif (! $isPermActive) {
+                        $statusLabel = 'Permission Inactive';
+                    } elseif (! $scopeApplies) {
+                        $statusLabel = 'Out of Scope';
+                    }
+
+                    $codeParts = explode('.', $p->code);
+                    $module = count($codeParts) > 1 ? $codeParts[0] : 'general';
+
+                    $lineage[] = [
+                        'permission_id' => $p->id,
+                        'permission_code' => $p->code,
+                        'permission_name' => $p->name,
+                        'permission_description' => $p->description,
+                        'module' => $module,
+                        'source_type' => 'role',
+                        'source_id' => $role->id,
+                        'source_code' => $role->code,
+                        'source_name' => $role->name,
+                        'scope_kind' => $scope?->kind ?? 'unknown',
+                        'scope_unit_id' => $scope?->unit_id,
+                        'scope_unit_name' => $scope?->unit?->name ?? ($scope?->kind === 'global' ? 'All Units (Global)' : null),
+                        'granted_at' => $ur->granted_at?->toIso8601String(),
+                        'expires_at' => $ur->expires_at?->toIso8601String(),
+                        'is_expired' => $isRoleExpired,
+                        'is_source_active' => $isRoleActive,
+                        'is_permission_active' => $isPermActive,
+                        'scope_applies' => $scopeApplies,
+                        'is_effective' => $isEffective,
+                        'status_label' => $statusLabel,
+                    ];
+                }
+            }
+        }
+
+        // 2. Process Direct Permission Grants
+        foreach ($userPerms as $up) {
+            $perm = $up->permission;
+            $scope = $up->scope;
+            $isPermExpired = $up->expires_at && $up->expires_at->isPast();
+            $isPermActive = $perm && $perm->active;
+
+            if ($isPermExpired) {
+                $warnings[] = "Direct grant '{$perm?->name}' expired on {$up->expires_at->toIso8601String()}.";
+            }
+            if ($perm && ! $perm->active) {
+                $warnings[] = "Directly granted permission '{$perm->name}' is deactivated in the catalog.";
+            }
+
+            $scopeApplies = $this->scopeAppliesToUnit($scope, $unitId, $subtreeUnitIds);
+
+            if ($scope) {
+                $scopeKey = "{$scope->kind}_{$scope->unit_id}";
+                $scopesHeld[$scopeKey] = [
+                    'id' => $scope->id,
+                    'kind' => $scope->kind,
+                    'unit_id' => $scope->unit_id,
+                    'unit_name' => $scope->unit?->name ?? ($scope->kind === 'global' ? 'Global Scope' : null),
+                ];
+            }
+
+            if ($perm) {
+                $isEffective = (! $isPermExpired) && $isPermActive && $scopeApplies;
+
+                if ($isEffective) {
+                    $effectiveCodes[$perm->code] = true;
+                }
+
+                $statusLabel = 'Effective';
+                if ($isPermExpired) {
+                    $statusLabel = 'Expired';
+                } elseif (! $isPermActive) {
+                    $statusLabel = 'Permission Inactive';
+                } elseif (! $scopeApplies) {
+                    $statusLabel = 'Out of Scope';
+                }
+
+                $codeParts = explode('.', $perm->code);
+                $module = count($codeParts) > 1 ? $codeParts[0] : 'general';
+
+                $lineage[] = [
+                    'permission_id' => $perm->id,
+                    'permission_code' => $perm->code,
+                    'permission_name' => $perm->name,
+                    'permission_description' => $perm->description,
+                    'module' => $module,
+                    'source_type' => 'direct',
+                    'source_id' => $up->id,
+                    'source_code' => 'direct_grant',
+                    'source_name' => 'Direct User Grant',
+                    'scope_kind' => $scope?->kind ?? 'unknown',
+                    'scope_unit_id' => $scope?->unit_id,
+                    'scope_unit_name' => $scope?->unit?->name ?? ($scope?->kind === 'global' ? 'All Units (Global)' : null),
+                    'granted_at' => $up->granted_at?->toIso8601String(),
+                    'expires_at' => $up->expires_at?->toIso8601String(),
+                    'is_expired' => $isPermExpired,
+                    'is_source_active' => true,
+                    'is_permission_active' => $isPermActive,
+                    'scope_applies' => $scopeApplies,
+                    'is_effective' => $isEffective,
+                    'status_label' => $statusLabel,
+                ];
+            }
+        }
+
+        // Sort lineage by module then permission code
+        usort($lineage, function ($a, $b) {
+            $cmp = strcmp($a['module'], $b['module']);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return strcmp($a['permission_code'], $b['permission_code']);
+        });
+
+        return [
+            'user_id' => $this->id,
+            'user_name' => $this->name,
+            'user_email' => $this->email,
+            'target_unit_id' => $unitId,
+            'target_unit_name' => $targetUnit?->name,
+            'primary_unit_id' => $this->getPrimaryUnitId(),
+            'effective_codes' => array_values(array_keys($effectiveCodes)),
+            'effective_count' => count($effectiveCodes),
+            'lineage' => $lineage,
+            'warnings' => array_values(array_unique($warnings)),
+            'scopes_held' => array_values($scopesHeld),
+        ];
+    }
+
+    /**
+     * Count active users who hold the protected system administrative capability ('system.configure') in global scope.
+     *
+     * @param int|null $excludingUserId Exclude this user from the count if testing whether revoking/suspending them causes lockout.
+     */
+    public static function countActiveSystemAdministrators(?int $excludingUserId = null): int
+    {
+        $permId = DB::table('permissions')->where('code', 'system.configure')->value('id');
+        if (! $permId) {
+            return 0;
+        }
+
+        $now = now();
+
+        $roleUserIds = DB::table('user_roles')
+            ->join('users', 'users.id', '=', 'user_roles.user_id')
+            ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+            ->join('role_permissions', 'role_permissions.role_id', '=', 'roles.id')
+            ->join('authorization_scopes', 'authorization_scopes.id', '=', 'user_roles.scope_id')
+            ->where('role_permissions.permission_id', $permId)
+            ->where('roles.active', 1)
+            ->where('users.status', 'active')
+            ->where('authorization_scopes.kind', 'global')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('user_roles.expires_at')->orWhere('user_roles.expires_at', '>', $now);
+            })
+            ->when($excludingUserId !== null, fn ($q) => $q->where('users.id', '!=', $excludingUserId))
+            ->pluck('users.id')
+            ->all();
+
+        $directUserIds = DB::table('user_permissions')
+            ->join('users', 'users.id', '=', 'user_permissions.user_id')
+            ->join('authorization_scopes', 'authorization_scopes.id', '=', 'user_permissions.scope_id')
+            ->where('user_permissions.permission_id', $permId)
+            ->where('users.status', 'active')
+            ->where('authorization_scopes.kind', 'global')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('user_permissions.expires_at')->orWhere('user_permissions.expires_at', '>', $now);
+            })
+            ->when($excludingUserId !== null, fn ($q) => $q->where('users.id', '!=', $excludingUserId))
+            ->pluck('users.id')
+            ->all();
+
+        return count(array_unique(array_merge($roleUserIds, $directUserIds)));
     }
 }

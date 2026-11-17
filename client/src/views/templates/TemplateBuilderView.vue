@@ -63,21 +63,19 @@ const isSubmittingCreate = ref(false)
 const versionForm = ref({
   template_content: '',
   schema_definition: '{\n  "recipient": "string",\n  "subject": "string",\n  "body": "string",\n  "reference_date": "string"\n}',
-  change_note: 'Updated template layout and institutional headers',
   publish_now: true,
 })
 const isSubmittingVersion = ref(false)
 
 // Generate Document Model
 const generateForm = ref({
-  recipient: 'Academic Vice President Office',
-  subject: 'Departmental Curriculum Review and Laboratory Allocation',
-  body: 'We hereby submit the comprehensive review of department course specifications and request authorization for upgraded laboratory equipment.',
+  recipient: '',
+  subject: '',
+  body: '',
   reference_date: new Date().toISOString().split('T')[0],
   category_id: '' as number | '',
   confidentiality_id: '' as number | '',
   owner_unit_id: '' as number | '',
-  change_note: 'Generated from approved institutional template',
 })
 const isGenerating = ref(false)
 const previewHtml = ref('')
@@ -103,7 +101,7 @@ async function loadCatalogs() {
     confidentialityLevels.value = (confRes.data as any).data || []
 
     if (units.value.length > 0) {
-      generateForm.value.owner_unit_id = authStore.primaryUnit?.unit_id || units.value[0].id
+      generateForm.value.owner_unit_id = authStore.activeUnitId || authStore.primaryUnit?.unit_id || units.value[0].id
     }
     if (categories.value.length > 0) {
       createForm.value.category_id = categories.value[0].id
@@ -138,7 +136,7 @@ async function loadTemplates(page = 1) {
 function openCreateModal() {
   createForm.value = {
     name: '',
-    code: 'WU-TMP-' + Math.floor(100 + Math.random() * 900),
+    code: '',
     category_id: categories.value[0]?.id || 1,
     active: true,
   }
@@ -171,11 +169,13 @@ async function submitCreateTemplate() {
 
 function openVersionModal(tpl: any) {
   activeTemplate.value = tpl
+  const published = tpl.published_version
   versionForm.value = {
-    template_content: tpl.published_version?.template_content || 
+    template_content: published?.body_template_html ||
       '<div style="font-family: Arial, sans-serif; padding: 24px;">\n  <h2 style="color: #003366; text-align: center;">WOLLO UNIVERSITY</h2>\n  <h4 style="text-align: center; border-bottom: 2px solid #003366; padding-bottom: 8px;">OFFICIAL ADMINISTRATIVE DIRECTIVE</h4>\n  <p><strong>To:</strong> {{recipient}}</p>\n  <p><strong>Date:</strong> {{reference_date}}</p>\n  <p><strong>Subject:</strong> {{subject}}</p>\n  <hr style="border: 0; border-top: 1px solid #ccc; margin: 16px 0;" />\n  <div style="line-height: 1.6;">{{body}}</div>\n  <br><br>\n  <p><strong>Approved by:</strong> Dean / Authorized Officer</p>\n</div>',
-    schema_definition: '{\n  "recipient": "string",\n  "subject": "string",\n  "body": "string",\n  "reference_date": "string"\n}',
-    change_note: 'Updated institutional layout version',
+    schema_definition: published?.schema_definition
+      ? JSON.stringify(published.schema_definition, null, 2)
+      : '{\n  "recipient": "string",\n  "subject": "string",\n  "body": "string",\n  "reference_date": "string"\n}',
     publish_now: true,
   }
   showVersionModal.value = true
@@ -196,17 +196,16 @@ async function submitNewVersion() {
   try {
     const res = await templatesApi.createVersion(activeTemplate.value.id, {
       body_template_html: versionForm.value.template_content,
-      template_content: versionForm.value.template_content,
       schema_definition: parsedSchema,
-      change_note: versionForm.value.change_note,
     })
 
     const newVer = res.data.data
     if (versionForm.value.publish_now && newVer?.id) {
       await templatesApi.publishVersion(activeTemplate.value.id, newVer.id)
+      toast.success('Template version created and published successfully.')
+    } else {
+      toast.success('Template version saved as a draft.')
     }
-
-    toast.success('Template version created and published successfully.')
     showVersionModal.value = false
     await loadTemplates(pagination.value.current_page)
   } catch (err: any) {
@@ -219,14 +218,13 @@ async function submitNewVersion() {
 function openGenerateModal(tpl: any) {
   activeTemplate.value = tpl
   generateForm.value = {
-    recipient: 'Dean, College of Informatics',
-    subject: 'Laboratory Procurement and Staff Allocation Directive',
-    body: 'Please proceed with formal procurement evaluation for updated computing equipment and staff directives as approved by Council.',
+    recipient: '',
+    subject: '',
+    body: '',
     reference_date: new Date().toISOString().split('T')[0],
     category_id: tpl.category_id || categories.value[0]?.id || '',
     confidentiality_id: confidentialityLevels.value[0]?.id || '',
-    owner_unit_id: authStore.primaryUnit?.unit_id || units.value[0]?.id || '',
-    change_note: `Generated from template ${tpl.name}`,
+    owner_unit_id: authStore.activeUnitId || authStore.primaryUnit?.unit_id || units.value[0]?.id || '',
   }
   showGenerateModal.value = true
 }
@@ -235,6 +233,14 @@ async function submitGenerateDocument() {
   if (!activeTemplate.value) return
   if (!generateForm.value.owner_unit_id) {
     toast.error('Accountable unit is required.')
+    return
+  }
+  if (
+    !generateForm.value.recipient.trim() ||
+    !generateForm.value.subject.trim() ||
+    !generateForm.value.body.trim()
+  ) {
+    toast.error('Recipient, subject and body are required.')
     return
   }
 
@@ -253,7 +259,6 @@ async function submitGenerateDocument() {
       confidentiality_id: Number(generateForm.value.confidentiality_id),
       owner_unit_id: Number(generateForm.value.owner_unit_id),
       document_date: generateForm.value.reference_date,
-      change_note: generateForm.value.change_note,
     }
 
     const res = await templatesApi.generateDocument(activeTemplate.value.id, payload)
@@ -268,22 +273,36 @@ async function submitGenerateDocument() {
   }
 }
 
-async function previewTemplate(tpl: any) {
+function previewTemplate(tpl: any) {
   activeTemplate.value = tpl
-  try {
-    const res = await templatesApi.render(tpl.id, {
-      template_data: {
-        recipient: '[RECIPIENT NAME / UNIT]',
-        subject: '[OFFICIAL DOCUMENT SUBJECT]',
-        body: '<p>[This is where the structured institutional letter or directive content will appear in the finalized PDF.]</p>',
-        reference_date: new Date().toLocaleDateString(),
-      },
-    })
-    previewHtml.value = res.data.data?.rendered_html || ''
-    showPreviewModal.value = true
-  } catch (err: any) {
-    toast.error(err.response?.data?.message || 'Failed to render preview.')
+  const rawHtml = tpl.published_version?.body_template_html || ''
+
+  if (!rawHtml) {
+    toast.error('Publish a template version before previewing its layout.')
+    return
   }
+
+  const escape = (value: string) =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  const sampleValues: Record<string, string> = {
+    recipient: 'Sample Recipient / Organizational Unit',
+    subject: 'Sample Official Document Subject',
+    body: 'Sample body text used to preview the published template layout.',
+    reference_date: new Date().toLocaleDateString(),
+  }
+
+  let html = rawHtml
+  for (const [key, value] of Object.entries(sampleValues)) {
+    html = html.replace(
+      new RegExp(`\\{\\{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\}\\}`, 'g'),
+      escape(value)
+    )
+  }
+  html = html.replace(/\{\{\s*([\w.]+)\s*\}\}/g, '[$1]')
+
+  previewHtml.value = html
+  showPreviewModal.value = true
 }
 
 onMounted(() => {
@@ -295,18 +314,18 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-          <FileText class="w-6 h-6 text-primary-600 dark:text-primary-400" />
-          Institutional Document Templates
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+          <FileText class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+          <span>Institutional Document Templates</span>
         </h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-          Standardized letterheads, memoranda, directives, and verified document templates
+        <p class="text-xs text-ink-muted mt-0.5">
+          Standardized letterheads, memoranda, directives, and verified document templates.
         </p>
       </div>
       <div>
-        <BaseButton variant="primary" size="sm" @click="openCreateModal">
+        <BaseButton v-if="authStore.hasPermission('documents.create')" variant="primary" size="sm" @click="openCreateModal">
           <Plus class="w-4 h-4 mr-1.5" />
           New Template
         </BaseButton>
@@ -330,32 +349,32 @@ onMounted(() => {
       empty-message="Create your first standardized institutional letter or memorandum template."
     >
       <template #code="{ item }">
-        <span class="font-mono text-xs font-semibold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-950/50 px-2 py-0.5 rounded border border-primary-200 dark:border-primary-800">
+        <span class="font-mono text-xs font-semibold text-primary bg-primary-subtle px-2 py-0.5 rounded border border-primary/20">
           {{ item.code }}
         </span>
       </template>
 
       <template #name="{ item }">
         <div>
-          <div class="font-medium text-slate-900 dark:text-white">{{ item.name }}</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400">
+          <div class="font-medium text-ink">{{ item.name }}</div>
+          <div class="text-xs text-ink-muted">
             {{ item.published_version ? `Version ${item.published_version.version_number}` : 'Draft / No published version' }}
           </div>
         </div>
       </template>
 
       <template #category="{ item }">
-        <span class="text-xs text-slate-600 dark:text-slate-300">
+        <span class="text-xs text-ink-secondary">
           {{ item.category?.name || 'General' }}
         </span>
       </template>
 
       <template #version="{ item }">
-        <span v-if="item.published_version" class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+        <span v-if="item.published_version" class="inline-flex items-center gap-1 text-xs font-medium text-[#1aae39] dark:text-[#34d399]">
           <CheckCircle2 class="w-3.5 h-3.5" />
           v{{ item.published_version.version_number }}
         </span>
-        <span v-else class="text-xs text-amber-600 dark:text-amber-400">
+        <span v-else class="text-xs text-[#dd5b00] dark:text-[#f59e0b]">
           Unpublished
         </span>
       </template>
@@ -363,7 +382,7 @@ onMounted(() => {
       <template #status="{ item }">
         <span :class="[
           'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-          item.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+          item.active ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]' : 'bg-[var(--wu-line)] text-[var(--wu-muted)]'
         ]">
           {{ item.active ? 'Active' : 'Inactive' }}
         </span>
@@ -372,7 +391,7 @@ onMounted(() => {
       <template #actions="{ item }">
         <div class="flex items-center gap-2 justify-end">
           <BaseButton
-            v-if="item.published_version || item.versions?.some((v: any) => v.status === 'published')"
+            v-if="(item.published_version || item.versions?.some((v: any) => v.status === 'published')) && authStore.hasPermission('documents.create')"
             variant="primary"
             size="sm"
             @click="openGenerateModal(item)"
@@ -382,6 +401,7 @@ onMounted(() => {
           </BaseButton>
 
           <BaseButton
+            v-if="authStore.hasPermission('documents.create')"
             variant="secondary"
             size="sm"
             @click="openVersionModal(item)"
@@ -404,9 +424,7 @@ onMounted(() => {
     <!-- Pagination -->
     <Pagination
       v-if="pagination.total > 0"
-      :current-page="pagination.current_page"
-      :last-page="pagination.last_page"
-      :total-items="pagination.total"
+      :meta="pagination"
       @page-change="loadTemplates"
     />
 
@@ -418,7 +436,7 @@ onMounted(() => {
     >
       <form @submit.prevent="submitCreateTemplate" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             Template Name *
           </label>
           <BaseInput
@@ -429,7 +447,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             Template Unique Code *
           </label>
           <BaseInput
@@ -440,7 +458,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             Document Category *
           </label>
           <BaseSelect
@@ -455,18 +473,18 @@ onMounted(() => {
             id="template-active"
             type="checkbox"
             v-model="createForm.active"
-            class="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            class="h-4 w-4 rounded border-hairline text-primary focus:ring-primary"
           />
-          <label for="template-active" class="text-sm text-slate-700 dark:text-slate-300">
+          <label for="template-active" class="text-xs text-ink-secondary">
             Active for institutional generation
           </label>
         </div>
 
-        <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex justify-end gap-2 pt-4 border-t border-hairline">
           <BaseButton variant="ghost" type="button" @click="showCreateModal = false">
             Cancel
           </BaseButton>
-          <BaseButton variant="primary" type="submit" :loading="isSubmittingCreate" @click="submitCreateTemplate">
+          <BaseButton variant="primary" type="submit" :loading="isSubmittingCreate">
             Create Template
           </BaseButton>
         </div>
@@ -482,7 +500,7 @@ onMounted(() => {
     >
       <form @submit.prevent="submitNewVersion" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             HTML Template Content (with dynamic placeholders) *
           </label>
           <BaseTextarea
@@ -492,13 +510,13 @@ onMounted(() => {
             placeholder="<div>... {{recipient}} ... {{subject}} ...</div>"
             required
           />
-          <p class="text-xs text-slate-500 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             Use double curly braces for variables. Script tags and executable event handlers are stripped automatically by the server-side sanitizer.
           </p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             JSON Schema Definition *
           </label>
           <BaseTextarea
@@ -509,34 +527,23 @@ onMounted(() => {
           />
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Version Change Note *
-          </label>
-          <BaseInput
-            v-model="versionForm.change_note"
-            placeholder="e.g., Added official university seal and revised signature block"
-            required
-          />
-        </div>
-
         <div class="flex items-center gap-2">
           <input
             id="publish-version"
             type="checkbox"
             v-model="versionForm.publish_now"
-            class="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            class="h-4 w-4 rounded border-hairline text-primary focus:ring-primary"
           />
-          <label for="publish-version" class="text-sm text-slate-700 dark:text-slate-300">
+          <label for="publish-version" class="text-xs text-ink-secondary">
             Publish immediately as the active version
           </label>
         </div>
 
-        <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex justify-end gap-2 pt-4 border-t border-hairline">
           <BaseButton variant="ghost" type="button" @click="showVersionModal = false">
             Cancel
           </BaseButton>
-          <BaseButton variant="primary" type="submit" :loading="isSubmittingVersion" @click="submitNewVersion">
+          <BaseButton variant="primary" type="submit" :loading="isSubmittingVersion">
             Save Version
           </BaseButton>
         </div>
@@ -557,7 +564,7 @@ onMounted(() => {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
               Accountable Unit *
             </label>
             <BaseSelect
@@ -568,7 +575,7 @@ onMounted(() => {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
               Security Classification *
             </label>
             <BaseSelect
@@ -580,7 +587,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             Recipient / Destination *
           </label>
           <BaseInput
@@ -591,7 +598,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             Subject / Directive Title *
           </label>
           <BaseInput
@@ -602,7 +609,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             Letter Body / Content *
           </label>
           <BaseTextarea
@@ -613,11 +620,11 @@ onMounted(() => {
           />
         </div>
 
-        <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex justify-end gap-2 pt-4 border-t border-hairline">
           <BaseButton variant="ghost" type="button" @click="showGenerateModal = false">
             Cancel
           </BaseButton>
-          <BaseButton variant="primary" type="submit" :loading="isGenerating" @click="submitGenerateDocument">
+          <BaseButton variant="primary" type="submit" :loading="isGenerating">
             <Sparkles class="w-4 h-4 mr-1.5" />
             Generate & Register Document
           </BaseButton>
@@ -628,14 +635,14 @@ onMounted(() => {
     <!-- Modal: Preview Template -->
     <ModalDialog
       :is-open="showPreviewModal"
-      title="Template Rendered Preview"
+      title="Template Layout Preview (sample data)"
       size="lg"
       @close="showPreviewModal = false"
     >
-      <div class="bg-white p-6 rounded border border-slate-300 shadow-inner overflow-auto max-h-[60vh]">
+      <div class="bg-surface p-6 rounded-xl border border-hairline shadow-inner overflow-auto max-h-[60vh] text-ink">
         <div v-html="previewHtml"></div>
       </div>
-      <div class="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800 mt-4">
+      <div class="flex justify-end pt-4 border-t border-hairline mt-4">
         <BaseButton variant="secondary" @click="showPreviewModal = false">
           Close Preview
         </BaseButton>

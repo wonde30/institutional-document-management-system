@@ -63,7 +63,9 @@ describe('Account recovery', () => {
   })
 
   it('requests a recovery link from the API instead of simulating one', async () => {
-    const wrapper = mount(ForgotPasswordView)
+    const wrapper = mount(ForgotPasswordView, {
+      global: { stubs: { 'router-link': true } },
+    })
 
     await wrapper.find('input').setValue('officer@wu.edu.et')
     await wrapper.find('form').trigger('submit')
@@ -78,7 +80,9 @@ describe('Account recovery', () => {
       response: { data: { errors: { email: ['The rate limit has been exceeded.'] } } },
     })
 
-    const wrapper = mount(ForgotPasswordView)
+    const wrapper = mount(ForgotPasswordView, {
+      global: { stubs: { 'router-link': true } },
+    })
 
     await wrapper.find('input').setValue('officer@wu.edu.et')
     await wrapper.find('form').trigger('submit')
@@ -92,7 +96,9 @@ describe('Account recovery', () => {
     routeQuery.token = 'reset-token-value'
     routeQuery.email = 'officer@wu.edu.et'
 
-    const wrapper = mount(ResetPasswordView)
+    const wrapper = mount(ResetPasswordView, {
+      global: { stubs: { 'router-link': true } },
+    })
 
     const inputs = wrapper.findAll('input')
     await inputs[0].setValue('ReplacementPassword123!')
@@ -113,7 +119,9 @@ describe('Account recovery', () => {
     routeQuery.token = 'reset-token-value'
     routeQuery.email = 'officer@wu.edu.et'
 
-    const wrapper = mount(ResetPasswordView)
+    const wrapper = mount(ResetPasswordView, {
+      global: { stubs: { 'router-link': true } },
+    })
 
     const inputs = wrapper.findAll('input')
     await inputs[0].setValue('ReplacementPassword123!')

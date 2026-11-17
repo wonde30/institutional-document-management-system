@@ -7,13 +7,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import {
  Search,
- Filter,
- FileText,
- Mail,
- BookOpen,
- Archive,
  ArrowRight,
- Shield,
  Building2,
  Calendar,
 } from 'lucide-vue-next'
@@ -38,83 +32,121 @@ interface SearchResult {
 
 const results = ref<SearchResult[]>([])
 
+/**
+ * The domains that could not be searched, with the reason.
+ *
+ * A domain that fails is reported rather than silently omitted, so an
+ * operator can tell the difference between "no matching records" and "this
+ * registry is not available within your scope".
+ */
+const domainErrors = ref<Record<string, string>>({})
+
+/**
+ * A readable reason for a failed domain.
+ */
+function domainErrorMessage(err: unknown, domain: string): string {
+ const apiErr = err as { response?: { status?: number; data?: { message?: string } } }
+ const status = apiErr.response?.status
+
+ if (status === 403) {
+  return `The ${domain} registry is not available within your authorized scope.`
+ }
+ if (status === 401) {
+  return 'Your session has expired. Sign in again to continue searching.'
+ }
+ return apiErr.response?.data?.message || `The ${domain} registry could not be searched.`
+}
+
 async function executeSearch() {
  if (!query.value.trim()) {
- results.value = []
- return
+  results.value = []
+  domainErrors.value = {}
+  return
  }
 
  isLoading.value = true
- try {
- const q = query.value.trim().toLowerCase()
- const collected: SearchResult[] = []
+ domainErrors.value = {}
 
- // 1. Documents search (Bilingual OCR + Metadata)
- if (selectedDomain.value === 'all' || selectedDomain.value === 'documents') {
  try {
- const docRes = await searchApi.searchDocuments({ q, per_page: 15 })
- const docs = docRes.data.data || []
- docs.forEach((d: any) => {
- collected.push({
- id: d.id,
- title: d.title,
- reference: d.reference_number,
- domain: 'document',
- office: d.owner_unit?.name || 'Academic Unit',
- date: d.registered_at ? d.registered_at.split('T')[0] : (d.created_at ? d.created_at.split('T')[0] : '—'),
- snippet: d.summary || 'Official registered institutional document with bilingual OCR indexing.',
- route: `/documents/${d.id}`,
- })
- })
- } catch {}
- }
+  const q = query.value.trim()
+  const collected: SearchResult[] = []
+  const errors: Record<string, string> = {}
 
- // 2. Correspondence search
- if (selectedDomain.value === 'all' || selectedDomain.value === 'correspondence') {
- try {
- const corrRes = await correspondenceApi.list({ search: q, per_page: 10 })
- const corrs = (corrRes.data as any).data || []
- corrs.forEach((c: any) => {
- collected.push({
- id: c.id,
- title: c.document?.title || c.title || 'Official Correspondence',
- reference: c.document?.reference_number || c.external_reference || 'REF-CORR',
- domain: 'correspondence',
- office: c.first_receiving_unit?.name || 'Registrar / Incoming Office',
- date: c.correspondence_date || (c.created_at ? c.created_at.split('T')[0] : '—'),
- snippet: c.summary || 'Inter-office or external correspondence logged in central ledger.',
- route: `/correspondence`,
- })
- })
- } catch {}
- }
+  // The document repository, searched through the bilingual OCR index.
+  if (selectedDomain.value === 'all' || selectedDomain.value === 'documents') {
+  try {
+   const res = await searchApi.searchDocuments({ q, per_page: 15 })
+   const documents = res.data.data || []
+   documents.forEach((d) => {
+   collected.push({
+    id: d.id,
+    title: d.title,
+    reference: d.reference_number ?? '',
+    domain: 'document',
+    office: d.owner_unit?.name ?? '',
+    date: d.registered_at ? d.registered_at.slice(0, 10) : '',
+    snippet: d.summary ?? '',
+    route: `/documents/${d.id}`,
+   })
+   })
+  } catch (err) {
+   errors.documents = domainErrorMessage(err, 'document')
+  }
+  }
 
- // 3. Research search
- if (selectedDomain.value === 'all' || selectedDomain.value === 'research') {
- try {
- const resRes = await institutionalApi.research()
- const researches = resRes.data.data || []
- researches.forEach((r: any) => {
- const title = r.document?.title || r.title || ''
- if (title.toLowerCase().includes(q) || (r.document?.reference_number || '').toLowerCase().includes(q)) {
- collected.push({
- id: r.id,
- title: title,
- reference: r.document?.reference_number || `WU/RES/2026/${r.id}`,
- domain: 'research',
- office: r.lead_office?.name || 'Academic Department',
- date: r.completed_at ? r.completed_at.split('T')[0] : (r.created_at ? r.created_at.split('T')[0] : '—'),
- snippet: 'Finalized departmental research monograph evaluated and published.',
- route: `/research`,
- })
- }
- })
- } catch {}
- }
+  // The correspondence registry.
+  if (selectedDomain.value === 'all' || selectedDomain.value === 'correspondence') {
+  try {
+   const res = await correspondenceApi.list({ search: q, per_page: 10 })
+   const records = res.data.data || []
+   records.forEach((c) => {
+   collected.push({
+    id: c.id,
+    title: c.document?.title ?? c.external_reference ?? '',
+    reference: c.document?.reference_number ?? c.external_reference ?? '',
+    domain: 'correspondence',
+    office: c.first_receiving_unit?.name ?? '',
+    date: c.correspondence_date ? c.correspondence_date.slice(0, 10) : '',
+    snippet: c.document?.summary ?? '',
+    route: `/correspondence`,
+   })
+   })
+  } catch (err) {
+   errors.correspondence = domainErrorMessage(err, 'correspondence')
+  }
+  }
 
- results.value = collected
+  // The finalized research repository.
+  if (selectedDomain.value === 'all' || selectedDomain.value === 'research') {
+  try {
+   const res = await institutionalApi.research()
+   const records = res.data.data || []
+   const needle = q.toLowerCase()
+   records.forEach((r) => {
+   const title = r.document?.title ?? ''
+   const reference = r.document?.reference_number ?? ''
+   if (title.toLowerCase().includes(needle) || reference.toLowerCase().includes(needle)) {
+    collected.push({
+     id: r.id,
+     title,
+     reference,
+     domain: 'research',
+     office: r.document?.ownerUnit?.name ?? '',
+     date: r.completed_on ?? '',
+     snippet: r.document?.summary ?? '',
+     route: `/research`,
+    })
+   }
+   })
+  } catch (err) {
+   errors.research = domainErrorMessage(err, 'research')
+  }
+  }
+
+  results.value = collected
+  domainErrors.value = errors
  } finally {
- isLoading.value = false
+  isLoading.value = false
  }
 }
 
@@ -134,14 +166,12 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Search Header -->
- <div class="max-w-3xl space-y-3">
- <div class="notion-eyebrow text-primary">
- RECORDS & ARCHIVES / AUTHORIZED SEARCH
- </div>
- <h1 class="notion-heading-2 text-ink">
- Repository & Registry Search Portal
+ <div class="max-w-3xl space-y-3 border-b border-hairline pb-4">
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <Search class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Repository & Registry Search Portal</span>
  </h1>
- <p class="notion-body-sm text-ink-muted">
+ <p class="text-xs text-ink-muted mt-0.5">
  Query official documents, incoming/outgoing letters, and finalized research within your authorized scope.
  </p>
 
@@ -160,7 +190,7 @@ onMounted(() => {
  <BaseButton
  type="submit"
  variant="primary"
- class="bg-primary hover:bg-primary-hover text-white shrink-0 shadow-xs"
+ class="shrink-0"
  :loading="isLoading"
  >
  Search
@@ -222,6 +252,16 @@ onMounted(() => {
  Found {{ results.length }} authorized records matching query
  </div>
 
+ <!-- A registry that could not be searched is reported, not hidden. -->
+ <div
+ v-if="Object.keys(domainErrors).length > 0"
+ class="p-3 rounded-lg bg-[#fff4e6] dark:bg-[#3b220c] border border-[#e0a03a]/40 text-xs text-[#dd5b00] dark:text-[#f59e0b] space-y-1"
+ >
+ <div v-for="(message, domain) in domainErrors" :key="domain">
+ {{ message }}
+ </div>
+ </div>
+
  <div
  v-for="item in results"
  :key="item.domain + '-' + item.id"
@@ -232,14 +272,14 @@ onMounted(() => {
  <div class="space-y-1">
  <div class="flex items-center gap-2 flex-wrap">
  <span class="font-mono text-xs font-semibold text-primary">
- {{ item.reference }}
+ {{ item.reference || '—' }}
  </span>
  <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
  {{ item.domain }}
  </span>
  </div>
  <h2 class="text-sm font-semibold text-ink group-hover:text-primary transition">
- {{ item.title }}
+ {{ item.title || 'Untitled record' }}
  </h2>
  </div>
 
@@ -247,17 +287,17 @@ onMounted(() => {
  </div>
 
  <p class="text-xs text-ink-muted line-clamp-2 leading-relaxed">
- {{ item.snippet }}
+ {{ item.snippet || 'No summary is recorded for this record.' }}
  </p>
 
  <div class="flex items-center gap-4 text-[11px] text-ink-muted pt-1">
  <span class="flex items-center gap-1">
  <Building2 class="w-3.5 h-3.5" />
- {{ item.office }}
+ {{ item.office || '—' }}
  </span>
  <span class="flex items-center gap-1">
  <Calendar class="w-3.5 h-3.5" />
- {{ item.date }}
+ {{ item.date || '—' }}
  </span>
  </div>
  </div>

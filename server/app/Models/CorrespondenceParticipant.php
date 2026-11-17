@@ -34,4 +34,9 @@ class CorrespondenceParticipant extends Model
     {
         return $this->belongsTo(CommunicationParty::class, 'party_id');
     }
+
+    public function dispatches(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CorrespondenceDispatch::class, 'participant_id');
+    }
 }

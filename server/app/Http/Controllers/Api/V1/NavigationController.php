@@ -31,9 +31,7 @@ class NavigationController extends Controller
         // action the server would refuse in the current context.
         $userPerms = app(OrganizationalContextService::class)
             ->capabilitiesForActiveContext($user, $request);
-        $isSuperAdmin = $user->userRoles()
-            ->whereHas('role', fn ($q) => $q->whereIn('code', ['super_admin', 'system_administrator']))
-            ->exists();
+        $isSuperAdmin = $user->hasPermission('system.configure');
 
         $sections = $this->getMasterNavigationCatalog();
 
@@ -248,6 +246,12 @@ class NavigationController extends Controller
                         'to' => '/admin/organization',
                         'icon' => 'Building2',
                         'permission' => 'organization.view',
+                    ],
+                    [
+                        'name' => 'Configuration Center',
+                        'to' => '/admin/configuration',
+                        'icon' => 'Sliders',
+                        'permission' => 'system.configure',
                     ],
                     [
                         'name' => 'Workflows & office procedures',

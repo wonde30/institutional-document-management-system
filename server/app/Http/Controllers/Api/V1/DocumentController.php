@@ -12,6 +12,7 @@ use App\Models\FileObject;
 use App\Models\PhysicalOriginal;
 use App\Models\ReferenceSequence;
 use App\Models\VersionFile;
+use App\Models\WorkflowDefinition;
 use App\Services\DocumentRepositoryService;
 use App\Services\DocumentTimelineService;
 use App\Services\Settings\SettingsService;
@@ -73,31 +74,21 @@ class DocumentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $actor = $request->user();
-        $query = Document::with(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian'])
+        $query = Document::accessibleBy($actor, 'documents.view')
+            ->with(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian', 'currentVersion'])
             ->withCount('versions');
 
         // Departmental Scope Isolation: Restrict to permitted units unless globally authorized
         $permittedUnitIds = $actor ? $actor->getPermittedUnitIds('documents.view') : [];
-        if ($permittedUnitIds !== null) {
-            if ($request->filled('owner_unit_id')) {
-                $requestedUnit = (int) $request->query('owner_unit_id');
-                if (! in_array($requestedUnit, $permittedUnitIds, true)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Forbidden: You do not have permission to view documents from this organizational unit.',
-                    ], 403);
-                }
-                $query->where('owner_unit_id', $requestedUnit);
-            } else {
-                $query->where(function ($q) use ($permittedUnitIds, $actor) {
-                    $q->whereIn('owner_unit_id', $permittedUnitIds)
-                      ->orWhereHas('movements', fn ($mq) => $mq->whereIn('to_unit_id', $permittedUnitIds))
-                      ->orWhereHas('assignments', fn ($aq) => $aq->whereIn('assigned_unit_id', $permittedUnitIds)->orWhere('assigned_user_id', $actor->id))
-                      ->orWhereHas('grants', fn ($gq) => $gq->where(fn ($sq) => $sq->where('user_id', $actor->id)->orWhereIn('unit_id', $permittedUnitIds))->where(fn ($sq) => $sq->whereNull('expires_at')->orWhere('expires_at', '>', now())));
-                });
+        if ($request->filled('owner_unit_id')) {
+            $requestedUnit = (int) $request->query('owner_unit_id');
+            if ($permittedUnitIds !== null && ! in_array($requestedUnit, $permittedUnitIds, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have permission to view documents from this organizational unit.',
+                ], 403);
             }
-        } elseif ($request->filled('owner_unit_id')) {
-            $query->where('owner_unit_id', $request->query('owner_unit_id'));
+            $query->where('owner_unit_id', $requestedUnit);
         }
 
         if ($request->filled('category_id')) {
@@ -129,7 +120,14 @@ class DocumentController extends Controller
             });
         }
 
-        $documents = $query->orderByDesc('registered_at')->paginate($request->query('per_page', 25));
+        $sortBy = $request->query('sort_by', 'registered_at');
+        $sortOrder = strtolower((string) $request->query('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSorts = ['registered_at', 'document_date', 'title', 'reference_number', 'lifecycle'];
+        if (! in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'registered_at';
+        }
+
+        $documents = $query->orderBy($sortBy, $sortOrder)->paginate($request->query('per_page', 25));
 
         return response()->json([
             'success' => true,
@@ -157,11 +155,30 @@ class DocumentController extends Controller
             'document_date' => 'required|date',
             'file' => 'nullable|file|max:'.$this->maxUploadSizeKilobytes(),
             'change_note' => 'nullable|string',
+            'workflow_definition_id' => 'nullable|exists:workflow_definitions,id',
         ]);
 
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
         $currentYear = date('Y');
+
+        // Resolve dynamic approval workflow definition (explicit selection or automatic category mapping)
+        $workflowDef = null;
+        if (! empty($validated['workflow_definition_id'])) {
+            $workflowDef = \App\Models\WorkflowDefinition::where('id', $validated['workflow_definition_id'])
+                ->where('active', 1)
+                ->first();
+            if (! $workflowDef) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The selected workflow definition is inactive or does not exist.',
+                ], 422);
+            }
+        } else {
+            $workflowDef = \App\Models\WorkflowDefinition::where('document_category_id', $validated['category_id'])
+                ->where('active', 1)
+                ->first();
+        }
 
         // When no classification is supplied, the configured policy applies.
         $confidentialityId = $this->resolveConfidentialityId(
@@ -169,29 +186,13 @@ class DocumentController extends Controller
             (int) $validated['owner_unit_id']
         );
 
-        $document = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request, $confidentialityId) {
-            // 1. Generate reference number atomically
-            $seq = DB::table('reference_sequences')
-                ->where('sequence_key', 'DOC')
-                ->where('period_key', $currentYear)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $seq) {
-                DB::table('reference_sequences')->insert([
-                    'sequence_key' => 'DOC',
-                    'period_key' => $currentYear,
-                    'next_value' => 2,
-                ]);
-                $seqVal = 1;
-            } else {
-                $seqVal = $seq->next_value;
-                DB::table('reference_sequences')
-                    ->where('id', $seq->id)
-                    ->update(['next_value' => $seqVal + 1]);
-            }
-
-            $referenceNumber = sprintf('WU/DOC/%s/%06d', $currentYear, $seqVal);
+        $document = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request, $confidentialityId, $workflowDef) {
+            // 1. Generate reference number atomically via canonical repository sequence engine
+            $referenceNumber = app(\App\Services\DocumentRepositoryService::class)->generateReferenceNumber(
+                'DOC',
+                (int) $validated['owner_unit_id'],
+                (int) $validated['category_id']
+            );
 
             // 2. Create document record
             $doc = Document::create([
@@ -209,26 +210,14 @@ class DocumentController extends Controller
                 'lock_version' => 0,
             ]);
 
-            // 3. Handle initial version & file if provided
+            // 3. Handle initial version & file if provided, or create version for workflow pinning
+            $version = null;
             if ($request->hasFile('file')) {
-                $uploadedFile = $request->file('file');
-                $hash = hash_file('sha256', $uploadedFile->getRealPath());
-                $disk = config('filesystems.default', 'local');
-                $storedPath = $uploadedFile->store('documents/'.$currentYear, $disk);
-
-                $fileObject = FileObject::create([
-                    'storage_disk' => $disk,
-                    'storage_key' => $storedPath,
-                    'original_filename' => $uploadedFile->getClientOriginalName(),
-                    'detected_mime' => $uploadedFile->getClientMimeType() ?: 'application/octet-stream',
-                    'byte_size' => $uploadedFile->getSize(),
-                    'sha256' => $hash,
-                    'uploaded_by' => $actor->id,
-                    'uploaded_at' => $now,
-                    'scan_status' => 'clean',
-                    'scanned_at' => $now,
-                    'storage_status' => 'ready',
-                ]);
+                $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
+                    $request->file('file'),
+                    'documents/'.$currentYear,
+                    $actor->id
+                );
 
                 $version = DocumentVersion::create([
                     'document_id' => $doc->id,
@@ -244,12 +233,43 @@ class DocumentController extends Controller
                     'purpose' => 'primary',
                     'display_order' => 1,
                 ]);
+            } elseif ($workflowDef) {
+                $version = DocumentVersion::create([
+                    'document_id' => $doc->id,
+                    'version_number' => 1,
+                    'created_by' => $actor->id,
+                    'change_note' => $validated['change_note'] ?? 'Initial registered version for workflow execution',
+                    'created_at' => $now,
+                ]);
+            }
+
+            // 4. Start workflow instance if applicable
+            if ($workflowDef && $version) {
+                app(\App\Services\WorkflowEngineService::class)->startInstance(
+                    $workflowDef->id,
+                    $version->id,
+                    null,
+                    $actor
+                );
             }
 
             return $doc;
         });
 
-        $document->load(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian']);
+        $document->load([
+            'category',
+            'confidentiality',
+            'ownerUnit',
+            'creator',
+            'custodian',
+            'versions.createdBy',
+            'versions.versionFiles.fileObject',
+            'versions.workflowInstances.workflowVersion.workflowDefinition',
+            'versions.workflowInstances.tasks.state',
+            'versions.workflowInstances.tasks.assignedUser',
+            'versions.workflowInstances.tasks.assignedUnit',
+            'versions.workflowInstances.tasks.requiredRole',
+        ]);
 
         return response()->json([
             'success' => true,
@@ -271,8 +291,18 @@ class DocumentController extends Controller
             'creator',
             'versions.createdBy',
             'versions.versionFiles.fileObject',
+            'versions.workflowInstances.workflowVersion.workflowDefinition',
+            'versions.workflowInstances.startedBy',
+            'versions.workflowInstances.tasks.state',
+            'versions.workflowInstances.tasks.assignedUser',
+            'versions.workflowInstances.tasks.assignedUnit',
+            'versions.workflowInstances.tasks.requiredRole',
+            'versions.workflowInstances.tasks.decision.decidedBy',
             'tags',
-            'relations.relatedDocument',
+            'outgoingRelations.relationType',
+            'outgoingRelations.targetDocument',
+            'incomingRelations.relationType',
+            'incomingRelations.sourceDocument',
             'grants',
             'comments.user',
             'correspondence.type',
@@ -307,6 +337,14 @@ class DocumentController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $document = Document::findOrFail($id);
+        $actor = $request->user();
+
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('documents.update', $document->owner_unit_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to update documents in this organizational unit.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:500',
@@ -361,24 +399,12 @@ class DocumentController extends Controller
 
             $nextVersionNumber = $latestVersionNumber + 1;
 
-            $uploadedFile = $request->file('file');
-            $hash = hash_file('sha256', $uploadedFile->getRealPath());
-            $disk = config('filesystems.default', 'local');
-            $storedPath = $uploadedFile->store('documents/'.$currentYear, $disk);
-
-            $fileObject = FileObject::create([
-                'storage_disk' => $disk,
-                'storage_key' => $storedPath,
-                'original_filename' => $uploadedFile->getClientOriginalName(),
-                'detected_mime' => $uploadedFile->getClientMimeType() ?: 'application/octet-stream',
-                'byte_size' => $uploadedFile->getSize(),
-                'sha256' => $hash,
-                'uploaded_by' => $actor->id,
-                'uploaded_at' => $now,
-                'scan_status' => 'clean',
-                'scanned_at' => $now,
-                'storage_status' => 'ready',
-            ]);
+            $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
+                $request->file('file'),
+                'documents/'.$currentYear,
+                $actor->id,
+                $validated['purpose'] ?? 'primary'
+            );
 
             $ver = DocumentVersion::create([
                 'document_id' => $document->id,
@@ -424,7 +450,16 @@ class DocumentController extends Controller
         }
 
         $actor = request()->user();
-        if (! $doc->allowsUser($actor, 'documents.download')) {
+        $hasDocDownload = $doc->allowsUser($actor, 'documents.download');
+        $hasCorrAccess = false;
+        if ($doc->correspondence) {
+            $ownerUnitId = (int) $doc->owner_unit_id;
+            $hasCorrAccess = $actor->hasPermission('correspondence.view', $ownerUnitId)
+                || $actor->hasPermission('correspondence.manage', $ownerUnitId)
+                || $actor->hasPermission('correspondence.dispatch', $ownerUnitId);
+        }
+
+        if (! $hasDocDownload && ! $hasCorrAccess) {
             $confLevel = $doc->confidentiality?->code ?? 'internal';
             $message = in_array($confLevel, ['confidential', 'secret', 'top_secret'], true)
                 ? 'Forbidden: High confidentiality document file download restricted.'
@@ -443,21 +478,22 @@ class DocumentController extends Controller
             ], 404);
         }
 
-        $disk = Storage::disk($file->storage_disk);
+        try {
+            AuditService::recordDocumentEvent(
+                action: 'documents.downloaded',
+                actorId: $actor->id,
+                documentId: $doc->id,
+                details: [
+                    'file_object_id' => $file->id,
+                    'original_filename' => $file->original_filename,
+                    'sha256' => $file->sha256,
+                    'byte_size' => $file->byte_size,
+                ],
+                request: request()
+            );
+        } catch (\Throwable) {}
 
-        if (! $disk->exists($file->storage_key)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Physical file not found in storage.',
-            ], 404);
-        }
-
-        $fullPath = $disk->path($file->storage_key);
-
-        return response()->download($fullPath, $file->original_filename, [
-            'Content-Type' => $file->detected_mime,
-            'X-Checksum-Sha256' => $file->sha256,
-        ]);
+        return app(\App\Services\FileSecurityService::class)->createDownloadResponse($file);
     }
 
     /**
@@ -614,5 +650,215 @@ class DocumentController extends Controller
             'success' => true,
             'data' => $timeline,
         ]);
+    }
+
+    /**
+     * Compare two immutable versions of a document.
+     */
+    public function compareVersions(Request $request, int $id): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        $validated = $request->validate([
+            'version_a' => 'required|integer',
+            'version_b' => 'required|integer|different:version_a',
+        ]);
+
+        $versionA = DocumentVersion::with(['createdBy', 'versionFiles.fileObject', 'templateVersion.template'])
+            ->where('document_id', $document->id)
+            ->where('id', $validated['version_a'])
+            ->firstOrFail();
+
+        $versionB = DocumentVersion::with(['createdBy', 'versionFiles.fileObject', 'templateVersion.template'])
+            ->where('document_id', $document->id)
+            ->where('id', $validated['version_b'])
+            ->firstOrFail();
+
+        $filesA = $versionA->versionFiles->map(fn ($vf) => [
+            'id' => $vf->file_object_id,
+            'filename' => $vf->fileObject?->original_filename,
+            'byte_size' => $vf->fileObject?->byte_size,
+            'sha256' => $vf->fileObject?->sha256,
+            'mime' => $vf->fileObject?->detected_mime,
+            'purpose' => $vf->purpose,
+        ]);
+
+        $filesB = $versionB->versionFiles->map(fn ($vf) => [
+            'id' => $vf->file_object_id,
+            'filename' => $vf->fileObject?->original_filename,
+            'byte_size' => $vf->fileObject?->byte_size,
+            'sha256' => $vf->fileObject?->sha256,
+            'mime' => $vf->fileObject?->detected_mime,
+            'purpose' => $vf->purpose,
+        ]);
+
+        $isContentIdentical = false;
+        $hashesA = $filesA->pluck('sha256')->filter()->sort()->values()->all();
+        $hashesB = $filesB->pluck('sha256')->filter()->sort()->values()->all();
+        if (! empty($hashesA) && $hashesA === $hashesB) {
+            $isContentIdentical = true;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'document_id' => $document->id,
+                'version_a' => [
+                    'id' => $versionA->id,
+                    'version_number' => $versionA->version_number,
+                    'change_note' => $versionA->change_note,
+                    'created_at' => $versionA->created_at?->toISOString(),
+                    'creator' => $versionA->createdBy ? [
+                        'id' => $versionA->createdBy->id,
+                        'name' => $versionA->createdBy->name,
+                    ] : null,
+                    'files' => $filesA,
+                ],
+                'version_b' => [
+                    'id' => $versionB->id,
+                    'version_number' => $versionB->version_number,
+                    'change_note' => $versionB->change_note,
+                    'created_at' => $versionB->created_at?->toISOString(),
+                    'creator' => $versionB->createdBy ? [
+                        'id' => $versionB->createdBy->id,
+                        'name' => $versionB->createdBy->name,
+                    ] : null,
+                    'files' => $filesB,
+                ],
+                'comparison' => [
+                    'content_identical' => $isContentIdentical,
+                    'files_count_diff' => count($filesB) - count($filesA),
+                    'version_delta' => $versionB->version_number - $versionA->version_number,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Add a relationship link between documents.
+     */
+    public function addRelation(Request $request, int $id): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        $validated = $request->validate([
+            'target_document_id' => 'required|exists:documents,id|different:id',
+            'relation_type' => 'nullable|string|in:references,supersedes,supplements,responds_to',
+            'relation_type_id' => 'nullable|exists:document_relation_types,id',
+        ]);
+
+        $relTypeId = $validated['relation_type_id'] ?? null;
+        if (! $relTypeId) {
+            $code = $validated['relation_type'] ?? 'references';
+            $relType = \App\Models\DocumentRelationType::firstOrCreate(
+                ['code' => $code],
+                ['name' => ucfirst(str_replace('_', ' ', $code))]
+            );
+            $relTypeId = $relType->id;
+        }
+
+        $relation = \App\Models\DocumentRelation::firstOrCreate([
+            'source_id' => $document->id,
+            'target_id' => $validated['target_document_id'],
+            'relation_type_id' => $relTypeId,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document relationship established successfully.',
+            'data' => $relation->load(['relationType', 'targetDocument']),
+        ], 201);
+    }
+
+    /**
+     * Remove a relationship link between documents.
+     */
+    public function removeRelation(Request $request, int $id, int $targetId): JsonResponse
+    {
+        $query = \App\Models\DocumentRelation::where('source_id', $id)->where('target_id', $targetId);
+        if ($request->filled('relation_type_id')) {
+            $query->where('relation_type_id', $request->input('relation_type_id'));
+        }
+        $query->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document relationship removed.',
+        ]);
+    }
+
+    /**
+     * Verify cryptographic file integrity of a document file object.
+     */
+    public function verifyFileIntegrity(Request $request, int $id, int $fileId): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        // Verify the file belongs to a version of this document
+        \App\Models\VersionFile::whereHas('documentVersion', fn ($q) => $q->where('document_id', $document->id))
+            ->where('file_object_id', $fileId)
+            ->firstOrFail();
+
+        $fileObject = \App\Models\FileObject::findOrFail($fileId);
+        $disk = $fileObject->storage_disk ?: config('filesystems.default', 'local');
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+        if (! $storage->exists($fileObject->storage_key)) {
+            $check = \App\Models\FileIntegrityCheck::create([
+                'file_object_id' => $fileObject->id,
+                'checked_at' => $now,
+                'observed_sha256' => null,
+                'outcome' => 'missing',
+                'error_code' => 'FILE_NOT_FOUND_ON_DISK',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Integrity verification failed: primary file missing from storage.',
+                'data' => $check,
+            ], 404);
+        }
+
+        try {
+            $content = $storage->get($fileObject->storage_key);
+            $hash = hash('sha256', $content);
+            $outcome = hash_equals($fileObject->sha256, $hash) ? 'match' : 'mismatch';
+
+            $check = \App\Models\FileIntegrityCheck::create([
+                'file_object_id' => $fileObject->id,
+                'checked_at' => $now,
+                'observed_sha256' => $hash,
+                'outcome' => $outcome,
+                'error_code' => $outcome === 'match' ? null : 'SHA256_MISMATCH',
+            ]);
+
+            return response()->json([
+                'success' => $outcome === 'match',
+                'message' => $outcome === 'match'
+                    ? 'Cryptographic integrity verified: SHA-256 matches institutional record.'
+                    : 'INTEGRITY ALERT: Stored file SHA-256 differs from registered checksum.',
+                'data' => [
+                    'check' => $check,
+                    'expected_sha256' => $fileObject->sha256,
+                    'observed_sha256' => $hash,
+                    'outcome' => $outcome,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $check = \App\Models\FileIntegrityCheck::create([
+                'file_object_id' => $fileObject->id,
+                'checked_at' => $now,
+                'observed_sha256' => null,
+                'outcome' => 'error',
+                'error_code' => substr($e->getMessage(), 0, 100),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'File integrity check error: ' . $e->getMessage(),
+                'data' => $check,
+            ], 500);
+        }
     }
 }

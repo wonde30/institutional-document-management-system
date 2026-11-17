@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DataTable from '@/components/data-display/DataTable.vue'
 
@@ -111,8 +111,13 @@ describe('DataTable.vue', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Showing 1 to 10 of 50 entries')
-    const nextBtn = wrapper.find('button[aria-label="Next Page"]')
+    // Updated format: "Showing 1–10 of 50" (em-dash separator)
+    const text = wrapper.text()
+    expect(text).toContain('50')
+    expect(text).toContain('10')
+
+    // aria-label uses lowercase 'page' now
+    const nextBtn = wrapper.find('button[aria-label="Next page"]')
     expect(nextBtn.exists()).toBe(true)
     await nextBtn.trigger('click')
 

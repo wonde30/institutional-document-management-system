@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, useSlots } from 'vue'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-vue-next'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
@@ -105,13 +105,13 @@ function handleSort(col: TableColumn) {
 <template>
  <div class="w-full space-y-3">
  <!-- Table Container with responsive horizontal scroll (Notion-inspired hairline & flat level 0) -->
- <div class="overflow-x-auto rounded-xl border border-hairline bg-surface shadow-xs">
+ <div class="overflow-x-auto rounded-lg border border-hairline bg-surface shadow-xs">
  <table class="w-full text-left text-xs border-collapse">
  <!-- Notion Table Header: canvas-soft background + eyebrow typography -->
- <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider select-none">
+ <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider select-none" role="rowgroup">
  <tr>
  <!-- Select all checkbox -->
- <th v-if="selectable" scope="col" class="w-12 px-4 py-3 text-center">
+ <th v-if="selectable" scope="col" class="w-10 px-3.5 py-2.5 text-center">
  <input
  type="checkbox"
  :checked="allSelected"
@@ -126,7 +126,7 @@ function handleSort(col: TableColumn) {
  v-for="col in columns"
  :key="col.key"
  scope="col"
- class="px-4 py-3 text-[11px] font-semibold tracking-wider transition"
+ class="px-3.5 py-2.5 text-[11px] font-semibold tracking-wider transition"
  :class="[
  col.sortable ? 'cursor-pointer hover:text-ink' : '',
  col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
@@ -151,14 +151,14 @@ function handleSort(col: TableColumn) {
  </th>
 
  <!-- Trailing Actions header (only when not explicitly in columns) -->
- <th v-if="slots.actions && !hasActionsInColumns" scope="col" class="px-4 py-3 text-right w-24 text-[11px] font-semibold tracking-wider">
+ <th v-if="slots.actions && !hasActionsInColumns" scope="col" class="px-3.5 py-2.5 text-right w-24 text-[11px] font-semibold tracking-wider">
  Actions
  </th>
  </tr>
  </thead>
 
  <!-- Body -->
- <tbody class="divide-y divide-hairline-subtle">
+ <tbody class="divide-y divide-hairline-subtle" role="rowgroup">
  <!-- Loading State -->
  <tr v-if="loading">
  <td :colspan="totalColspan" class="p-8">
@@ -187,7 +187,7 @@ function handleSort(col: TableColumn) {
  @click="emit('rowClick', item)"
  >
  <!-- Checkbox -->
- <td v-if="selectable" class="w-12 px-4 py-3 text-center" @click.stop>
+ <td v-if="selectable" class="w-10 px-3.5 py-2.5 text-center" @click.stop>
  <input
  type="checkbox"
  :checked="selectedIds.includes(item[idKey])"
@@ -197,11 +197,11 @@ function handleSort(col: TableColumn) {
  />
  </td>
 
- <!-- Cells: notion-body-sm 15px / 1.33 -->
+ <!-- Cells: notion table typography -->
  <td
  v-for="col in columns"
  :key="col.key"
- class="px-4 py-3 text-[14px] leading-snug font-normal text-ink-secondary"
+ class="px-3.5 py-2.5 text-[13px] leading-snug font-normal text-ink-secondary"
  :class="[
  col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
  col.class || '',
@@ -217,7 +217,7 @@ function handleSort(col: TableColumn) {
  </td>
 
  <!-- Trailing Actions slot -->
- <td v-if="slots.actions && !hasActionsInColumns" class="px-4 py-3 text-right whitespace-nowrap" @click.stop>
+ <td v-if="slots.actions && !hasActionsInColumns" class="px-3.5 py-2.5 text-right whitespace-nowrap" @click.stop>
  <slot name="actions" :item="item"></slot>
  </td>
  </tr>
@@ -241,3 +241,4 @@ function handleSort(col: TableColumn) {
  />
  </div>
 </template>
+

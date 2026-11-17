@@ -274,6 +274,28 @@ export interface PermissionItem {
   name: string
   description?: string | null
   active: boolean
+  module?: string
+  action_type?: string
+  risk_classification?: 'critical' | 'high' | 'standard' | 'low' | string
+  scope_applicability?: 'global_only' | 'unit_or_subtree' | string
+  assignability_status?: 'protected' | 'assignable' | 'deactivated' | string
+  is_protected?: boolean
+}
+
+export interface RoleAssignedUser {
+  user_id: number
+  name: string
+  email: string
+  status: string
+  primary_unit?: string | null
+  scope_id: number
+  scope_kind: string
+  scope_unit_id?: number | null
+  scope_unit_name?: string | null
+  granted_by_name?: string | null
+  granted_at?: string | null
+  expires_at?: string | null
+  is_expired: boolean
 }
 
 export interface RoleItem {
@@ -304,6 +326,48 @@ export interface UserRoleAssignment {
   scope_unit_id?: number | null
   scope_unit_name?: string | null
   expires_at?: string | null
+}
+
+export interface PermissionLineageItem {
+  permission_id: number
+  permission_code: string
+  permission_name: string
+  permission_description?: string | null
+  module: string
+  source_type: 'role' | 'direct'
+  source_id: number
+  source_code: string
+  source_name: string
+  scope_kind: 'global' | 'unit' | 'subtree' | string
+  scope_unit_id?: number | null
+  scope_unit_name?: string | null
+  granted_at?: string | null
+  expires_at?: string | null
+  is_expired: boolean
+  is_source_active: boolean
+  is_permission_active: boolean
+  scope_applies: boolean
+  is_effective: boolean
+  status_label: string
+}
+
+export interface PermissionLineageData {
+  user_id: number
+  user_name: string
+  user_email: string
+  target_unit_id?: number | null
+  target_unit_name?: string | null
+  primary_unit_id?: number | null
+  effective_codes: string[]
+  effective_count: number
+  lineage: PermissionLineageItem[]
+  warnings: string[]
+  scopes_held: Array<{
+    id: number
+    kind: 'global' | 'unit' | 'subtree'
+    unit_id?: number | null
+    unit_name?: string | null
+  }>
 }
 
 // ----------------------------------------------------------------------------
@@ -347,10 +411,40 @@ export interface FileObject {
   storage_status: 'staged' | 'ready' | 'missing' | 'destroyed'
 }
 
+export interface DocumentWorkflowTaskSummary {
+  id: number
+  state?: { id: number; code: string; name: string; is_terminal: boolean } | null
+  assigned_user_id?: number | null
+  assigned_user?: { id: number; name: string } | null
+  assigned_role?: { id: number; name: string } | null
+  assigned_unit?: { id: number; name: string } | null
+  decision?: {
+    decision: string
+    reason?: string | null
+    decided_at?: string | null
+    decided_by?: { id: number; name: string } | null
+  } | null
+  due_at?: string | null
+  closed_at?: string | null
+}
+
+export interface DocumentWorkflowInstanceSummary {
+  id: number
+  version_id?: number
+  version_number?: number
+  workflow_definition?: { id: number; code: string; name: string; description?: string } | null
+  started_at?: string | null
+  started_by?: { id: number; name: string } | null
+  tasks?: DocumentWorkflowTaskSummary[]
+}
+
 export interface DocumentVersion {
   id: number
   document_id: number
   version_number: number
+  ingestion_method?: string | null
+  template_version_id?: number | null
+  template_data?: Record<string, any> | null
   created_by: number
   creator?: { id: number; name: string }
   change_note?: string | null
@@ -360,6 +454,7 @@ export interface DocumentVersion {
     purpose: 'primary' | 'attachment'
     file_object?: FileObject
   }[]
+  workflow_instances?: DocumentWorkflowInstanceSummary[]
 }
 
 export interface Document {
@@ -386,11 +481,28 @@ export interface Document {
   versions_count?: number
   versions?: DocumentVersion[]
   latest_version?: DocumentVersion
+  current_version?: DocumentVersion
   tags?: string[]
   correspondence?: Correspondence | null
+  archive_entry?: ArchiveEntry | null
   movements?: DocumentMovement[]
   assignments?: DocumentAssignment[]
   physical_originals?: PhysicalOriginal[]
+  workflow_instances?: DocumentWorkflowInstanceSummary[]
+  outgoing_relations?: Array<{
+    source_id: number
+    target_id: number
+    relation_type_id: number
+    relation_type?: { id: number; code: string; name: string } | null
+    target_document?: { id: number; reference_number: string; title: string } | null
+  }>
+  incoming_relations?: Array<{
+    source_id: number
+    target_id: number
+    relation_type_id: number
+    relation_type?: { id: number; code: string; name: string } | null
+    source_document?: { id: number; reference_number: string; title: string } | null
+  }>
 }
 
 export interface PhysicalStorageLocation {
@@ -502,6 +614,9 @@ export interface CorrespondenceParticipant {
   correspondence_id: number
   party_id: number
   participation_type: 'sender' | 'to' | 'cc'
+  unit?: { id: number; name: string; code: string } | null
+  user?: { id: number; name: string } | null
+  external_party?: { id: number; name: string } | null
   party?: {
     id: number
     unit_id?: number | null
@@ -533,18 +648,189 @@ export interface Correspondence {
   participants?: CorrespondenceParticipant[]
   movements?: DocumentMovement[]
   assignments?: DocumentAssignment[]
+  dispatches?: {
+    id: number
+    participant_id: number
+    document_version_id: number
+    method_id: number
+    method?: { id: number; code: string; name: string } | null
+    dispatched_by: number
+    dispatched_by_user?: { id: number; name: string } | null
+    dispatched_at: string
+    tracking_reference?: string | null
+    evidence_file_id?: number | null
+    has_delivery_evidence?: boolean
+    evidence_file?: {
+      id: number
+      original_filename: string
+      byte_size: number
+      sha256?: string
+    } | null
+  }[]
+  lifecycle?: string | null
+  is_closed?: boolean
+  is_outgoing?: boolean
+  can_close?: boolean
+  closure_blockers?: string[]
 }
 
 export interface WorkflowDefinition {
   id: number
   code: string
   name: string
+  description?: string | null
+  document_category_id?: number | null
+  document_category?: { id: number; code: string; name: string } | null
   active: boolean
+  versions_count?: number
+  active_version?: {
+    id: number
+    version_number: number
+    published_at: string | null
+    states_count: number
+  } | null
+  draft_version?: {
+    id: number
+    version_number: number
+    created_at: string
+  } | null
+  versions?: WorkflowAdminVersion[]
+}
+
+export interface WorkflowAdminTransition {
+  id: number
+  from_state_id: number
+  to_state_id: number
+  action_code: string
+  permission_id: number
+  requires_reason: boolean
+  requires_signature: boolean
+  prohibit_self_approval: boolean
+  approval_policy: 'single' | 'all_required' | 'any_required' | 'majority' | 'quorum'
+  quorum_count?: number | null
+  quorum_percentage?: number | null
+  join_policy?: 'all_branches' | 'any_branch' | null
+  fork_state_ids?: number[] | null
+  fromState?: { id: number; code: string; name: string }
+  toState?: { id: number; code: string; name: string }
+  permission?: { id: number; code: string; name: string } | null
+}
+
+export interface WorkflowAdminState {
+  id: number
+  workflow_version_id: number
+  code: string
+  name: string
+  is_initial: boolean
+  is_terminal: boolean
+  assigned_role_id?: number | null
+  assigned_unit_id?: number | null
+  sla_hours?: number | null
+  assignedRole?: { id: number; code: string; name: string } | null
+  assignedUnit?: { id: number; code: string; name: string } | null
+  outgoingTransitions?: WorkflowAdminTransition[]
+}
+
+export interface WorkflowAdminVersion {
+  id: number
+  definition_id: number
+  version_number: number
+  created_by: number
+  published_at?: string | null
+  created_at: string
+  createdBy?: { id: number; username?: string; email: string }
+  states: WorkflowAdminState[]
+}
+
+export interface NumberingPolicyItem {
+  id: number
+  code: string
+  name: string
+  prefix: string
+  include_unit_code: boolean
+  include_category_code: boolean
+  year_format: 'calendar_year' | 'ethiopian_year' | 'none'
+  sequence_length: number
+  reset_policy: 'yearly' | 'monthly' | 'never'
+  active: boolean
+  current_sequence?: number
+  next_value?: number
+  period_key?: string
+}
+
+export interface RoutingPolicyItem {
+  id: number
+  code: string
+  name: string
+  from_unit_id?: number | null
+  to_unit_id: number
+  correspondence_type_id?: number | null
+  document_category_id?: number | null
+  priority_id?: number | null
+  default_assignee_role_id?: number | null
+  sla_hours: number
+  escalation_unit_id?: number | null
+  active: boolean
+  description?: string | null
+  fromUnit?: { id: number; code: string; name: string } | null
+  from_unit?: { id: number; code: string; name: string } | null
+  toUnit?: { id: number; code: string; name: string } | null
+  to_unit?: { id: number; code: string; name: string } | null
+  correspondenceType?: { id: number; code: string; name: string } | null
+  correspondence_type?: { id: number; code: string; name: string } | null
+  documentCategory?: { id: number; code: string; name: string } | null
+  document_category?: { id: number; code: string; name: string } | null
+  priority?: { id: number; code: string; name: string } | null
+  defaultAssigneeRole?: { id: number; code: string; name: string } | null
+  escalationUnit?: { id: number; code: string; name: string } | null
+}
+
+export interface RetentionPolicyVersionItem {
+  id: number
+  policy_id: number
+  version_number: number
+  trigger_code: string
+  duration_months: number
+  disposition_action: 'retain' | 'review' | 'destroy' | 'transfer'
+  approved_by?: number | null
+  approved_at?: string | null
+  effective_from: string
+  approvedBy?: { id: number; username?: string; email: string } | null
+}
+
+export interface RetentionPolicyItem {
+  id: number
+  code: string
+  name: string
+  description?: string | null
+  document_category_id?: number | null
+  active: boolean
+  documentCategory?: { id: number; code: string; name: string } | null
+  activeVersion?: RetentionPolicyVersionItem | null
+  versions?: RetentionPolicyVersionItem[]
+}
+
+export interface GraphValidationResult {
+  valid: boolean
+  errors: string[]
 }
 
 export interface WorkflowTask {
   id: number
   instance_id: number
+  instance?: {
+    id: number
+    documentVersion?: {
+      id: number
+      version_number?: number
+      document?: { id: number; reference_number: string; title: string } | null
+    } | null
+    document_version?: {
+      id: number
+      version_number?: number
+      document?: { id: number; reference_number: string; title: string } | null
+    } | null
+  } | null
   state_id: number
   state?: { id: number; code: string; name: string }
   assigned_user_id?: number | null
@@ -552,10 +838,18 @@ export interface WorkflowTask {
   assigned_unit_id?: number | null
   assigned_unit?: OrganizationUnit
   required_role_id?: number | null
+  required_role?: { id: number; name: string } | null
   branch_key?: string | null
   created_at: string
   due_at?: string | null
   closed_at?: string | null
+  decision?: {
+    id?: number
+    decision: string
+    reason?: string | null
+    decided_at?: string | null
+    decided_by?: { id: number; name: string } | null
+  } | null
 }
 
 // ----------------------------------------------------------------------------
@@ -596,6 +890,7 @@ export interface RetentionPolicyVersion {
 export interface ArchiveEntry {
   id: number
   document_id: number
+  archive_reference?: string | null
   document?: Document
   collection_id: number
   collection?: ArchiveCollection
@@ -616,6 +911,9 @@ export interface LegalHold {
   placed_at: string
   released_by?: number | null
   released_at?: string | null
+  placed_by_user?: User
+  released_by_user?: User
+  documents?: Document[]
 }
 
 // ----------------------------------------------------------------------------
@@ -642,12 +940,23 @@ export interface UserNotification {
   user_id: number
   read_at?: string | null
   created_at: string
+  target_url?: string
   event?: {
     id: number
     type_code: string
     document_id?: number | null
     actor_id?: number | null
     occurred_at: string
+    document?: {
+      id: number
+      title: string
+      reference_number: string
+      is_restricted?: boolean
+    } | null
+    actor?: {
+      id: number
+      name: string
+    } | null
   }
 }
 
@@ -670,7 +979,35 @@ export interface DashboardMetrics {
     total_movements: number
     pending_assignments: number
     archived_records: number
+    pending_workflow_tasks?: number
+    my_pending_tasks?: number
+    my_office_pending_tasks?: number
+    overdue_tasks?: number
+    outgoing_awaiting_dispatch?: number
+    unreceived_dispatches?: number
+    incoming_unreceived?: number
+    records_awaiting_retention_review?: number
+    pending_disposition_requests?: number
+    documents_requiring_action?: number
   }
+  pending_tasks?: WorkflowTask[]
+  documents_requiring_action?: Document[]
+  outgoing_awaiting_dispatch?: Correspondence[]
+  recent_decisions?: {
+    id: number
+    decision: string
+    reason?: string | null
+    decided_at: string
+    decided_by?: { id: number; name: string }
+    task?: {
+      id: number
+      instance?: {
+        document_version?: {
+          document?: { id: number; title: string; reference_number: string }
+        }
+      }
+    }
+  }[]
   recent_documents: Document[]
   recent_correspondences: Correspondence[]
 }
@@ -794,6 +1131,40 @@ export interface AccreditationCycleSummary {
     evidence_count: number
     evidence_ids: number[]
   }[]
+}
+
+// ----------------------------------------------------------------------------
+// 11b. Finalized Research Repository
+// ----------------------------------------------------------------------------
+
+/**
+ * A finalized research record.
+ *
+ * The record is a repository entry bound to a registered document. The
+ * document relation carries the title, the reference number and the owning
+ * unit.
+ */
+export interface ResearchRecord {
+  id: number
+  document_id: number
+  research_type?: string | null
+  completed_on?: string | null
+  external_selection_reference?: string | null
+  recorded_by?: number | null
+  recorded_at?: string | null
+  document?: {
+    id: number
+    reference_number: string
+    title: string
+    summary?: string | null
+    ownerUnit?: { id: number; code: string; name: string } | null
+  } | null
+  authors?: Array<{
+    id: number
+    author_order?: number | null
+    staff?: { id: number; name: string } | null
+  }>
+  publications?: Array<{ id: number }>
 }
 
 // ----------------------------------------------------------------------------

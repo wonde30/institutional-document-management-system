@@ -567,7 +567,7 @@ class SecurityAndAccessControlAuditTest extends TestCase
 
         $entriesResp = $this->getJson('/api/v1/archive/entries');
         $entriesResp->assertStatus(200);
-        $entryDocIds = collect($entriesResp->json('data.data'))->pluck('document_id')->all();
+        $entryDocIds = collect($entriesResp->json('data'))->pluck('document_id')->all();
         $this->assertNotContains($confDocA->id, $entryDocIds);
 
         // Officer Unit B attempts to transfer a new Unit A document into archive

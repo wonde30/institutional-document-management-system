@@ -9,43 +9,47 @@ use App\Models\User;
 use App\Models\UserPermission;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
     /**
-     * Authenticate user with Sanctum stateful session cookies and transition test token.
+     * Automatically seed baseline reference data when RefreshDatabase is used.
+     */
+    protected bool $seed = true;
+    /**
+     * Authenticate user with Sanctum stateful session and bypass CSRF for JSON API tests.
+     *
+     * Sanctum stateful requests require a matching XSRF-TOKEN cookie / X-XSRF-TOKEN header.
+     * During automated testing we bypass VerifyCsrfToken by injecting a known token into
+     * both the session and the request header so CSRF validation passes without a real browser.
      */
     protected function authenticateAs(User $user): string
     {
         $this->defaultCookies = [];
         $this->flushSession();
-        \Illuminate\Support\Facades\Auth::forgetGuards();
+        Auth::forgetGuards();
         $this->actingAs($user, 'web');
+
+        // Generate a stable CSRF token for this test request.
+        $csrfToken = Str::random(40);
+
         $this->withSession([
             'authz_version' => (int) $user->authz_version,
             'password_hash_web' => $user->getAuthPassword(),
-        ]);
-
-        $token = \Illuminate\Support\Str::random(60);
-        \Illuminate\Support\Facades\DB::table('sessions')->insert([
-            'id' => $token,
-            'user_id' => $user->id,
-            'ip_address' => '127.0.0.1',
-            'user_agent' => 'PHPUnit/Test',
-            'payload' => base64_encode(serialize(['user_id' => $user->id, 'authz_version' => $user->authz_version])),
-            'last_activity' => time(),
+            '_token' => $csrfToken,
         ]);
 
         $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
             'Origin' => 'http://localhost',
             'Referer' => 'http://localhost/',
             'Accept' => 'application/json',
+            'X-XSRF-TOKEN' => $csrfToken,
         ]);
 
-        return $token;
+        return $csrfToken;
     }
 
     /**

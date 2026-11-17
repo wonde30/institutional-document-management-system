@@ -9,9 +9,6 @@ import {
  Files,
  Archive,
  Users,
- ShieldCheck,
- Building2,
- ExternalLink,
 } from 'lucide-vue-next'
 
 const searchQuery = ref('')
@@ -83,18 +80,17 @@ const filteredGuides = computed(() => {
 
 <template>
  <div class="space-y-6 max-w-4xl">
- <div>
- <div class="text-[11px] font-bold tracking-widest text-primary uppercase mb-1">
- ADMINISTRATION / USER GUIDANCE & SUPPORT
- </div>
- <h1 class="text-2xl font-bold tracking-tight text-ink-secondary">
- Wollo University DMS Help Guide
+ <div class="border-b border-hairline pb-4">
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <HelpCircle class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Wollo University DMS Help Guide</span>
  </h1>
- <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+ <p class="text-xs text-ink-muted mt-0.5">
  Operational guidelines, workflow rules, and institutional access policies by functional module.
  </p>
+ </div>
 
- <div class="max-w-md pt-3">
+ <div class="max-w-md pt-1">
  <BaseInput
  v-model="searchQuery"
  type="search"
@@ -104,7 +100,6 @@ const filteredGuides = computed(() => {
  <Search class="w-4 h-4 text-ink-muted" />
  </template>
  </BaseInput>
- </div>
  </div>
 
  <!-- Guides List -->
@@ -132,14 +127,18 @@ const filteredGuides = computed(() => {
  </div>
  </div>
 
- <!-- Support Contact Box -->
+ <!-- Where to go for help. The contact route is described, because
+ the address itself is not published by the server. -->
  <div class="p-5 rounded-xl bg-canvas-soft border border-hairline space-y-2">
  <div class="text-xs font-semibold text-ink-secondary flex items-center gap-2">
  <HelpCircle class="w-4 h-4 text-primary" />
- ICT Directorate Support & Access Delegation
+ Support and access delegation
  </div>
  <p class="text-xs text-ink-muted leading-relaxed">
- For technical assistance, unit scope adjustments, or role delegation requests, contact the Wollo University ICT Support Desk at <strong>ict.support@wu.edu.et</strong> or internal extension <strong>4410</strong>.
+ For technical assistance, unit scope adjustments, or role delegation requests,
+ contact the ICT Directorate through your unit's administrative officer. The
+ support address for the deployment is published on the institution's public
+ portal.
  </p>
  </div>
  </div>

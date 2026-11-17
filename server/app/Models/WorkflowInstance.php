@@ -53,6 +53,11 @@ class WorkflowInstance extends Model
         return $this->belongsTo(User::class, 'started_by');
     }
 
+    public function initiator(): BelongsTo
+    {
+        return $this->startedBy();
+    }
+
     public function parentInstance(): BelongsTo
     {
         return $this->belongsTo(WorkflowInstance::class, 'parent_instance_id');

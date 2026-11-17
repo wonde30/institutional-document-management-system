@@ -9,8 +9,6 @@ import {
  Eye,
  EyeOff,
  AlertCircle,
- ShieldCheck,
- Building2,
  Lock,
 } from 'lucide-vue-next'
 
@@ -18,8 +16,8 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const email = ref('admin@wu.edu.et')
-const password = ref('Password123!')
+const email = ref('')
+const password = ref('')
 const showPassword = ref(false)
 const errorMessage = ref<string | null>(null)
 const isLoading = ref(false)
@@ -54,21 +52,16 @@ async function handleLogin() {
  }
 }
 
-function setDemoCredentials(demoEmail: string, demoPass: string) {
- email.value = demoEmail
- password.value = demoPass
- handleLogin()
-}
 </script>
 
 <template>
  <div class="min-h-screen bg-canvas-soft flex items-center justify-center p-4 select-none">
  <div class="w-full max-w-md">
  <!-- Main Card -->
- <div class="bg-surface border border-hairline rounded-xl shadow-xs p-8 sm:p-10 space-y-6">
+ <div class="bg-surface border border-hairline rounded-lg border border-hairline bg-surface p-6 sm:p-8 shadow-sm space-y-5">
  <!-- University Branding -->
  <div class="text-center space-y-2">
- <div class="inline-flex w-12 h-12 rounded-xl bg-primary text-white items-center justify-center font-bold text-lg shadow-xs">
+ <div class="inline-flex w-11 h-11 rounded-lg bg-primary text-white items-center justify-center font-bold text-base shadow-2xs">
  WU
  </div>
  <div>
@@ -84,7 +77,9 @@ function setDemoCredentials(demoEmail: string, demoPass: string) {
  <!-- Error Notification -->
  <div
  v-if="errorMessage"
- class="flex items-start gap-3 p-3.5 rounded-xl bg-[#fde8e8] dark:bg-[#371717] border border-[#f87171]/40 text-[#e03e3e] dark:text-[#f87171] text-xs"
+ role="alert"
+ data-login-error
+ class="flex items-start gap-3 p-3.5 rounded-lg bg-[#fde8e8] dark:bg-[#371717] border border-[#f87171]/40 text-[#e03e3e] dark:text-[#f87171] text-xs"
  >
  <AlertCircle class="w-4 h-4 shrink-0 mt-0.5 text-[#e03e3e] dark:text-[#f87171]" />
  <div class="flex-1 font-medium leading-relaxed">{{ errorMessage }}</div>
@@ -157,39 +152,9 @@ function setDemoCredentials(demoEmail: string, demoPass: string) {
  </div>
  </form>
 
- <!-- Quick Demo Profiles -->
- <div class="pt-4 border-t border-hairline space-y-2.5">
- <div class="text-[11px] font-semibold uppercase tracking-wider text-ink-muted text-center">
- Institutional Demo Roles
- </div>
- <div class="grid grid-cols-2 gap-2">
- <button
- type="button"
- @click="setDemoCredentials('admin@wu.edu.et', 'Password123!')"
- class="p-2.5 rounded-lg border border-hairline hover:bg-canvas-soft text-left transition-colors group"
- >
- <div class="flex items-center gap-1.5 text-xs font-semibold text-ink group-hover:text-primary">
- <ShieldCheck class="w-3.5 h-3.5 text-primary" /> System Administrator
- </div>
- <div class="text-[10px] text-ink-muted truncate mt-0.5">admin@wu.edu.et</div>
- </button>
-
- <button
- type="button"
- @click="setDemoCredentials('head.cs@wu.edu.et', 'Password123!')"
- class="p-2.5 rounded-lg border border-hairline hover:bg-canvas-soft text-left transition-colors group"
- >
- <div class="flex items-center gap-1.5 text-xs font-semibold text-ink group-hover:text-primary">
- <Building2 class="w-3.5 h-3.5 text-primary" /> Department Head
- </div>
- <div class="text-[10px] text-ink-muted truncate mt-0.5">head.cs@wu.edu.et</div>
- </button>
- </div>
- </div>
-
  <!-- Support Info -->
  <div class="text-center text-[11px] text-ink-muted">
- Need access delegation? Contact Information Technology Directorate at <a href="mailto:ict.support@wu.edu.et" class="text-primary hover:underline">ict.support@wu.edu.et</a>
+ Need access delegation? Contact the Information Technology Directorate through your unit's administrative officer.
  </div>
  </div>
 

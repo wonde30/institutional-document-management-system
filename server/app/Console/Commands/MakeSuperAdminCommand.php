@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\AuthorizationScope;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditService;
@@ -21,6 +23,13 @@ class MakeSuperAdminCommand extends Command
     protected $signature = 'user:make-super-admin 
                             {email : The institutional email address of the user to promote} 
                             {--force : Bypass interactive safety confirmation}';
+
+    /**
+     * Alternative signatures / aliases for this command.
+     *
+     * @var array<int, string>
+     */
+    protected $aliases = ['auth:recover-admin'];
 
     /**
      * The console command description.
@@ -78,13 +87,38 @@ class MakeSuperAdminCommand extends Command
 
         // 5. Atomic database transaction
         DB::transaction(function () use ($user, $superAdminRole, $email): void {
-            // Attach role if not already granted
-            $hasRole = $user->roles()->where('roles.id', $superAdminRole->id)->exists();
+            // Ensure global authorization scope exists
+            $globalScope = AuthorizationScope::firstOrCreate([
+                'kind' => 'global',
+                'unit_id' => null,
+            ]);
+
+            // Ensure role has system.configure capability
+            $sysConfigPerm = Permission::where('code', 'system.configure')->first();
+            if ($sysConfigPerm && ! $superAdminRole->permissions()->where('permissions.id', $sysConfigPerm->id)->exists()) {
+                $superAdminRole->permissions()->attach($sysConfigPerm->id);
+            }
+
+            // Attach role in global scope if not already granted
+            $hasRole = DB::table('user_roles')
+                ->where('user_id', $user->id)
+                ->where('role_id', $superAdminRole->id)
+                ->where('scope_id', $globalScope->id)
+                ->exists();
+
             if (! $hasRole) {
-                $user->roles()->attach($superAdminRole->id, [
-                    'granted_by' => $user->id,
-                    'granted_at' => Carbon::now(),
-                ]);
+                DB::table('user_roles')->updateOrInsert(
+                    [
+                        'user_id' => $user->id,
+                        'role_id' => $superAdminRole->id,
+                        'scope_id' => $globalScope->id,
+                    ],
+                    [
+                        'granted_by' => $user->id,
+                        'granted_at' => Carbon::now(),
+                        'expires_at' => null,
+                    ]
+                );
             }
 
             // Ensure account status is active
@@ -94,12 +128,14 @@ class MakeSuperAdminCommand extends Command
             $user->authz_version = ($user->authz_version ?? 0) + 1;
             $user->save();
 
-            // Revoke any existing Sanctum API tokens
-            $user->tokens()->delete();
+            // Clear any existing session records
+            if (DB::getSchemaBuilder()->hasTable('sessions')) {
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+            }
 
             // Record immutable institutional audit log
             AuditService::log(
-                action: 'user.emergency_super_admin_assigned',
+                action: 'user.emergency_admin_recovered',
                 targetType: User::class,
                 targetId: (string) $user->id,
                 details: [
@@ -107,6 +143,8 @@ class MakeSuperAdminCommand extends Command
                     'email' => $email,
                     'user_id' => $user->id,
                     'authz_version' => $user->authz_version,
+                    'scope' => 'global',
+                    'capability' => 'system.configure',
                     'timestamp' => Carbon::now()->toIso8601String(),
                 ],
                 actorId: $user->id

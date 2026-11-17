@@ -38,6 +38,7 @@ import type {
   AccreditationCycleSummary,
   ProjectType,
   ProjectProposal,
+  ResearchRecord,
   Project,
   SignatureRequestItem,
   StampDefinitionItem,
@@ -51,6 +52,7 @@ import type {
   DataDataset,
   DataExportOperation,
   DataImportOperation,
+  PermissionLineageData,
 } from '@/types'
 
 export const apiClient = axios.create({
@@ -139,7 +141,8 @@ export const authApi = {
     apiClient.post<ApiResponse<User>>('/auth/login', credentials),
   logout: () => apiClient.post<ApiResponse<void>>('/auth/logout'),
   me: () => apiClient.get<ApiResponse<User>>('/auth/me'),
-  changePassword: (data: Record<string, string>) => apiClient.put<ApiResponse<void>>('/auth/password', data),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    apiClient.put<ApiResponse<void>>('/auth/password', data),
   forgotPassword: (data: { email: string }) =>
     apiClient.post<ApiResponse<void>>('/auth/forgot-password', data),
   resetPassword: (data: {
@@ -181,18 +184,22 @@ export const reportsApi = {
 // 3. Reference Metadata API
 // ----------------------------------------------------------------------------
 export const metadataApi = {
-  getAll: () => apiClient.get<ApiResponse<{
+  getAll: (params?: { include_inactive?: boolean }) => apiClient.get<ApiResponse<{
     document_categories: DocumentCategory[]
     confidentiality_levels: ConfidentialityLevel[]
     correspondence_types: CorrespondenceType[]
     priorities: Priority[]
     dispatch_methods: DispatchMethod[]
-  }>>('/metadata/all'),
+  }>>('/metadata/all', { params }),
   getCategories: () => apiClient.get<ApiResponse<DocumentCategory[]>>('/metadata/categories'),
   getConfidentialityLevels: () => apiClient.get<ApiResponse<ConfidentialityLevel[]>>('/metadata/confidentiality-levels'),
   getCorrespondenceTypes: () => apiClient.get<ApiResponse<CorrespondenceType[]>>('/metadata/correspondence-types'),
   getPriorities: () => apiClient.get<ApiResponse<Priority[]>>('/metadata/priorities'),
   getDispatchMethods: () => apiClient.get<ApiResponse<DispatchMethod[]>>('/metadata/dispatch-methods'),
+  createItem: (type: string, data: { code: string; name: string; description?: string; active?: boolean }) =>
+    apiClient.post<ApiResponse<any>>(`/metadata/${type}`, data),
+  updateItem: (type: string, id: number, data: { name?: string; description?: string; active?: boolean }) =>
+    apiClient.put<ApiResponse<any>>(`/metadata/${type}/${id}`, data),
 }
 
 // ----------------------------------------------------------------------------
@@ -223,6 +230,10 @@ export const usersApi = {
     apiClient.patch<ApiResponse<User>>(`/users/${id}/status`, { status }),
   assignMembership: (id: number, data: { unit_id: number; position_title?: string; is_primary?: boolean }) =>
     apiClient.post<ApiResponse<unknown>>(`/users/${id}/memberships`, data),
+  getEffectivePermissions: (id: number, unitId?: number | null) =>
+    apiClient.get<ApiResponse<PermissionLineageData>>(`/users/${id}/effective-permissions`, {
+      params: unitId ? { unit_id: unitId } : undefined,
+    }),
 }
 
 // ----------------------------------------------------------------------------
@@ -237,8 +248,12 @@ export const rolesApi = {
     apiClient.put<ApiResponse<RoleItem>>(`/roles/${id}`, data),
   syncPermissions: (id: number, permissionIds: number[]) =>
     apiClient.post<ApiResponse<RoleItem>>(`/roles/${id}/permissions`, { permission_ids: permissionIds }),
-  permissions: () => apiClient.get<ApiResponse<PermissionItem[]>>('/permissions'),
+  permissions: (params?: { all?: boolean }) => apiClient.get<ApiResponse<PermissionItem[]>>('/permissions', { params }),
   scopes: () => apiClient.get<ApiResponse<AuthorizationScope[]>>('/authorization-scopes'),
+  getUsers: (id: number) =>
+    apiClient.get<ApiResponse<{ role_id: number; role_code: string; role_name: string; total_users: number; users: any[] }>>(
+      `/roles/${id}/users`
+    ),
   assignUserRole: (data: {
     user_id: number
     role_id: number
@@ -260,7 +275,9 @@ export const rolesApi = {
 }
 
 export const permissionsApi = {
-  list: () => apiClient.get<ApiResponse<PermissionItem[]>>('/permissions'),
+  list: (params?: { all?: boolean }) => apiClient.get<ApiResponse<PermissionItem[]>>('/permissions', { params }),
+  update: (id: number, data: { active?: boolean; description?: string }) =>
+    apiClient.patch<ApiResponse<PermissionItem>>(`/permissions/${id}`, data),
 }
 
 // ----------------------------------------------------------------------------
@@ -304,6 +321,14 @@ export const documentsApi = {
     id: number,
     data: { assigned_user_id: number; assigned_unit_id: number; instruction: string; due_at?: string; participants?: any[] }
   ) => apiClient.post<ApiResponse<DocumentAssignment>>(`/documents/${id}/assignments`, data),
+  compareVersions: (id: number, versionA: number, versionB: number) =>
+    apiClient.get<ApiResponse<any>>(`/documents/${id}/compare-versions?version_a=${versionA}&version_b=${versionB}`),
+  addRelation: (id: number, data: { target_document_id: number; relation_type?: string }) =>
+    apiClient.post<ApiResponse<any>>(`/documents/${id}/relations`, data),
+  removeRelation: (id: number, targetId: number) =>
+    apiClient.delete<ApiResponse<any>>(`/documents/${id}/relations/${targetId}`),
+  verifyFileIntegrity: (id: number, fileId: number) =>
+    apiClient.post<ApiResponse<any>>(`/documents/${id}/files/${fileId}/verify-integrity`),
 }
 
 export const movementsApi = {
@@ -335,10 +360,17 @@ export const templatesApi = {
     apiClient.post<ApiResponse<any>>(`/templates/${id}/versions`, data),
   publishVersion: (id: number, versionId: number) =>
     apiClient.post<ApiResponse<any>>(`/templates/${id}/versions/${versionId}/publish`),
-  render: (id: number, data: Record<string, unknown>) =>
-    apiClient.post<ApiResponse<any>>(`/templates/${id}/render`, data),
   generateDocument: (id: number, data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<any>>(`/templates/${id}/render`, data),
+}
+
+export const officialLettersApi = {
+  baselineConfig: (unitId?: number) =>
+    apiClient.get<ApiResponse<any>>('/official-letters/baseline-config', { params: { unit_id: unitId } }),
+  preview: (data: Record<string, unknown>) =>
+    apiClient.post<ApiResponse<{ pdf_base64: string; byte_size: number; mime_type: string }>>('/official-letters/preview', data),
+  generate: (data: Record<string, unknown>) =>
+    apiClient.post<ApiResponse<Document>>('/official-letters', data),
 }
 
 export const searchApi = {
@@ -353,7 +385,7 @@ export const correspondenceApi = {
   list: (params?: Record<string, unknown>) =>
     apiClient.get<PaginatedResponse<Correspondence>>('/correspondences', { params }),
   get: (id: number) => apiClient.get<ApiResponse<Correspondence>>(`/correspondences/${id}`),
-  create: (data: Record<string, unknown>) =>
+  create: (data: Record<string, unknown> | FormData) =>
     apiClient.post<ApiResponse<Correspondence>>('/correspondences', data),
   recordMovement: (
     id: number,
@@ -378,6 +410,8 @@ export const correspondenceApi = {
     apiClient.post<ApiResponse<any>>(`/correspondences/${id}/movements/${movementId}/acknowledge`),
   prepareLinkedResponse: (id: number, data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<Correspondence>>(`/correspondences/${id}/linked-response`, data),
+  close: (id: number, data?: { reason?: string }) =>
+    apiClient.post<ApiResponse<Correspondence>>(`/correspondences/${id}/close`, data),
 }
 
 // ----------------------------------------------------------------------------
@@ -385,7 +419,7 @@ export const correspondenceApi = {
 // ----------------------------------------------------------------------------
 export const workflowApi = {
   definitions: () => apiClient.get<ApiResponse<WorkflowDefinition[]>>('/workflows/definitions'),
-  tasks: (params?: { scope?: 'mine' | 'all' }) =>
+  tasks: (params?: { scope?: 'mine' | 'office' | 'all'; status?: 'open' | 'closed' | 'all'; page?: number; per_page?: number }) =>
     apiClient.get<PaginatedResponse<WorkflowTask>>('/workflows/tasks', { params }),
   startInstance: (data: { workflow_definition_id: number; document_version_id: number; parent_instance_id?: number }) =>
     apiClient.post<ApiResponse<any>>('/workflows/instances', data),
@@ -406,6 +440,8 @@ export const workflowApi = {
 // ----------------------------------------------------------------------------
 export const archiveApi = {
   collections: () => apiClient.get<ApiResponse<ArchiveCollection[]>>('/archive/collections'),
+  createCollection: (data: { code: string; name: string; description?: string; parent_id?: number }) =>
+    apiClient.post<ApiResponse<ArchiveCollection>>('/archive/collections', data),
   policies: () => apiClient.get<ApiResponse<RetentionPolicy[]>>('/archive/policies'),
   entries: (params?: Record<string, unknown>) =>
     apiClient.get<PaginatedResponse<ArchiveEntry>>('/archive/entries', { params }),
@@ -416,6 +452,38 @@ export const archiveApi = {
     next_review_at?: string
   }) => apiClient.post<ApiResponse<ArchiveEntry>>('/archive/transfer', data),
   legalHolds: () => apiClient.get<ApiResponse<LegalHold[]>>('/archive/legal-holds'),
+  createLegalHold: (data: { code: string; reason: string; document_ids?: number[] }) =>
+    apiClient.post<ApiResponse<LegalHold>>('/archive/legal-holds', data),
+  releaseLegalHold: (id: number) =>
+    apiClient.post<ApiResponse<LegalHold>>(`/archive/legal-holds/${id}/release`),
+  disposalEligibility: (id: number) =>
+    apiClient.get<ApiResponse<{
+      entry_id: number
+      document_id: number
+      reference_number: string
+      title: string
+      lifecycle: string
+      eligible: boolean
+      reasons: string[]
+      active_holds: Array<{ id: number; code: string; reason: string; placed_at: string }>
+      next_review_at: string | null
+    }>>(`/archive/entries/${id}/disposal-eligibility`),
+  dispose: (id: number, data: { requested_action: string; justification: string }) =>
+    apiClient.post<ApiResponse<any>>(`/archive/entries/${id}/dispose`, data),
+  requestDisposal: (id: number, data: { requested_action: string; justification: string }) =>
+    apiClient.post<ApiResponse<any>>(`/archive/entries/${id}/request-disposal`, data),
+  decideDisposal: (requestId: number, data: { decision: 'approve' | 'reject'; reason: string }) =>
+    apiClient.post<ApiResponse<any>>(`/archive/disposition-requests/${requestId}/decide`, data),
+  executeDisposal: (requestId: number, data?: { external_receipt?: string; evidence_document_id?: number }) =>
+    apiClient.post<ApiResponse<any>>(`/archive/disposition-requests/${requestId}/execute`, data),
+  restore: (id: number) =>
+    apiClient.post<ApiResponse<any>>(`/archive/entries/${id}/restore`),
+  verifyIntegrity: (fileObjectId: number) =>
+    apiClient.post<ApiResponse<any>>(`/archive/files/${fileObjectId}/verify-integrity`),
+  review: (
+    id: number,
+    data: { review_action: 'extend' | 'retain_permanent' | 'request_disposal'; months_extended?: number; notes: string }
+  ) => apiClient.post<ApiResponse<any>>(`/archive/entries/${id}/review`, data),
 }
 
 // ----------------------------------------------------------------------------
@@ -532,8 +600,8 @@ export const dataTransferApi = {
 // ----------------------------------------------------------------------------
 export const institutionalApi = {
   // Research
-  research: () => apiClient.get<ApiResponse<any[]>>('/research/outputs'),
-  getResearch: (id: number) => apiClient.get<ApiResponse<any>>(`/research/outputs/${id}`),
+  research: () => apiClient.get<ApiResponse<ResearchRecord[]>>('/research/outputs'),
+  getResearch: (id: number) => apiClient.get<ApiResponse<ResearchRecord>>(`/research/outputs/${id}`),
   storeResearch: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<any>>('/research/outputs', data),
   updateResearch: (id: number, data: Record<string, unknown>) =>
@@ -547,10 +615,18 @@ export const institutionalApi = {
   staffRecords: () => apiClient.get<ApiResponse<any[]>>('/staff/records'),
   storeStaffRecord: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<any>>('/staff/records', data),
-  verifyStaffScan: (id: number) =>
-    apiClient.post<ApiResponse<any>>(`/staff/records/${id}/verify-scan`),
-  disposeStaffPhysical: (id: number, data: { disposal_order_reference: string }) =>
-    apiClient.post<ApiResponse<any>>(`/staff/records/${id}/dispose-physical`, data),
+  verifyStaffScan: (
+    id: number,
+    data: { verification_status: 'accepted' | 'rejected'; verification_note?: string }
+  ) => apiClient.post<ApiResponse<unknown>>(`/staff/records/${id}/verify-scan`, data),
+  disposeStaffPhysical: (
+    id: number,
+    data: {
+      authorization_reference: string
+      reason: string
+      executive_senate_disposal_order?: string
+    }
+  ) => apiClient.post<ApiResponse<unknown>>(`/staff/records/${id}/dispose-physical`, data),
 
   // Accreditation & Quality Assurance
   accreditationFrameworks: () =>
@@ -599,6 +675,8 @@ export const institutionalApi = {
     apiClient.post<ApiResponse<unknown>>('/signatures/verify-file', data),
   signingIdentities: () =>
     apiClient.get<ApiResponse<SigningIdentityItem[]>>('/signatures/identities'),
+  applyStamp: (data: { document_version_id: number; stamp_id: number; reason: string }) =>
+    apiClient.post<ApiResponse<any>>('/stamps/apply', data),
 
   // Office Procedures
   procedures: () => apiClient.get<ApiResponse<unknown[]>>('/procedures'),
@@ -652,5 +730,120 @@ export const ocrApi = {
       `/documents/${documentId}/versions/${versionId}/extractions/${extractionId}/retry`,
       { sync: true, ...(data ?? {}) }
     ),
+}
+
+// ----------------------------------------------------------------------------
+// 19. Institutional Configuration Center API (Workflows, Numbering, Routing, Retention)
+// ----------------------------------------------------------------------------
+export const workflowAdminApi = {
+  list: () => apiClient.get<ApiResponse<import('@/types').WorkflowDefinition[]>>('/admin/workflows'),
+  get: (id: number) => apiClient.get<ApiResponse<any>>(`/admin/workflows/${id}`),
+  create: (data: { code: string; name: string; description?: string; document_category_id?: number | null; active?: boolean }) =>
+    apiClient.post<ApiResponse<any>>('/admin/workflows', data),
+  update: (id: number, data: { name: string; description?: string; document_category_id?: number | null; active: boolean }) =>
+    apiClient.put<ApiResponse<any>>(`/admin/workflows/${id}`, data),
+  createVersion: (id: number, data?: { clone_from_version_id?: number | null }) =>
+    apiClient.post<ApiResponse<any>>(`/admin/workflows/${id}/versions`, data ?? {}),
+  createState: (id: number, versionId: number, data: {
+    code: string
+    name: string
+    is_initial?: boolean
+    is_terminal?: boolean
+    assigned_role_id?: number | null
+    assigned_unit_id?: number | null
+    sla_hours?: number | null
+  }) => apiClient.post<ApiResponse<any>>(`/admin/workflows/${id}/versions/${versionId}/states`, data),
+  updateState: (id: number, versionId: number, stateId: number, data: {
+    code: string
+    name: string
+    is_initial?: boolean
+    is_terminal?: boolean
+    assigned_role_id?: number | null
+    assigned_unit_id?: number | null
+    sla_hours?: number | null
+  }) => apiClient.put<ApiResponse<any>>(`/admin/workflows/${id}/versions/${versionId}/states/${stateId}`, data),
+  deleteState: (id: number, versionId: number, stateId: number) =>
+    apiClient.delete<ApiResponse<any>>(`/admin/workflows/${id}/versions/${versionId}/states/${stateId}`),
+  createTransition: (id: number, versionId: number, data: {
+    from_state_id: number
+    to_state_id: number
+    action_code: string
+    permission_id?: number | null
+    requires_reason?: boolean
+    requires_signature?: boolean
+    prohibit_self_approval?: boolean
+    approval_policy?: string
+    quorum_count?: number | null
+    quorum_percentage?: number | null
+    join_policy?: string | null
+    fork_state_ids?: number[] | null
+  }) => apiClient.post<ApiResponse<any>>(`/admin/workflows/${id}/versions/${versionId}/transitions`, data),
+  deleteTransition: (id: number, versionId: number, transitionId: number) =>
+    apiClient.delete<ApiResponse<any>>(`/admin/workflows/${id}/versions/${versionId}/transitions/${transitionId}`),
+  validate: (id: number, versionId: number) =>
+    apiClient.post<ApiResponse<import('@/types').GraphValidationResult>>(`/admin/workflows/${id}/versions/${versionId}/validate`),
+  publish: (id: number, versionId: number) =>
+    apiClient.post<ApiResponse<any>>(`/admin/workflows/${id}/versions/${versionId}/publish`),
+}
+
+export const numberingPoliciesApi = {
+  list: () => apiClient.get<ApiResponse<import('@/types').NumberingPolicyItem[]>>('/admin/numbering-policies'),
+  get: (id: number) => apiClient.get<ApiResponse<import('@/types').NumberingPolicyItem>>(`/admin/numbering-policies/${id}`),
+  create: (data: Partial<import('@/types').NumberingPolicyItem>) =>
+    apiClient.post<ApiResponse<import('@/types').NumberingPolicyItem>>('/admin/numbering-policies', data),
+  update: (id: number, data: Partial<import('@/types').NumberingPolicyItem>) =>
+    apiClient.put<ApiResponse<import('@/types').NumberingPolicyItem>>(`/admin/numbering-policies/${id}`, data),
+  delete: (id: number) => apiClient.delete<ApiResponse<any>>(`/admin/numbering-policies/${id}`),
+  preview: (data: {
+    prefix?: string
+    include_unit_code?: boolean
+    include_category_code?: boolean
+    year_format?: string
+    sequence_length?: number
+    unit_id?: number | null
+    category_id?: number | null
+    sample_sequence?: number
+  }) => apiClient.post<ApiResponse<{ preview: string; parts: string[] }>>('/admin/numbering-policies/preview', data),
+}
+
+export const routingPoliciesApi = {
+  list: () => apiClient.get<ApiResponse<import('@/types').RoutingPolicyItem[]>>('/admin/routing-policies'),
+  get: (id: number) => apiClient.get<ApiResponse<import('@/types').RoutingPolicyItem>>(`/admin/routing-policies/${id}`),
+  create: (data: Partial<import('@/types').RoutingPolicyItem>) =>
+    apiClient.post<ApiResponse<import('@/types').RoutingPolicyItem>>('/admin/routing-policies', data),
+  update: (id: number, data: Partial<import('@/types').RoutingPolicyItem>) =>
+    apiClient.put<ApiResponse<import('@/types').RoutingPolicyItem>>(`/admin/routing-policies/${id}`, data),
+  delete: (id: number) => apiClient.delete<ApiResponse<any>>(`/admin/routing-policies/${id}`),
+  match: (data: {
+    from_unit_id?: number | null
+    correspondence_type_id?: number | null
+    document_category_id?: number | null
+    priority_id?: number | null
+  }) => apiClient.post<ApiResponse<{ data: import('@/types').RoutingPolicyItem | null; has_match: boolean }>>('/routing-policies/match', data),
+}
+
+export const retentionPoliciesApi = {
+  list: () => apiClient.get<ApiResponse<import('@/types').RetentionPolicyItem[]>>('/admin/retention-policies'),
+  get: (id: number) => apiClient.get<ApiResponse<import('@/types').RetentionPolicyItem>>(`/admin/retention-policies/${id}`),
+  create: (data: {
+    code: string
+    name: string
+    description?: string
+    document_category_id?: number | null
+    active?: boolean
+    trigger_code: string
+    duration_months: number
+    disposition_action: string
+    effective_from?: string
+  }) => apiClient.post<ApiResponse<any>>('/admin/retention-policies', data),
+  update: (id: number, data: { name: string; description?: string; document_category_id?: number | null; active: boolean }) =>
+    apiClient.put<ApiResponse<any>>(`/admin/retention-policies/${id}`, data),
+  createVersion: (id: number, data: {
+    trigger_code: string
+    duration_months: number
+    disposition_action: string
+    effective_from?: string
+  }) => apiClient.post<ApiResponse<any>>(`/admin/retention-policies/${id}/versions`, data),
+  delete: (id: number) => apiClient.delete<ApiResponse<any>>(`/admin/retention-policies/${id}`),
 }
 

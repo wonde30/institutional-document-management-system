@@ -14,20 +14,14 @@ const props = withDefaults(
 </script>
 
 <template>
- <div class="py-12 px-4 text-center rounded-xl border border-dashed border-hairline bg-canvas-soft">
- <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-surface text-primary border border-hairline shadow-xs mb-3.5">
- <slot name="icon">
- <FolderSearch class="h-6 w-6" />
- </slot>
- </div>
- <h3 class="text-sm font-semibold text-ink">
- {{ title }}
- </h3>
- <p class="mt-1 text-xs text-ink-muted max-w-sm mx-auto leading-relaxed">
- {{ description }}
- </p>
- <div v-if="$slots.actions" class="mt-5 flex justify-center gap-3">
- <slot name="actions"></slot>
- </div>
- </div>
+  <div class="py-8 text-center">
+    <slot name="icon">
+      <FolderSearch class="w-6 h-6 text-ink-faint mx-auto mb-2" aria-hidden="true" />
+    </slot>
+    <p class="text-sm text-ink-muted">{{ title }}</p>
+    <p v-if="description" class="text-xs text-ink-faint mt-1 max-w-md mx-auto">{{ description }}</p>
+    <div v-if="$slots.actions" class="mt-4 flex justify-center gap-3">
+      <slot name="actions"></slot>
+    </div>
+  </div>
 </template>

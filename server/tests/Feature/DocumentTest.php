@@ -593,4 +593,129 @@ class DocumentTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Forbidden: High confidentiality document file download restricted.');
     }
+
+    public function test_documents_index_supports_server_side_sorting_and_validation(): void
+    {
+        $this->authenticateAs($this->adminUser);
+
+        $cat = DocumentCategory::first();
+        $conf = \App\Models\ConfidentialityLevel::first();
+
+        Document::create([
+            'reference_number' => 'WU/DOC/2026/000001',
+            'title' => 'Alpha Policy',
+            'summary' => 'First document',
+            'category_id' => $cat->id,
+            'confidentiality_id' => $conf->id,
+            'owner_unit_id' => $this->unit->id,
+            'created_by' => $this->adminUser->id,
+            'document_date' => '2026-01-01',
+            'registered_at' => now()->subDays(10),
+            'lifecycle' => 'active',
+            'lock_version' => 0,
+        ]);
+
+        Document::create([
+            'reference_number' => 'WU/DOC/2026/000002',
+            'title' => 'Zulu Guideline',
+            'summary' => 'Second document',
+            'category_id' => $cat->id,
+            'confidentiality_id' => $conf->id,
+            'owner_unit_id' => $this->unit->id,
+            'created_by' => $this->adminUser->id,
+            'document_date' => '2026-02-01',
+            'registered_at' => now()->subDays(5),
+            'lifecycle' => 'active',
+            'lock_version' => 0,
+        ]);
+
+        // Ascending sort by title: Alpha should be first
+        $ascResp = $this->getJson('/api/v1/documents?sort_by=title&sort_order=asc');
+        $ascResp->assertStatus(200);
+        $this->assertEquals('Alpha Policy', $ascResp->json('data.0.title'));
+
+        // Descending sort by title: Zulu should be first
+        $descResp = $this->getJson('/api/v1/documents?sort_by=title&sort_order=desc');
+        $descResp->assertStatus(200);
+        $this->assertEquals('Zulu Guideline', $descResp->json('data.0.title'));
+
+        // Invalid sort_by falls back safely to registered_at
+        $fallbackResp = $this->getJson('/api/v1/documents?sort_by=malicious_column&sort_order=asc');
+        $fallbackResp->assertStatus(200);
+    }
+
+    public function test_version_comparison_and_document_relationships_and_integrity_check(): void
+    {
+        $this->authenticateAs($this->adminUser);
+
+        $category = DocumentCategory::first();
+        $confidentiality = \App\Models\ConfidentialityLevel::first();
+
+        // 1. Create a document with two versions
+        $createResp = $this->postJson('/api/v1/documents', [
+            'title' => 'Master University Strategic Plan',
+            'category_id' => $category->id,
+            'confidentiality_id' => $confidentiality->id,
+            'owner_unit_id' => $this->unit->id,
+            'document_date' => '2026-11-14',
+            'file' => \Illuminate\Http\UploadedFile::fake()->create('plan_v1.pdf', 100, 'application/pdf'),
+        ]);
+        $createResp->assertStatus(201);
+        $docId = $createResp->json('data.id');
+        $version1 = \App\Models\DocumentVersion::where('document_id', $docId)->where('version_number', 1)->first();
+        $version1Id = $version1->id;
+        $file1Id = \App\Models\VersionFile::where('document_version_id', $version1Id)->value('file_object_id');
+
+        // Upload version 2
+        $v2Resp = $this->postJson("/api/v1/documents/{$docId}/versions", [
+            'change_note' => 'Strategic KPI additions for 2027',
+            'file' => \Illuminate\Http\UploadedFile::fake()->create('plan_v2.pdf', 150, 'application/pdf'),
+        ]);
+        $v2Resp->assertStatus(201);
+        $version2Id = $v2Resp->json('data.id');
+
+        // 2. Compare versions
+        $compareResp = $this->getJson("/api/v1/documents/{$docId}/compare-versions?version_a={$version1Id}&version_b={$version2Id}");
+        $compareResp->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.version_a.version_number', 1)
+            ->assertJsonPath('data.version_b.version_number', 2)
+            ->assertJsonPath('data.comparison.version_delta', 1);
+
+        // 3. Verify file cryptographic integrity
+        $integrityResp = $this->postJson("/api/v1/documents/{$docId}/files/{$file1Id}/verify-integrity");
+        $integrityResp->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.outcome', 'match');
+
+        // 4. Create second document to link
+        $secondDocResp = $this->postJson('/api/v1/documents', [
+            'title' => 'Implementation Budget Breakdown',
+            'category_id' => $category->id,
+            'confidentiality_id' => $confidentiality->id,
+            'owner_unit_id' => $this->unit->id,
+            'document_date' => '2026-11-14',
+        ]);
+        $secondDocResp->assertStatus(201);
+        $secondDocId = $secondDocResp->json('data.id');
+
+        // Add relation
+        $addRelResp = $this->postJson("/api/v1/documents/{$docId}/relations", [
+            'target_document_id' => $secondDocId,
+            'relation_type' => 'supplements',
+        ]);
+        $addRelResp->assertStatus(201)
+            ->assertJsonPath('success', true);
+        $relationId = $addRelResp->json('data.id');
+
+        // Document detail includes outgoing relations
+        $showResp = $this->getJson("/api/v1/documents/{$docId}");
+        $showResp->assertStatus(200);
+        $this->assertNotEmpty($showResp->json('data.outgoing_relations'));
+
+        // Remove relation
+        $delRelResp = $this->deleteJson("/api/v1/documents/{$docId}/relations/{$secondDocId}");
+        $delRelResp->assertStatus(200)
+            ->assertJsonPath('success', true);
+    }
 }

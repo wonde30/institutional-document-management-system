@@ -7,23 +7,29 @@ use App\Http\Controllers\Api\V1\ArchiveController;
 use App\Http\Controllers\Api\V1\AssignmentController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BackupController;
 use App\Http\Controllers\Api\V1\CorrespondenceController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataTransferController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\DocumentMovementController;
 use App\Http\Controllers\Api\V1\GlobalSearchController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\InstitutionalModuleController;
 use App\Http\Controllers\Api\V1\MetadataController;
 use App\Http\Controllers\Api\V1\NavigationController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\NumberingPolicyController;
 use App\Http\Controllers\Api\V1\OcrController;
 use App\Http\Controllers\Api\V1\OrganizationUnitController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\RetentionPolicyController;
 use App\Http\Controllers\Api\V1\RolePermissionController;
+use App\Http\Controllers\Api\V1\RoutingPolicyController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\WorkflowAdminController;
 use App\Http\Controllers\Api\V1\WorkflowController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +41,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+
+    // System Health & Diagnostics (Readiness & Liveness Probe)
+    Route::get('health', [HealthController::class, 'check']);
+    Route::get('health/readiness', [HealthController::class, 'readiness'])->middleware(['auth:sanctum']);
 
     // 1. Public Authentication (Rate Limited)
     Route::prefix('auth')->group(function () {
@@ -68,7 +78,7 @@ Route::prefix('v1')->group(function () {
             Route::post('email/verification-notification', [AuthController::class, 'sendVerificationEmail']);
         });
 
-        // Reference Vocabularies (Read-only for all active accounts)
+        // Reference Vocabularies
         Route::prefix('metadata')->group(function () {
             Route::get('all', [MetadataController::class, 'all']);
             Route::get('categories', [MetadataController::class, 'categories']);
@@ -76,6 +86,12 @@ Route::prefix('v1')->group(function () {
             Route::get('correspondence-types', [MetadataController::class, 'correspondenceTypes']);
             Route::get('priorities', [MetadataController::class, 'priorities']);
             Route::get('dispatch-methods', [MetadataController::class, 'dispatchMethods']);
+
+            // Protected administrative vocabulary management
+            Route::post('{type}', [MetadataController::class, 'storeItem'])
+                ->middleware('permission:system.configure');
+            Route::put('{type}/{id}', [MetadataController::class, 'updateItem'])
+                ->middleware('permission:system.configure');
         });
 
         // Notifications
@@ -112,6 +128,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:users.view|staff.view|correspondence.assign|correspondence.register|workflow.review|workflow.view');
         Route::get('users/{id}', [UserController::class, 'show'])
             ->middleware('permission:users.view|staff.view|correspondence.assign|correspondence.register|workflow.review|workflow.view');
+        Route::get('users/{id}/effective-permissions', [UserController::class, 'effectivePermissions'])
+            ->middleware('permission:users.view|roles.view|permissions.view|system.configure');
         Route::post('users', [UserController::class, 'store'])
             ->middleware('permission:users.create');
         Route::put('users/{id}', [UserController::class, 'update'])
@@ -128,12 +146,16 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:roles.create');
         Route::get('roles/{id}', [RolePermissionController::class, 'showRole'])
             ->middleware('permission:roles.view');
+        Route::get('roles/{id}/users', [RolePermissionController::class, 'roleUsers'])
+            ->middleware('permission:roles.view|system.configure');
         Route::put('roles/{id}', [RolePermissionController::class, 'updateRole'])
             ->middleware('permission:roles.update');
         Route::post('roles/{id}/permissions', [RolePermissionController::class, 'syncRolePermissions'])
             ->middleware('permission:roles.update');
         Route::get('permissions', [RolePermissionController::class, 'permissions'])
             ->middleware('permission:permissions.view');
+        Route::patch('permissions/{id}', [RolePermissionController::class, 'updatePermission'])
+            ->middleware('permission:system.configure|permissions.assign');
         Route::get('authorization-scopes', [RolePermissionController::class, 'scopes'])
             ->middleware('permission:roles.view');
         Route::post('user-roles', [RolePermissionController::class, 'assignUserRole'])
@@ -166,6 +188,14 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:documents.view');
         Route::post('documents/{id}/physical-originals', [DocumentController::class, 'storePhysicalOriginal'])
             ->middleware('permission:documents.create');
+        Route::get('documents/{id}/compare-versions', [DocumentController::class, 'compareVersions'])
+            ->middleware('permission:documents.view');
+        Route::post('documents/{id}/relations', [DocumentController::class, 'addRelation'])
+            ->middleware('permission:documents.update');
+        Route::delete('documents/{id}/relations/{targetId}', [DocumentController::class, 'removeRelation'])
+            ->middleware('permission:documents.update');
+        Route::post('documents/{id}/files/{fileId}/verify-integrity', [DocumentController::class, 'verifyFileIntegrity'])
+            ->middleware('permission:documents.view');
 
         // Document Movements & Custody Receipts
         Route::get('documents/{id}/movements', [DocumentMovementController::class, 'index'])
@@ -206,6 +236,12 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:documents.create');
         Route::post('templates/{id}/generate-document', [TemplateController::class, 'render'])
             ->middleware('permission:documents.create');
+        Route::get('official-letters/baseline-config', [TemplateController::class, 'baselineConfig'])
+            ->middleware('permission:documents.create');
+        Route::post('official-letters/preview', [TemplateController::class, 'previewOfficialLetter'])
+            ->middleware('permission:documents.create');
+        Route::post('official-letters', [TemplateController::class, 'generateOfficialLetter'])
+            ->middleware('permission:documents.create');
 
         // Bilingual OCR Text Extractions & Processing
         Route::get('ocr/status', [OcrController::class, 'status'])
@@ -244,6 +280,10 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:correspondence.register');
         Route::post('correspondences/{id}/dispatch', [CorrespondenceController::class, 'dispatch'])
             ->middleware('permission:correspondence.dispatch');
+        Route::post('correspondences/{id}/dispatches/{dispatchId}/delivery-evidence', [CorrespondenceController::class, 'recordDispatchDeliveryEvidence'])
+            ->middleware('permission:correspondence.dispatch|correspondence.manage');
+        Route::post('correspondences/{id}/close', [CorrespondenceController::class, 'close'])
+            ->middleware('permission:correspondence.manage|correspondence.register');
 
         // Workflow & Routing
         Route::get('workflows/definitions', [WorkflowController::class, 'definitions'])
@@ -264,14 +304,36 @@ Route::prefix('v1')->group(function () {
         // Archive & Retention
         Route::get('archive/collections', [ArchiveController::class, 'collections'])
             ->middleware('permission:archive.view');
+        Route::post('archive/collections', [ArchiveController::class, 'storeCollection'])
+            ->middleware('permission:archive.transfer');
         Route::get('archive/policies', [ArchiveController::class, 'policies'])
             ->middleware('permission:archive.view');
         Route::get('archive/entries', [ArchiveController::class, 'entries'])
+            ->middleware('permission:archive.view');
+        Route::get('archive/entries/{id}/disposal-eligibility', [ArchiveController::class, 'disposalEligibility'])
+            ->middleware('permission:archive.view');
+        Route::post('archive/entries/{id}/review', [ArchiveController::class, 'review'])
+            ->middleware('permission:archive.manage|archive.transfer');
+        Route::post('archive/entries/{id}/request-disposal', [ArchiveController::class, 'requestDisposal'])
+            ->middleware('permission:archive.request_disposal');
+        Route::post('archive/disposition-requests/{id}/decide', [ArchiveController::class, 'decideDisposal'])
+            ->middleware('permission:archive.approve_disposal');
+        Route::post('archive/disposition-requests/{id}/execute', [ArchiveController::class, 'executeDisposal'])
+            ->middleware('permission:archive.execute_disposal');
+        Route::post('archive/entries/{id}/dispose', [ArchiveController::class, 'dispose'])
+            ->middleware('permission:archive.request_disposal');
+        Route::post('archive/entries/{id}/restore', [ArchiveController::class, 'restore'])
+            ->middleware('permission:archive.restore');
+        Route::post('archive/files/{id}/verify-integrity', [ArchiveController::class, 'verifyIntegrity'])
             ->middleware('permission:archive.view');
         Route::post('archive/transfer', [ArchiveController::class, 'transfer'])
             ->middleware('permission:archive.transfer');
         Route::get('archive/legal-holds', [ArchiveController::class, 'legalHolds'])
             ->middleware('permission:archive.view');
+        Route::post('archive/legal-holds', [ArchiveController::class, 'storeLegalHold'])
+            ->middleware('permission:archive.transfer');
+        Route::post('archive/legal-holds/{id}/release', [ArchiveController::class, 'releaseLegalHold'])
+            ->middleware('permission:archive.transfer');
 
         // Security Audit Trail
         Route::get('audit-events', [AuditLogController::class, 'index'])
@@ -323,7 +385,7 @@ Route::prefix('v1')->group(function () {
         Route::get('accreditation/evidence/{id}', [AccreditationController::class, 'showEvidence'])
             ->middleware('permission:accreditation.view');
         Route::post('accreditation/evidence', [AccreditationController::class, 'storeEvidence'])
-            ->middleware('permission:accreditation.view');
+            ->middleware('permission:accreditation.submit_evidence');
         Route::post('accreditation/evidence/{id}/reviews', [AccreditationController::class, 'reviewEvidence'])
             ->middleware('permission:accreditation.review_evidence');
         Route::get('projects', [InstitutionalModuleController::class, 'projects'])
@@ -343,6 +405,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:signatures.request');
         Route::get('signatures/identities', [InstitutionalModuleController::class, 'identities'])
             ->middleware('permission:signatures.request');
+        Route::post('stamps/apply', [InstitutionalModuleController::class, 'applyStamp'])
+            ->middleware('permission:stamps.apply|signatures.request');
 
         Route::get('procedures', [InstitutionalModuleController::class, 'procedures'])
             ->middleware('permission:roles.view');
@@ -351,6 +415,79 @@ Route::prefix('v1')->group(function () {
 
         Route::get('operations/status', [InstitutionalModuleController::class, 'operations'])
             ->middleware('permission:system.configure');
+
+        // Institutional Configuration Center: Workflows, Numbering, Routing & Retention
+        Route::prefix('admin/workflows')->group(function () {
+            Route::get('/', [WorkflowAdminController::class, 'index'])
+                ->middleware('permission:system.configure');
+            Route::post('/', [WorkflowAdminController::class, 'store'])
+                ->middleware('permission:system.configure');
+            Route::get('{id}', [WorkflowAdminController::class, 'show'])
+                ->middleware('permission:system.configure');
+            Route::put('{id}', [WorkflowAdminController::class, 'update'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/versions', [WorkflowAdminController::class, 'storeVersion'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/versions/{versionId}/states', [WorkflowAdminController::class, 'storeState'])
+                ->middleware('permission:system.configure');
+            Route::put('{id}/versions/{versionId}/states/{stateId}', [WorkflowAdminController::class, 'updateState'])
+                ->middleware('permission:system.configure');
+            Route::delete('{id}/versions/{versionId}/states/{stateId}', [WorkflowAdminController::class, 'destroyState'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/versions/{versionId}/transitions', [WorkflowAdminController::class, 'storeTransition'])
+                ->middleware('permission:system.configure');
+            Route::delete('{id}/versions/{versionId}/transitions/{transitionId}', [WorkflowAdminController::class, 'destroyTransition'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/versions/{versionId}/validate', [WorkflowAdminController::class, 'validateGraph'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/versions/{versionId}/publish', [WorkflowAdminController::class, 'publishVersion'])
+                ->middleware('permission:system.configure');
+        });
+
+        Route::prefix('admin/numbering-policies')->group(function () {
+            Route::get('/', [NumberingPolicyController::class, 'index'])
+                ->middleware('permission:system.configure');
+            Route::post('/', [NumberingPolicyController::class, 'store'])
+                ->middleware('permission:system.configure');
+            Route::post('preview', [NumberingPolicyController::class, 'preview'])
+                ->middleware('permission:system.configure');
+            Route::get('{id}', [NumberingPolicyController::class, 'show'])
+                ->middleware('permission:system.configure');
+            Route::put('{id}', [NumberingPolicyController::class, 'update'])
+                ->middleware('permission:system.configure');
+            Route::delete('{id}', [NumberingPolicyController::class, 'destroy'])
+                ->middleware('permission:system.configure');
+        });
+
+        Route::post('routing-policies/match', [RoutingPolicyController::class, 'match'])
+            ->middleware('permission:correspondence.register|correspondence.view|workflow.view|system.configure');
+        Route::prefix('admin/routing-policies')->group(function () {
+            Route::get('/', [RoutingPolicyController::class, 'index'])
+                ->middleware('permission:system.configure');
+            Route::post('/', [RoutingPolicyController::class, 'store'])
+                ->middleware('permission:system.configure');
+            Route::get('{id}', [RoutingPolicyController::class, 'show'])
+                ->middleware('permission:system.configure');
+            Route::put('{id}', [RoutingPolicyController::class, 'update'])
+                ->middleware('permission:system.configure');
+            Route::delete('{id}', [RoutingPolicyController::class, 'destroy'])
+                ->middleware('permission:system.configure');
+        });
+
+        Route::prefix('admin/retention-policies')->group(function () {
+            Route::get('/', [RetentionPolicyController::class, 'index'])
+                ->middleware('permission:system.configure|archive.view');
+            Route::post('/', [RetentionPolicyController::class, 'store'])
+                ->middleware('permission:system.configure');
+            Route::get('{id}', [RetentionPolicyController::class, 'show'])
+                ->middleware('permission:system.configure|archive.view');
+            Route::put('{id}', [RetentionPolicyController::class, 'update'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/versions', [RetentionPolicyController::class, 'storeVersion'])
+                ->middleware('permission:system.configure');
+            Route::delete('{id}', [RetentionPolicyController::class, 'destroy'])
+                ->middleware('permission:system.configure');
+        });
 
         // Runtime System Configuration
         Route::prefix('settings')->group(function () {
@@ -363,6 +500,25 @@ Route::prefix('v1')->group(function () {
             Route::post('categories/{category}/reset', [SettingsController::class, 'resetCategory'])
                 ->middleware('permission:system.configure');
             Route::post('{key}/reset', [SettingsController::class, 'reset'])
+                ->middleware('permission:system.configure');
+        });
+
+        // Enterprise Backups & Disaster Recovery Drills
+        Route::prefix('admin/backups')->group(function () {
+            Route::get('/', [BackupController::class, 'index'])
+                ->middleware('permission:system.configure');
+            Route::post('/', [BackupController::class, 'store'])
+                ->middleware('permission:system.configure');
+            Route::get('{id}', [BackupController::class, 'show'])
+                ->middleware('permission:system.configure');
+            Route::post('{id}/verify', [BackupController::class, 'verify'])
+                ->middleware('permission:system.configure');
+        });
+
+        Route::prefix('admin/dr-drills')->group(function () {
+            Route::get('/', [BackupController::class, 'drills'])
+                ->middleware('permission:system.configure');
+            Route::post('/', [BackupController::class, 'runDrill'])
                 ->middleware('permission:system.configure');
         });
 

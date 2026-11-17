@@ -36,6 +36,16 @@ class DocumentRelation extends Model
         return $this->belongsTo(Document::class, 'target_id');
     }
 
+    public function sourceDocument(): BelongsTo
+    {
+        return $this->source();
+    }
+
+    public function targetDocument(): BelongsTo
+    {
+        return $this->target();
+    }
+
     public function relationType(): BelongsTo
     {
         return $this->belongsTo(DocumentRelationType::class, 'relation_type_id');

@@ -23,29 +23,21 @@ class GlobalSearchController extends Controller
     public function search(Request $request): JsonResponse
     {
         $actor = $request->user();
-        $query = Document::with(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian'])
+        $query = Document::accessibleBy($actor, 'documents.view')
+            ->with(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian'])
             ->withCount('versions');
 
         // Scope isolation
         $permittedUnitIds = $actor ? $actor->getPermittedUnitIds('documents.view') : [];
-        if ($permittedUnitIds !== null) {
-            $query->where(function ($q) use ($permittedUnitIds, $actor) {
-                $q->whereIn('owner_unit_id', $permittedUnitIds)
-                  ->orWhereHas('movements', fn ($mq) => $mq->whereIn('to_unit_id', $permittedUnitIds))
-                  ->orWhereHas('assignments', fn ($aq) => $aq->whereIn('assigned_unit_id', $permittedUnitIds)->orWhere('assigned_user_id', $actor->id));
-            });
-        }
-
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->query('category_id'));
-        }
-
-        if ($request->filled('confidentiality_id')) {
-            $query->where('confidentiality_id', $request->query('confidentiality_id'));
-        }
-
         if ($request->filled('owner_unit_id')) {
-            $query->where('owner_unit_id', $request->query('owner_unit_id'));
+            $requestedUnit = (int) $request->query('owner_unit_id');
+            if ($permittedUnitIds !== null && ! in_array($requestedUnit, $permittedUnitIds, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have permission to view documents from this organizational unit.',
+                ], 403);
+            }
+            $query->where('owner_unit_id', $requestedUnit);
         }
 
         if ($request->filled('lifecycle')) {

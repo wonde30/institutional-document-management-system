@@ -59,3 +59,11 @@ Thumbs.db
 /*.old
 /*~
 /*.orig
+
+# Test outputs, fixtures & acceptance run artifacts
+/docs/screenshots/
+/acceptance_doc_ids.txt
+/acceptance_test_doc.txt
+/chrome_ver.txt
+/*_acceptance*.mjs
+/*_acceptance*.log

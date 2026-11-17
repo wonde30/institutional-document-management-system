@@ -38,6 +38,8 @@ const selectedCategory = ref('')
 const selectedConfidentiality = ref('')
 const selectedUnit = ref('')
 const selectedLifecycle = ref('')
+const sortBy = ref('registered_at')
+const sortOrder = ref<'asc' | 'desc'>('desc')
 
 const columns: TableColumn[] = [
  { key: 'reference_number', label: 'Document Reference & Code', sortable: true },
@@ -45,8 +47,8 @@ const columns: TableColumn[] = [
  { key: 'category', label: 'Document Category' },
  { key: 'confidentiality', label: 'Confidentiality Level' },
  { key: 'owner_unit', label: 'Custodian Department' },
- { key: 'lifecycle', label: 'Lifecycle State', align: 'center' },
- { key: 'registered_at', label: 'Date Registered' },
+ { key: 'lifecycle', label: 'Lifecycle State', align: 'center', sortable: true },
+ { key: 'registered_at', label: 'Date Registered', sortable: true },
 ]
 
 const activeFiltersCount = computed(() => {
@@ -77,6 +79,8 @@ async function loadDocuments(page = 1) {
  confidentiality_id: selectedConfidentiality.value || undefined,
  owner_unit_id: selectedUnit.value || undefined,
  lifecycle: selectedLifecycle.value || undefined,
+ sort_by: sortBy.value,
+ sort_order: sortOrder.value,
  }
 
  const res = await documentsApi.list(params)
@@ -89,6 +93,16 @@ async function loadDocuments(page = 1) {
  } finally {
  isLoading.value = false
  }
+}
+
+function handleSort(columnKey: string) {
+ if (sortBy.value === columnKey) {
+ sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+ } else {
+ sortBy.value = columnKey
+ sortOrder.value = 'asc'
+ }
+ loadDocuments(1)
 }
 
 function resetFilters() {
@@ -107,18 +121,15 @@ onMounted(async () => {
 </script>
 
 <template>
- <div class="space-y-6">
+ <div class="space-y-5">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-5">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1.5">
- RECORDS & ARCHIVES / DOCUMENT REPOSITORY
- </div>
- <h1 class="notion-heading-2 text-ink flex items-center gap-2.5">
- <FileText class="w-6 h-6 text-primary" />
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <FileText class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
  <span>Document Repository</span>
  </h1>
- <p class="mt-1 notion-body-sm text-ink-muted">
+ <p class="mt-0.5 text-xs text-ink-muted">
  Search, view, and manage institutional records with version tracking and scoped security classifications.
  </p>
  </div>
@@ -128,17 +139,16 @@ onMounted(async () => {
  v-if="authStore.hasPermission('documents.create')"
  variant="primary"
  size="sm"
- class="bg-primary hover:bg-primary-hover text-white shadow-xs"
  @click="router.push('/documents/create')"
  >
- <Plus class="w-4 h-4" />
+ <Plus class="w-3.5 h-3.5 mr-1" />
  <span>Register Document</span>
  </BaseButton>
  </div>
  </div>
 
  <!-- Search & Filter Bar -->
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs space-y-4">
+ <div class="bg-surface border border-hairline rounded-lg p-3 sm:p-4 shadow-2xs space-y-3">
  <div class="flex flex-col sm:flex-row items-center gap-3">
  <div class="flex-1 w-full">
  <SearchFilterBar
@@ -155,11 +165,11 @@ onMounted(async () => {
  :class="activeFiltersCount > 0 ? 'border-primary text-primary' : ''"
  @click="showFilters = !showFilters"
  >
- <Filter class="w-4 h-4" />
+ <Filter class="w-3.5 h-3.5 mr-1" />
  <span>Filters</span>
  <span
  v-if="activeFiltersCount > 0"
- class="ml-1 w-5 h-5 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold"
+ class="ml-1 px-1.5 py-0.2 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold"
  >
  {{ activeFiltersCount }}
  </span>
@@ -215,8 +225,11 @@ onMounted(async () => {
  :columns="columns"
  :items="documents"
  :loading="isLoading"
+ :sort-by="sortBy"
+ :sort-order="sortOrder"
  empty-title="No documents found"
  empty-description="No institutional records match the selected criteria."
+ @sort="handleSort"
  @row-click="(row) => router.push(`/documents/${row.id}`)"
  >
  <template #cell-reference_number="{ value }">
@@ -226,7 +239,7 @@ onMounted(async () => {
  </template>
 
  <template #cell-title="{ item }">
- <div class="max-w-md">
+ <div class="max-w-md lg:max-w-xl">
  <div class="text-xs font-semibold text-ink truncate">{{ item.title }}</div>
  <div v-if="item.summary" class="text-[11px] text-ink-muted truncate mt-0.5">{{ item.summary }}</div>
  </div>
@@ -243,7 +256,7 @@ onMounted(async () => {
  </template>
 
  <template #cell-owner_unit="{ item }">
- <span class="text-xs text-ink-muted truncate max-w-[150px] inline-block">
+ <span class="text-xs text-ink-muted truncate max-w-[180px] lg:max-w-xs inline-block" :title="item.owner_unit?.name">
  {{ item.owner_unit?.name || 'Wollo University' }}
  </span>
  </template>
@@ -265,6 +278,7 @@ onMounted(async () => {
  size="sm"
  class="h-8 w-8 p-0"
  title="View Details"
+ aria-label="View document details"
  @click="router.push(`/documents/${item.id}`)"
  >
  <Eye class="w-4 h-4 text-ink-muted" />
@@ -276,10 +290,7 @@ onMounted(async () => {
  <!-- Pagination -->
  <Pagination
  v-if="pagination.total > 0"
- :current-page="pagination.current_page"
- :last-page="pagination.last_page"
- :total-items="pagination.total"
- :items-per-page="15"
+ :meta="pagination"
  @page-change="loadDocuments"
  />
  </div>

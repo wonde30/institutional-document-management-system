@@ -36,7 +36,7 @@ class AuditLogController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $events,
+            'data' => $events->items(),
             'meta' => [
                 'current_page' => $events->currentPage(),
                 'last_page' => $events->lastPage(),

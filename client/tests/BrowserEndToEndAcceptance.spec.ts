@@ -204,6 +204,39 @@ vi.mock('@/api/client', () => ({
     uploadVersion: vi.fn().mockResolvedValue({ data: { version: 2 } }),
     download: vi.fn().mockResolvedValue(new Blob(['%PDF-1.4 test binary data'], { type: 'application/pdf' })),
   },
+  officialLettersApi: {
+    baselineConfig: vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          unit_id: 12,
+          uni_am: 'ወሎ ዩኒቨርሲቲ',
+          uni_en: 'WOLLO UNIVERSITY',
+          faculty_am: 'ኮምቦልቻ ቴክኖሎጂ ኢንስቲትዩት',
+          faculty_en: 'KOMBOLCHA INSTITUTE OF TECHNOLOGY',
+          dept_am: 'ኢንፎርሜሽን ቴክኖሎጂ ትምህርት ክፍል',
+          dept_en: 'Information Technology Department',
+        },
+      },
+    }),
+    preview: vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: { pdf_base64: 'JVBERi0xLjcK', byte_size: 1024, mime_type: 'application/pdf' },
+      },
+    }),
+    generate: vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: { id: 99, reference_number: 'KIOT/W.U.IT/746/2019', title: 'Official Letter' },
+      },
+    }),
+  },
+  templatesApi: {
+    list: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    get: vi.fn().mockResolvedValue({ data: { data: null } }),
+    generateDocument: vi.fn().mockResolvedValue({ data: { data: { id: 101, reference_number: 'WU/DOC/2026/0101' } } }),
+  },
   usersApi: {
     list: vi.fn().mockResolvedValue({ data: { data: [{ id: 1, name: 'Abebe Bekele' }] } }),
   },

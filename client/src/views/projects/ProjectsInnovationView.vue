@@ -105,7 +105,7 @@ const filteredProjects = computed(() => {
 function openCreateModal() {
  form.value = {
  title: '',
- office_id: authStore.primaryUnit?.unit_id ? String(authStore.primaryUnit.unit_id) : '',
+ office_id: authStore.activeUnitId ? String(authStore.activeUnitId) : (authStore.primaryUnit?.unit_id ? String(authStore.primaryUnit.unit_id) : (units.value[0]?.id ? String(units.value[0].id) : '')),
  project_type_id: projectTypes.value[0]?.id ? String(projectTypes.value[0].id) : '1',
  summary: '',
  }
@@ -143,15 +143,13 @@ async function submitProposal() {
 <template>
  <div class="space-y-6">
  <!-- Header Row -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- INSTITUTIONAL RECORDS / PROJECTS & INNOVATION
- </div>
- <h1 class="text-2xl font-semibold text-ink-secondary tracking-tight mt-0.5">
- Projects & Innovation
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <FolderKanban class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Projects & Innovation</span>
  </h1>
- <p class="text-xs text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-0.5">
  Registered project proposals, innovation grants, and active institutional initiatives.
  </p>
  </div>
@@ -295,7 +293,7 @@ async function submitProposal() {
  class="hover:bg-surface-hover transition-colors"
  >
  <td class="py-3 px-4 font-mono font-medium text-primary">
- {{ p.document?.reference_number || 'WU/PROJ/2026/' + String(p.id).padStart(4, '0') }}
+ {{ p.document?.reference_number || '—' }}
  </td>
  <td class="py-3 px-4">
  <div class="font-medium text-ink-secondary">

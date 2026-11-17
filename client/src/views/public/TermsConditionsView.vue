@@ -17,7 +17,7 @@ import { FileText, AlertCircle, CheckCircle2, ShieldCheck, Scale, Building2 } fr
  <span>Institutional Legal Terms</span>
  </div>
 
- <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-ink-secondary">
+ <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-ink">
  Terms of Use &amp; Administrative Service Agreement
  </h1>
 

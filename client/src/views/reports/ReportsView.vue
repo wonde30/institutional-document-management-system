@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { reportsApi } from '@/api/client'
 import type { ReportsSummary } from '@/types'
-import StatCard from '@/components/StatCard.vue'
+import { downloadBlob } from '@/utils/formatters'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import { useToast } from '@/composables/useToast'
@@ -95,14 +95,10 @@ function exportCsvReport() {
  lines.push(`"${item.unit}",${item.count}`)
  })
 
- const csvContent = 'data:text/csv;charset=utf-8,' + lines.map((e) => encodeURIComponent(e)).join('\n')
- const encodedUri = csvContent
- const link = document.createElement('a')
- link.setAttribute('href', encodedUri)
- link.setAttribute('download', `WU_DMS_Report_${new Date().toISOString().slice(0, 10)}.csv`)
- document.body.appendChild(link)
- link.click()
- document.body.removeChild(link)
+ downloadBlob(
+  new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' }),
+  `WU_DMS_Report_${new Date().toISOString().slice(0, 10)}.csv`
+ )
 
  toast.success('Report Exported', 'CSV summary report generated and downloaded successfully.')
  } catch {
@@ -120,16 +116,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- TRUST & REPORTING / OPERATIONAL ANALYTICS
- </div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink-secondary flex items-center gap-2.5">
- <BarChart3 class="w-6 h-6 text-primary" />
- Executive Reports & Statistical Summaries
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <BarChart3 class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Executive Reports & Statistical Summaries</span>
  </h1>
- <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+ <p class="text-xs text-ink-muted mt-0.5">
  Institutional analytics, operational correspondence audit, document lifecycle distribution, and movement trends.
  </p>
  </div>
@@ -154,7 +147,7 @@ onMounted(() => {
  </div>
 
  <!-- Date Filter Bar -->
- <div class="bg-surface rounded-lg border border-hairline p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+ <div class="bg-surface rounded-lg border border-hairline p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
  <div class="flex items-center gap-2 text-xs font-semibold text-ink-secondary uppercase tracking-wider">
  <Filter class="w-4 h-4 text-primary" />
  Reporting Period
@@ -162,7 +155,7 @@ onMounted(() => {
 
  <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
  <div class="flex items-center gap-2 text-xs">
- <span class="text-ink-muted">From:</span>
+ <label class="text-ink-muted">From:</label>
  <input
  v-model="dateFrom"
  type="date"
@@ -171,7 +164,7 @@ onMounted(() => {
  </div>
 
  <div class="flex items-center gap-2 text-xs">
- <span class="text-ink-muted">To:</span>
+ <label class="text-ink-muted">To:</label>
  <input
  v-model="dateTo"
  type="date"
@@ -262,9 +255,9 @@ onMounted(() => {
  :key="cat.category"
  class="space-y-1"
  >
- <div class="flex items-center justify-between text-xs">
- <span class="font-medium text-ink-secondary">{{ cat.category }}</span>
- <span class="font-mono font-semibold text-primary">{{ cat.count }}</span>
+ <div class="flex items-center justify-between text-xs gap-2">
+ <span class="font-medium text-ink-secondary truncate max-w-[200px] sm:max-w-xs" :title="cat.category">{{ cat.category }}</span>
+ <span class="font-mono font-semibold text-primary shrink-0">{{ cat.count }}</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">
  <div
@@ -370,9 +363,9 @@ onMounted(() => {
  :key="dest.unit"
  class="space-y-1"
  >
- <div class="flex items-center justify-between text-xs">
- <span class="font-medium text-ink-secondary">{{ dest.unit }}</span>
- <span class="font-mono font-semibold text-amber-600 dark:text-amber-400">{{ dest.count }} dispatches</span>
+ <div class="flex items-center justify-between text-xs gap-2">
+ <span class="font-medium text-ink-secondary truncate max-w-[200px] sm:max-w-xs" :title="dest.unit">{{ dest.unit }}</span>
+ <span class="font-mono font-semibold text-amber-600 dark:text-amber-400 shrink-0">{{ dest.count }} dispatches</span>
  </div>
  <div class="w-full bg-surface-muted h-2 rounded-md overflow-hidden">
  <div

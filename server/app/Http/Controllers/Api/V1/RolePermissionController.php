@@ -81,6 +81,48 @@ class RolePermissionController extends Controller
     }
 
     /**
+     * List all users assigned to a specific role.
+     */
+    public function roleUsers(int $id): JsonResponse
+    {
+        $role = Role::findOrFail($id);
+
+        $userRoles = UserRole::where('role_id', $role->id)
+            ->with(['user.primaryMembershipRecord.membership.unit', 'scope.unit', 'grantedBy'])
+            ->get();
+
+        $data = $userRoles->map(function ($ur) {
+            $isExpired = $ur->expires_at && $ur->expires_at->isPast();
+            return [
+                'user_id' => $ur->user_id,
+                'name' => $ur->user?->name,
+                'email' => $ur->user?->email,
+                'status' => $ur->user?->status,
+                'primary_unit' => $ur->user?->primaryMembershipRecord?->membership?->unit?->name,
+                'scope_id' => $ur->scope_id,
+                'scope_kind' => $ur->scope?->kind,
+                'scope_unit_id' => $ur->scope?->unit_id,
+                'scope_unit_name' => $ur->scope?->unit?->name ?? ($ur->scope?->kind === 'global' ? 'Global Scope' : null),
+                'granted_by_name' => $ur->grantedBy?->name,
+                'granted_at' => $ur->granted_at?->toIso8601String(),
+                'expires_at' => $ur->expires_at?->toIso8601String(),
+                'is_expired' => $isExpired,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'role_id' => $role->id,
+                'role_code' => $role->code,
+                'role_name' => $role->name,
+                'total_users' => $data->count(),
+                'users' => $data,
+            ],
+        ]);
+    }
+
+    /**
      * Update role.
      */
     public function updateRole(Request $request, int $id): JsonResponse
@@ -92,6 +134,52 @@ class RolePermissionController extends Controller
             'description' => 'nullable|string',
             'active' => 'sometimes|boolean',
         ]);
+
+        if (isset($validated['active']) && ! $validated['active']) {
+            if ($role->is_system || $role->code === 'super_admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Security restriction: Protected system roles cannot be deactivated.',
+                ], 422);
+            }
+
+            $carriesAdminCapability = $role->permissions()->where('code', 'system.configure')->exists();
+            if ($carriesAdminCapability) {
+                // Check if deactivating this role would leave zero active system administrators
+                $permId = DB::table('permissions')->where('code', 'system.configure')->value('id');
+                $otherActiveAdminCount = DB::table('user_roles')
+                    ->join('users', 'users.id', '=', 'user_roles.user_id')
+                    ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                    ->join('role_permissions', 'role_permissions.role_id', '=', 'roles.id')
+                    ->join('authorization_scopes', 'authorization_scopes.id', '=', 'user_roles.scope_id')
+                    ->where('role_permissions.permission_id', $permId)
+                    ->where('roles.id', '!=', $role->id)
+                    ->where('roles.active', 1)
+                    ->where('users.status', 'active')
+                    ->where('authorization_scopes.kind', 'global')
+                    ->where(function ($q) {
+                        $q->whereNull('user_roles.expires_at')->orWhere('user_roles.expires_at', '>', now());
+                    })
+                    ->count()
+                    + DB::table('user_permissions')
+                        ->join('users', 'users.id', '=', 'user_permissions.user_id')
+                        ->join('authorization_scopes', 'authorization_scopes.id', '=', 'user_permissions.scope_id')
+                        ->where('user_permissions.permission_id', $permId)
+                        ->where('users.status', 'active')
+                        ->where('authorization_scopes.kind', 'global')
+                        ->where(function ($q) {
+                            $q->whereNull('user_permissions.expires_at')->orWhere('user_permissions.expires_at', '>', now());
+                        })
+                        ->count();
+
+                if ($otherActiveAdminCount === 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Security restriction: Cannot deactivate a role carrying system administrative capability when no other active administrator exists.',
+                    ], 422);
+                }
+            }
+        }
 
         $role->update($validated);
 
@@ -127,13 +215,60 @@ class RolePermissionController extends Controller
     /**
      * List all permissions.
      */
-    public function permissions(): JsonResponse
+    public function permissions(Request $request): JsonResponse
     {
-        $permissions = Permission::where('active', 1)->orderBy('code')->get();
+        $query = Permission::orderBy('code');
+        if (! $request->boolean('all', false) && ! $request->user()?->hasPermission('system.configure')) {
+            $query->where('active', 1);
+        }
+
+        $permissions = $query->get();
 
         return response()->json([
             'success' => true,
             'data' => $permissions,
+        ]);
+    }
+
+    /**
+     * Update permission active status or description.
+     */
+    public function updatePermission(Request $request, int $id): JsonResponse
+    {
+        $permission = Permission::findOrFail($id);
+
+        $validated = $request->validate([
+            'active' => 'sometimes|boolean',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        if (isset($validated['active']) && ! $validated['active'] && $permission->is_protected) {
+            return response()->json([
+                'success' => false,
+                'message' => "Security restriction: Protected capability '{$permission->code}' cannot be deactivated.",
+            ], 422);
+        }
+
+        $oldActive = $permission->active;
+        $permission->update($validated);
+
+        AuditService::recordAuthEvent(
+            action: 'auth.permission_status_changed',
+            actorId: $request->user()->id,
+            targetType: 'permission',
+            targetId: (string) $permission->id,
+            details: [
+                'code' => $permission->code,
+                'old_active' => $oldActive,
+                'new_active' => $permission->active,
+            ],
+            request: $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Permission capability '{$permission->code}' updated successfully.",
+            'data' => $permission,
         ]);
     }
 
@@ -166,12 +301,19 @@ class RolePermissionController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        // Privilege escalation barrier: only existing Super Administrator can assign super_admin role
-        $targetRole = Role::findOrFail($validated['role_id']);
+        // Privilege escalation barrier: only an authorized administrator (system.configure) can assign roles containing protected permissions
+        $targetRole = Role::with('permissions')->findOrFail($validated['role_id']);
         if ($targetRole->code === 'super_admin' && ! $actor->hasPermission('system.configure')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: Only an existing Super Administrator can assign the super_admin role.',
+            ], 403);
+        }
+        $hasProtectedPerm = $targetRole->is_protected || $targetRole->permissions->contains(fn ($p) => in_array($p->code, ['system.configure', 'roles.assign', 'roles.create'], true) || (bool) $p->is_protected);
+        if ($hasProtectedPerm && ! $actor->hasPermission('system.configure')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: Only an authorized Super Administrator can assign roles containing protected administrative capabilities.',
             ], 403);
         }
 
@@ -236,6 +378,51 @@ class RolePermissionController extends Controller
             'scope_id' => 'required|exists:authorization_scopes,id',
         ]);
 
+        $targetRole = Role::with('permissions')->findOrFail($validated['role_id']);
+        $carriesAdminCapability = $targetRole->is_system
+            || $targetRole->code === 'super_admin'
+            || $targetRole->permissions->contains(fn ($p) => $p->code === 'system.configure');
+
+        if ($carriesAdminCapability) {
+            if (! $request->user()->hasPermission('system.configure')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Only an authorized Super Administrator can revoke administrative roles.',
+                ], 403);
+            }
+
+            // Protect last active administrator carrying super_admin or system.configure
+            $otherSuperAdminCount = DB::table('user_roles')
+                ->join('users', 'users.id', '=', 'user_roles.user_id')
+                ->where('user_roles.role_id', $targetRole->id)
+                ->where('users.status', 'active')
+                ->where('users.id', '!=', $validated['user_id'])
+                ->where(function ($q) {
+                    $q->whereNull('user_roles.expires_at')->orWhere('user_roles.expires_at', '>', now());
+                })
+                ->count();
+
+            if (($targetRole->code === 'super_admin' && $otherSuperAdminCount === 0)
+                || User::countActiveSystemAdministrators($validated['user_id']) === 0) {
+                // Check if target user has direct system.configure permission that remains
+                $targetUser = User::find($validated['user_id']);
+                $hasDirectAdmin = $targetUser && $targetUser->userPermissions()
+                    ->whereHas('permission', fn ($p) => $p->where('code', 'system.configure'))
+                    ->whereHas('scope', fn ($s) => $s->where('kind', 'global'))
+                    ->where(function ($q) {
+                        $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                    })
+                    ->exists();
+
+                if (! $hasDirectAdmin) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Security restriction: Cannot revoke administrative capability from the last active System Administrator in the institution.',
+                    ], 422);
+                }
+            }
+        }
+
         DB::table('user_roles')
             ->where('user_id', $validated['user_id'])
             ->where('role_id', $validated['role_id'])
@@ -277,6 +464,16 @@ class RolePermissionController extends Controller
         ]);
 
         $actor = $request->user();
+        $targetPerm = Permission::findOrFail($validated['permission_id']);
+
+        // Privilege escalation barrier: only an authorized Super Admin can grant protected capabilities
+        if ($targetPerm->is_protected && ! $actor->hasPermission('system.configure')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: Directly granting protected capability '{$targetPerm->code}' requires system.configure authority.",
+            ], 403);
+        }
+
         $now = now()->format('Y-m-d H:i:s.u');
 
         // Resolve or create authorization scope
@@ -339,6 +536,37 @@ class RolePermissionController extends Controller
             'permission_id' => 'required|exists:permissions,id',
             'scope_id' => 'required|exists:authorization_scopes,id',
         ]);
+
+        $targetPerm = Permission::findOrFail($validated['permission_id']);
+        if ($targetPerm->is_protected && ! $request->user()->hasPermission('system.configure')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: Revoking protected capability '{$targetPerm->code}' requires system.configure authority.",
+            ], 403);
+        }
+
+        if ($targetPerm->code === 'system.configure') {
+            if (User::countActiveSystemAdministrators($validated['user_id']) === 0) {
+                // Check if target user has active role carrying system.configure
+                $targetUser = User::find($validated['user_id']);
+                $hasRoleAdmin = $targetUser && $targetUser->userRoles()
+                    ->whereHas('role', function ($rq) {
+                        $rq->where('active', 1)->whereHas('permissions', fn ($pq) => $pq->where('code', 'system.configure'));
+                    })
+                    ->whereHas('scope', fn ($s) => $s->where('kind', 'global'))
+                    ->where(function ($q) {
+                        $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                    })
+                    ->exists();
+
+                if (! $hasRoleAdmin) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Security restriction: Cannot revoke system.configure from the last active System Administrator in the institution.',
+                    ], 422);
+                }
+            }
+        }
 
         DB::table('user_permissions')
             ->where('user_id', $validated['user_id'])

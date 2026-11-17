@@ -274,6 +274,152 @@ class ProcessDueDatesAndEscalationsCommand extends Command
             $this->table(['Movement ID', 'Document', 'From Unit', 'To Unit', 'Due At'], $movementRows);
         }
 
+        // 4. Process Overdue Archive Retention Reviews
+        $dueArchiveEntries = \App\Models\ArchiveEntry::with(['document', 'collection', 'archivedBy'])
+            ->whereNotNull('next_review_at')
+            ->where('next_review_at', '<=', $now)
+            ->whereHas('document', function ($q) {
+                $q->where('lifecycle', '!=', 'tombstoned');
+            })
+            ->get();
+
+        $this->line("Found {$dueArchiveEntries->count()} archive entry/entries due for retention review.");
+
+        $archiveRows = [];
+        foreach ($dueArchiveEntries as $entry) {
+            $archiveRows[] = [
+                $entry->id,
+                $entry->document?->reference_number ?? ('Doc #' . $entry->document_id),
+                $entry->collection?->name ?? 'Default Collection',
+                $entry->next_review_at?->toDateTimeString(),
+            ];
+
+            if (! $dryRun && $systemActorId) {
+                DB::transaction(function () use ($entry, $nowFormatted, $systemActorId) {
+                    $alreadyEscalated = AuditEvent::where('action', 'archive.retention_review_due')
+                        ->where('target_type', 'archive_entry')
+                        ->where('target_id', (string) $entry->id)
+                        ->where('occurred_at', '>=', now()->subHours(24))
+                        ->exists();
+
+                    if (! $alreadyEscalated) {
+                        AuditEvent::create([
+                            'actor_id' => $systemActorId,
+                            'action' => 'archive.retention_review_due',
+                            'target_type' => 'archive_entry',
+                            'target_id' => (string) $entry->id,
+                            'request_id' => (string) Str::uuid(),
+                            'occurred_at' => $nowFormatted,
+                            'details_json' => [
+                                'archive_entry_id' => $entry->id,
+                                'document_id' => $entry->document_id,
+                                'next_review_at' => $entry->next_review_at?->toDateTimeString(),
+                            ],
+                        ]);
+                    }
+
+                    if ($entry->archived_by) {
+                        $alreadyNotified = NotificationEvent::where('type_code', 'archive_retention_due')
+                            ->where('document_id', $entry->document_id)
+                            ->where('occurred_at', '>=', now()->subHours(24))
+                            ->exists();
+
+                        if (! $alreadyNotified) {
+                            $event = NotificationEvent::create([
+                                'type_code' => 'archive_retention_due',
+                                'document_id' => $entry->document_id,
+                                'actor_id' => $systemActorId,
+                                'occurred_at' => $nowFormatted,
+                            ]);
+
+                            UserNotification::create([
+                                'event_id' => $event->id,
+                                'user_id' => $entry->archived_by,
+                                'created_at' => $nowFormatted,
+                            ]);
+                        }
+                    }
+                });
+            }
+        }
+
+        if (! empty($archiveRows)) {
+            $this->table(['Archive ID', 'Document', 'Collection', 'Review Due At'], $archiveRows);
+        }
+
+        // 5. Process Dispatches Awaiting Delivery Evidence (> 5 Days)
+        $unconfirmedDispatches = \App\Models\CorrespondenceDispatch::with(['participant.correspondence.document', 'dispatchedBy'])
+            ->whereNull('evidence_file_id')
+            ->where('dispatched_at', '<', $now->copy()->subDays(5))
+            ->get();
+
+        $this->line("Found {$unconfirmedDispatches->count()} dispatch(es) awaiting delivery evidence > 5 days.");
+
+        $dispatchRows = [];
+        foreach ($unconfirmedDispatches as $disp) {
+            $corr = $disp->participant?->correspondence;
+            $dispatchRows[] = [
+                $disp->id,
+                $corr?->document?->reference_number ?? 'N/A',
+                $disp->dispatchedBy?->name ?? 'Staff',
+                $disp->dispatched_at?->toDateTimeString(),
+                $disp->dispatched_at ? $now->diffForHumans($disp->dispatched_at, true) . ' ago' : 'N/A',
+            ];
+
+            if (! $dryRun && $systemActorId) {
+                DB::transaction(function () use ($disp, $corr, $nowFormatted, $systemActorId) {
+                    $alreadyEscalated = AuditEvent::where('action', 'dispatch.delivery_evidence_overdue')
+                        ->where('target_type', 'correspondence_dispatch')
+                        ->where('target_id', (string) $disp->id)
+                        ->where('occurred_at', '>=', now()->subHours(24))
+                        ->exists();
+
+                    if (! $alreadyEscalated) {
+                        AuditEvent::create([
+                            'actor_id' => $systemActorId,
+                            'action' => 'dispatch.delivery_evidence_overdue',
+                            'target_type' => 'correspondence_dispatch',
+                            'target_id' => (string) $disp->id,
+                            'request_id' => (string) Str::uuid(),
+                            'occurred_at' => $nowFormatted,
+                            'details_json' => [
+                                'dispatch_id' => $disp->id,
+                                'correspondence_id' => $corr?->id,
+                                'dispatched_at' => $disp->dispatched_at?->toDateTimeString(),
+                                'dispatched_by' => $disp->dispatched_by,
+                            ],
+                        ]);
+                    }
+
+                    if ($disp->dispatched_by) {
+                        $alreadyNotified = NotificationEvent::where('type_code', 'dispatch_evidence_overdue')
+                            ->where('document_id', $corr?->document_id)
+                            ->where('occurred_at', '>=', now()->subHours(24))
+                            ->exists();
+
+                        if (! $alreadyNotified) {
+                            $event = NotificationEvent::create([
+                                'type_code' => 'dispatch_evidence_overdue',
+                                'document_id' => $corr?->document_id,
+                                'actor_id' => $systemActorId,
+                                'occurred_at' => $nowFormatted,
+                            ]);
+
+                            UserNotification::create([
+                                'event_id' => $event->id,
+                                'user_id' => $disp->dispatched_by,
+                                'created_at' => $nowFormatted,
+                            ]);
+                        }
+                    }
+                });
+            }
+        }
+
+        if (! empty($dispatchRows)) {
+            $this->table(['Dispatch ID', 'Document', 'Dispatched By', 'Dispatched At', 'Age'], $dispatchRows);
+        }
+
         $this->info('Due date and escalation processing completed successfully.');
 
         return Command::SUCCESS;

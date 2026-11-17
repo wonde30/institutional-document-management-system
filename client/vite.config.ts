@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
+const proxyTarget = process.env.VITE_PROXY_TARGET || 'http://localhost:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -16,14 +18,14 @@ export default defineConfig({
   },
   server: {
     host: 'localhost',
-    port: 5173,
+    port: process.env.PORT ? parseInt(process.env.PORT, 10) : 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: proxyTarget,
         changeOrigin: true,
       },
       '/sanctum': {
-        target: 'http://localhost:8000',
+        target: proxyTarget,
         changeOrigin: true,
       }
     }

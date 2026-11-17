@@ -78,8 +78,119 @@ class DocumentResource extends JsonResource
                                 ] : null,
                             ];
                         }) : [],
+                        'workflow_instances' => $ver->relationLoaded('workflowInstances') ? $ver->workflowInstances->map(function ($wi) use ($ver) {
+                            return [
+                                'id' => $wi->id,
+                                'version_id' => $ver->id,
+                                'version_number' => $ver->version_number,
+                                'workflow_definition' => $wi->workflowVersion?->workflowDefinition ? [
+                                    'id' => $wi->workflowVersion->workflowDefinition->id,
+                                    'code' => $wi->workflowVersion->workflowDefinition->code,
+                                    'name' => $wi->workflowVersion->workflowDefinition->name,
+                                ] : null,
+                                'started_at' => $wi->started_at?->toISOString(),
+                                'started_by' => $wi->startedBy ? [
+                                    'id' => $wi->startedBy->id,
+                                    'name' => $wi->startedBy->name,
+                                ] : null,
+                                'tasks' => $wi->relationLoaded('tasks') ? $wi->tasks->map(function ($task) {
+                                    return [
+                                        'id' => $task->id,
+                                        'state' => $task->state ? [
+                                            'id' => $task->state->id,
+                                            'code' => $task->state->code,
+                                            'name' => $task->state->name,
+                                            'is_terminal' => (bool) $task->state->is_terminal,
+                                        ] : null,
+                                        'assigned_user_id' => $task->assigned_user_id,
+                                        'assigned_user' => $task->assignedUser ? [
+                                            'id' => $task->assignedUser->id,
+                                            'name' => $task->assignedUser->name,
+                                        ] : null,
+                                        'assigned_role' => $task->requiredRole ? [
+                                            'id' => $task->requiredRole->id,
+                                            'name' => $task->requiredRole->name,
+                                        ] : null,
+                                        'assigned_unit' => $task->assignedUnit ? [
+                                            'id' => $task->assignedUnit->id,
+                                            'name' => $task->assignedUnit->name,
+                                        ] : null,
+                                        'decision' => $task->decision ? [
+                                            'decision' => $task->decision->decision,
+                                            'reason' => $task->decision->reason,
+                                            'decided_at' => $task->decision->decided_at?->toISOString(),
+                                            'decided_by' => $task->decision->decidedBy ? [
+                                                'id' => $task->decision->decidedBy->id,
+                                                'name' => $task->decision->decidedBy->name,
+                                            ] : null,
+                                        ] : null,
+                                        'due_at' => $task->due_at?->toISOString(),
+                                        'closed_at' => $task->closed_at?->toISOString(),
+                                    ];
+                                }) : [],
+                            ];
+                        }) : [],
                     ];
                 });
+            }),
+            'workflow_instances' => $this->whenLoaded('versions', function () {
+                return $this->versions->flatMap(function ($ver) {
+                    if (! $ver->relationLoaded('workflowInstances')) {
+                        return [];
+                    }
+                    return $ver->workflowInstances->map(function ($wi) use ($ver) {
+                        return [
+                            'id' => $wi->id,
+                            'version_id' => $ver->id,
+                            'version_number' => $ver->version_number,
+                            'workflow_definition' => $wi->workflowVersion?->workflowDefinition ? [
+                                'id' => $wi->workflowVersion->workflowDefinition->id,
+                                'code' => $wi->workflowVersion->workflowDefinition->code,
+                                'name' => $wi->workflowVersion->workflowDefinition->name,
+                            ] : null,
+                            'started_at' => $wi->started_at?->toISOString(),
+                            'started_by' => $wi->startedBy ? [
+                                'id' => $wi->startedBy->id,
+                                'name' => $wi->startedBy->name,
+                            ] : null,
+                            'tasks' => $wi->relationLoaded('tasks') ? $wi->tasks->map(function ($task) {
+                                return [
+                                    'id' => $task->id,
+                                    'state' => $task->state ? [
+                                        'id' => $task->state->id,
+                                        'code' => $task->state->code,
+                                        'name' => $task->state->name,
+                                        'is_terminal' => (bool) $task->state->is_terminal,
+                                    ] : null,
+                                    'assigned_user_id' => $task->assigned_user_id,
+                                    'assigned_user' => $task->assignedUser ? [
+                                        'id' => $task->assignedUser->id,
+                                        'name' => $task->assignedUser->name,
+                                    ] : null,
+                                    'assigned_role' => $task->requiredRole ? [
+                                        'id' => $task->requiredRole->id,
+                                        'name' => $task->requiredRole->name,
+                                    ] : null,
+                                    'assigned_unit' => $task->assignedUnit ? [
+                                        'id' => $task->assignedUnit->id,
+                                        'name' => $task->assignedUnit->name,
+                                    ] : null,
+                                    'decision' => $task->decision ? [
+                                        'decision' => $task->decision->decision,
+                                        'reason' => $task->decision->reason,
+                                        'decided_at' => $task->decision->decided_at?->toISOString(),
+                                        'decided_by' => $task->decision->decidedBy ? [
+                                            'id' => $task->decision->decidedBy->id,
+                                            'name' => $task->decision->decidedBy->name,
+                                        ] : null,
+                                    ] : null,
+                                    'due_at' => $task->due_at?->toISOString(),
+                                    'closed_at' => $task->closed_at?->toISOString(),
+                                ];
+                            }) : [],
+                        ];
+                    });
+                })->values();
             }),
             'correspondence' => $this->whenLoaded('correspondence', function () {
                 if (! $this->correspondence) {
@@ -174,6 +285,64 @@ class DocumentResource extends JsonResource
                     ];
                 });
             }),
+            'outgoing_relations' => $this->whenLoaded('outgoingRelations', function () {
+                return $this->outgoingRelations->map(fn ($r) => [
+                    'source_id' => $r->source_id,
+                    'target_id' => $r->target_id,
+                    'relation_type_id' => $r->relation_type_id,
+                    'relation_type' => $r->relationType ? [
+                        'id' => $r->relationType->id,
+                        'code' => $r->relationType->code,
+                        'name' => $r->relationType->name,
+                    ] : null,
+                    'target_document' => $r->targetDocument ? [
+                        'id' => $r->targetDocument->id,
+                        'reference_number' => $r->targetDocument->reference_number,
+                        'title' => $r->targetDocument->title,
+                    ] : null,
+                ]);
+            }),
+            'incoming_relations' => $this->whenLoaded('incomingRelations', function () {
+                return $this->incomingRelations->map(fn ($r) => [
+                    'source_id' => $r->source_id,
+                    'target_id' => $r->target_id,
+                    'relation_type_id' => $r->relation_type_id,
+                    'relation_type' => $r->relationType ? [
+                        'id' => $r->relationType->id,
+                        'code' => $r->relationType->code,
+                        'name' => $r->relationType->name,
+                    ] : null,
+                    'source_document' => $r->sourceDocument ? [
+                        'id' => $r->sourceDocument->id,
+                        'reference_number' => $r->sourceDocument->reference_number,
+                        'title' => $r->sourceDocument->title,
+                    ] : null,
+                ]);
+            }),
+            'correspondence' => $this->whenLoaded('correspondence', fn () => $this->correspondence ? [
+                'id' => $this->correspondence->id,
+                'type' => $this->correspondence->type ? [
+                    'id' => $this->correspondence->type->id,
+                    'code' => $this->correspondence->type->code,
+                    'name' => $this->correspondence->type->name,
+                ] : null,
+                'priority' => $this->correspondence->priority ? [
+                    'id' => $this->correspondence->priority->id,
+                    'code' => $this->correspondence->priority->code,
+                    'name' => $this->correspondence->priority->name,
+                ] : null,
+                'external_reference' => $this->correspondence->external_reference,
+                'correspondence_date' => $this->correspondence->correspondence_date?->toDateString(),
+            ] : null),
+            'archive_entry' => $this->whenLoaded('archiveEntry', fn () => $this->archiveEntry ? [
+                'id' => $this->archiveEntry->id,
+                'archive_reference' => $this->archiveEntry->archive_reference,
+                'collection' => $this->archiveEntry->collection ? [
+                    'id' => $this->archiveEntry->collection->id,
+                    'name' => $this->archiveEntry->collection->name,
+                ] : null,
+                'archived_at' => $this->archiveEntry->archived_at?->toISOString(),
+            ] : null),
         ];
     }
 }

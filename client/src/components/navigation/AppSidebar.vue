@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -6,7 +6,6 @@ import { useNotificationStore } from '@/stores/notifications'
 import { navigationConfig, resolveNavIcon, type NavigationSection, type NavigationItem } from '@/config/navigation'
 import {
  ChevronDown,
- ShieldCheck,
  X,
  Bell,
 } from 'lucide-vue-next'
@@ -250,11 +249,11 @@ function handleLinkClick() {
  aria-hidden="true"
  />
 
- <!-- Main Sidebar Container: Notion Paper Daylight Aesthetics (#ffffff / dark: #1a1a1a) -->
+ <!-- Main Sidebar Container: 240px → 64px collapsing, or drawer below 1280px -->
  <aside
  class="bg-surface text-ink-secondary shrink-0 z-40 flex flex-col justify-between transition-transform duration-300 select-none border-r border-hairline h-full"
  :class="[
- 'fixed inset-y-0 left-0 w-64 lg:static lg:translate-x-0',
+ 'fixed inset-y-0 left-0 w-60 xl:static xl:translate-x-0',
  mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
  ]"
  role="navigation"
@@ -287,47 +286,6 @@ function handleLinkClick() {
  </button>
  </div>
 
- <!-- Workspace Context Block (Quiet paper frame) -->
- <div class="px-4 py-2.5 border-b border-hairline bg-surface-hover">
- <div class="text-[9px] font-bold tracking-widest text-ink-muted uppercase">Active Workspace</div>
-
- <!-- Active organizational unit -->
- <div class="text-xs font-semibold text-ink truncate mt-0.5" :title="authStore.activeUnit?.name || 'Central University Records'">
- {{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name || 'Central Administration' }}
- </div>
- <div class="text-[11px] text-ink-muted truncate" :title="authStore.primaryUnit?.position_title || 'Records Officer'">
- {{ authStore.primaryUnit?.position_title || 'Records Officer' }}
- </div>
-
- <!-- Context switcher: offered only when the server published more than one unit -->
- <div v-if="authStore.availableUnits.length > 1" class="mt-2">
- <label class="block text-[10px] font-semibold text-ink-muted mb-1" for="active-unit-selector">
- Organizational unit
- </label>
- <select
- id="active-unit-selector"
- class="w-full rounded-[5px] border border-hairline bg-surface px-2 py-1 text-[11px] text-ink focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-60"
- :value="authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''"
- :disabled="authStore.isSwitchingUnit"
- @change="handleUnitChange"
- >
- <option v-for="unit in authStore.availableUnits" :key="unit.id" :value="unit.id">
- {{ unit.name }}{{ unit.is_primary ? ' (primary)' : '' }}
- </option>
- </select>
- <p class="mt-1 text-[10px] text-ink-muted" role="status" aria-live="polite">
- {{ authStore.isSwitchingUnit ? 'Applying the selected unit…' : 'Capabilities and menu follow the selected unit.' }}
- </p>
- </div>
-
- <!-- The user holds scoped capabilities but has not selected a unit yet -->
- <div v-if="authStore.unitSelectionRequired" class="mt-2 p-2 rounded-[5px] bg-[#fdf3e3] dark:bg-[#2e2312] border border-[#e0a03a]/25">
- <p class="text-[10px] text-ink leading-relaxed">
- Your account holds unit specific capabilities. Select an organizational unit to display the matching actions.
- </p>
- </div>
- </div>
-
  <!-- Navigation Accordion Area (Scrollable within Viewport) -->
  <nav class="flex-1 overflow-y-auto px-2.5 py-3 space-y-1.5 scrollbar-thin">
  <div
@@ -335,17 +293,16 @@ function handleLinkClick() {
  :key="section.title"
  class="rounded-[6px] overflow-hidden border border-transparent transition-colors"
  :class="{
- 'bg-surface-muted/60 /40': isGroupExpanded(section.title),
  }"
  >
- <!-- Accordion Group Heading (Semantic Button per DESIGN.md eyebrow) -->
+ <!-- Accordion Group Heading (sentence case, no tracking-wide) -->
  <button
  type="button"
  :id="'accordion-header-' + idx"
  :aria-controls="'accordion-panel-' + idx"
  :aria-expanded="isGroupExpanded(section.title)"
  @click="toggleGroup(section.title)"
- class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[5px] text-left transition-all text-[11px] font-bold uppercase tracking-wider group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+ class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[5px] text-left transition-all text-[12px] font-semibold group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
  :class="[
  isGroupExpanded(section.title)
  ? 'text-ink'
@@ -360,7 +317,7 @@ function handleLinkClick() {
  :class="isGroupExpanded(section.title) ? 'text-primary' : 'text-ink-faint group-hover:text-ink'"
  />
  <span class="truncate">{{ section.title }}</span>
- <span class="text-[10px] text-ink-faint font-mono lowercase">({{ section.items.length }})</span>
+
  </div>
 
  <div class="flex items-center gap-1.5 shrink-0">
@@ -400,16 +357,16 @@ function handleLinkClick() {
  v-slot="{ href, navigate }"
  custom
  >
- <!-- ex-app-shell-row: 5px radius, 12px font, primary blue indicator -->
+ <!-- Navigation item: soft bg for active, no left border, primary blue active bg -->
  <a
  :href="href"
  :aria-current="isItemActive(item) ? 'page' : undefined"
  @click="(e) => { navigate(e); handleLinkClick(); }"
- class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[5px] text-xs transition-all group border-l-3 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+ class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[5px] text-xs transition-all group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
  :class="[
  isItemActive(item)
- ? 'bg-primary-subtle bg-[#e8f3fc] text-primary border-l-[#0075de] dark:border-l-[#2b8bee] font-semibold'
- : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink border-l-transparent font-medium',
+ ? 'bg-primary-subtle text-primary font-semibold'
+ : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink font-medium',
  ]"
  >
  <div class="flex items-center gap-2 min-w-0">
@@ -435,13 +392,9 @@ function handleLinkClick() {
  </div>
  </nav>
 
- <!-- Sidebar Institutional Footer -->
- <div class="p-3 border-t border-hairline text-[11px] text-ink-muted flex items-center justify-between">
- <div class="flex items-center gap-1.5">
- <ShieldCheck class="w-4 h-4 text-primary shrink-0" />
- <span class="text-[10px] tracking-tight">Scope-enforced access</span>
- </div>
- <span class="text-[10px] font-mono text-ink-faint">v2.0</span>
+ <!-- Sidebar Footer -->
+ <div class="p-3 border-t border-hairline text-[11px] text-ink-muted flex items-center justify-center">
+ <span class="text-[10px] text-ink-faint tracking-tight">© 2026 Wollo University</span>
  </div>
  </aside>
  </div>

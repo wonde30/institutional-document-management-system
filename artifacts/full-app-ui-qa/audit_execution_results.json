@@ -1,0 +1,1174 @@
+{
+  "startedAt": "2026-11-15T17:45:40.595Z",
+  "completedAt": "2026-11-15T17:47:18.222Z",
+  "environment": {
+    "browser": "Chromium 158.0.8127.18 (Playwright binary)",
+    "frontend": "Vue 3.5.44 + TypeScript 6.0 + Vite 8.3.5",
+    "backend": "Laravel 13.42.0 REST API (Acceptance DB: wu_dms_acceptance)",
+    "baseUrl": "http://localhost:5174",
+    "apiUrl": "http://localhost:8001"
+  },
+  "routesAudited": [
+    {
+      "path": "/",
+      "title": "Public Landing Portal",
+      "stats": {
+        "buttonCount": 5,
+        "linkCount": 18,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:45.472Z"
+    },
+    {
+      "path": "/privacy-policy",
+      "title": "Privacy & Data Protection Policy",
+      "stats": {
+        "buttonCount": 3,
+        "linkCount": 17,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:47.566Z"
+    },
+    {
+      "path": "/terms",
+      "title": "Terms of Use & Administrative Agreement",
+      "stats": {
+        "buttonCount": 3,
+        "linkCount": 17,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:49.380Z"
+    },
+    {
+      "path": "/login",
+      "title": "Sign In",
+      "stats": {
+        "buttonCount": 2,
+        "linkCount": 4,
+        "inputCount": 2,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:51.346Z"
+    },
+    {
+      "path": "/forgot-password",
+      "title": "Forgot Password",
+      "stats": {
+        "buttonCount": 1,
+        "linkCount": 1,
+        "inputCount": 1,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:53.820Z"
+    },
+    {
+      "path": "/reset-password",
+      "title": "Reset Password",
+      "stats": {
+        "buttonCount": 1,
+        "linkCount": 1,
+        "inputCount": 2,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:55.070Z"
+    },
+    {
+      "path": "/dashboard",
+      "title": "Workspace Dashboard",
+      "stats": {
+        "buttonCount": 16,
+        "linkCount": 43,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:45:58.953Z"
+    },
+    {
+      "path": "/account",
+      "title": "Account Facts & Profile",
+      "stats": {
+        "buttonCount": 13,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:00.769Z"
+    },
+    {
+      "path": "/account/security",
+      "title": "Account Security & Password",
+      "stats": {
+        "buttonCount": 14,
+        "linkCount": 31,
+        "inputCount": 3,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:02.058Z"
+    },
+    {
+      "path": "/account/preferences",
+      "title": "Workspace Preferences",
+      "stats": {
+        "buttonCount": 14,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:03.324Z"
+    },
+    {
+      "path": "/tasks",
+      "title": "My Tasks & Decisions",
+      "stats": {
+        "buttonCount": 15,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:05.154Z"
+    },
+    {
+      "path": "/notifications",
+      "title": "Notifications & Activity",
+      "stats": {
+        "buttonCount": 12,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:06.969Z"
+    },
+    {
+      "path": "/documents",
+      "title": "Document Repository",
+      "stats": {
+        "buttonCount": 27,
+        "linkCount": 31,
+        "inputCount": 5,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:10.264Z"
+    },
+    {
+      "path": "/documents/create",
+      "title": "Register Document",
+      "stats": {
+        "buttonCount": 26,
+        "linkCount": 31,
+        "inputCount": 13,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:12.169Z"
+    },
+    {
+      "path": "/templates",
+      "title": "Document Templates Builder",
+      "stats": {
+        "buttonCount": 11,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:14.025Z"
+    },
+    {
+      "path": "/search",
+      "title": "Authorized Search",
+      "stats": {
+        "buttonCount": 15,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:15.895Z"
+    },
+    {
+      "path": "/documents/1",
+      "title": "Document Details",
+      "stats": {
+        "buttonCount": 17,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:17.757Z"
+    },
+    {
+      "path": "/correspondence",
+      "title": "Correspondence Registry",
+      "stats": {
+        "buttonCount": 35,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:21.079Z"
+    },
+    {
+      "path": "/letters/incoming",
+      "title": "Incoming Letters",
+      "stats": {
+        "buttonCount": 35,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:22.350Z"
+    },
+    {
+      "path": "/letters/outgoing",
+      "title": "Outgoing Letters",
+      "stats": {
+        "buttonCount": 15,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:23.609Z"
+    },
+    {
+      "path": "/memoranda",
+      "title": "Internal Memoranda",
+      "stats": {
+        "buttonCount": 15,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:24.877Z"
+    },
+    {
+      "path": "/routing",
+      "title": "Office Routing",
+      "stats": {
+        "buttonCount": 35,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:26.148Z"
+    },
+    {
+      "path": "/research",
+      "title": "Finalized Research Outputs",
+      "stats": {
+        "buttonCount": 12,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:27.983Z"
+    },
+    {
+      "path": "/staff",
+      "title": "Staff Records & Custody",
+      "stats": {
+        "buttonCount": 12,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:29.819Z"
+    },
+    {
+      "path": "/archive",
+      "title": "Digital Archive Repository",
+      "stats": {
+        "buttonCount": 18,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:31.663Z"
+    },
+    {
+      "path": "/accreditation",
+      "title": "Accreditation Evidence",
+      "stats": {
+        "buttonCount": 14,
+        "linkCount": 31,
+        "inputCount": 4,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:33.544Z"
+    },
+    {
+      "path": "/projects",
+      "title": "Projects & Innovation",
+      "stats": {
+        "buttonCount": 13,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:35.454Z"
+    },
+    {
+      "path": "/signatures",
+      "title": "Digital Signatures & Stamps",
+      "stats": {
+        "buttonCount": 14,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:37.395Z"
+    },
+    {
+      "path": "/reports",
+      "title": "Reports & Analytics",
+      "stats": {
+        "buttonCount": 14,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:40.904Z"
+    },
+    {
+      "path": "/exports",
+      "title": "Data Imports & Exports",
+      "stats": {
+        "buttonCount": 13,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:42.753Z"
+    },
+    {
+      "path": "/admin/users",
+      "title": "User Accounts & Staff",
+      "stats": {
+        "buttonCount": 101,
+        "linkCount": 31,
+        "inputCount": 5,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:44.624Z"
+    },
+    {
+      "path": "/admin/roles",
+      "title": "Scoped Role Management",
+      "stats": {
+        "buttonCount": 32,
+        "linkCount": 31,
+        "inputCount": 3,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:46.488Z"
+    },
+    {
+      "path": "/admin/organization",
+      "title": "Organization Structure",
+      "stats": {
+        "buttonCount": 33,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:48.342Z"
+    },
+    {
+      "path": "/admin/office-procedures",
+      "title": "Office Procedures",
+      "stats": {
+        "buttonCount": 11,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:49.596Z"
+    },
+    {
+      "path": "/admin/permissions",
+      "title": "Permission Registry",
+      "stats": {
+        "buttonCount": 171,
+        "linkCount": 31,
+        "inputCount": 4,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:50.853Z"
+    },
+    {
+      "path": "/admin/configuration",
+      "title": "Configuration Center",
+      "stats": {
+        "buttonCount": 16,
+        "linkCount": 32,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:52.574Z"
+    },
+    {
+      "path": "/admin/reference-data",
+      "title": "Reference Data Catalogs",
+      "stats": {
+        "buttonCount": 29,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:53.829Z"
+    },
+    {
+      "path": "/admin/audit",
+      "title": "Security Audit Ledger",
+      "stats": {
+        "buttonCount": 66,
+        "linkCount": 31,
+        "inputCount": 2,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:55.704Z"
+    },
+    {
+      "path": "/admin/operations",
+      "title": "Operations & Health",
+      "stats": {
+        "buttonCount": 11,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 1,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:56.966Z"
+    },
+    {
+      "path": "/admin/settings",
+      "title": "System Settings",
+      "stats": {
+        "buttonCount": 24,
+        "linkCount": 31,
+        "inputCount": 8,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:46:58.233Z"
+    },
+    {
+      "path": "/help",
+      "title": "Help & User Guide",
+      "stats": {
+        "buttonCount": 10,
+        "linkCount": 31,
+        "inputCount": 1,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:47:00.100Z"
+    },
+    {
+      "path": "/forbidden",
+      "title": "Access Forbidden",
+      "stats": {
+        "buttonCount": 12,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:47:01.377Z"
+    },
+    {
+      "path": "/not-found",
+      "title": "Page Not Found",
+      "stats": {
+        "buttonCount": 12,
+        "linkCount": 31,
+        "inputCount": 0,
+        "tableCount": 0,
+        "hasHorizontalOverflow": false,
+        "bodyBg": "rgb(246, 245, 244)"
+      },
+      "status": "PASS",
+      "auditedAt": "2026-11-15T17:47:02.670Z"
+    }
+  ],
+  "viewportsTested": [
+    "1920x1080",
+    "1366x768",
+    "1024x768",
+    "768x1024",
+    "390x844",
+    "360x800"
+  ],
+  "screenshotsCaptured": [
+    {
+      "file": "public/landing_1920x1080.png",
+      "sizeBytes": 98409,
+      "timestamp": "2026-11-15T17:45:43.980Z"
+    },
+    {
+      "file": "public/landing_1366x768.png",
+      "sizeBytes": 63172,
+      "timestamp": "2026-11-15T17:45:44.281Z"
+    },
+    {
+      "file": "public/landing_1024x768.png",
+      "sizeBytes": 61250,
+      "timestamp": "2026-11-15T17:45:44.579Z"
+    },
+    {
+      "file": "public/landing_768x1024.png",
+      "sizeBytes": 81588,
+      "timestamp": "2026-11-15T17:45:44.881Z"
+    },
+    {
+      "file": "public/landing_390x844.png",
+      "sizeBytes": 50853,
+      "timestamp": "2026-11-15T17:45:45.190Z"
+    },
+    {
+      "file": "public/landing_360x800.png",
+      "sizeBytes": 43965,
+      "timestamp": "2026-11-15T17:45:45.471Z"
+    },
+    {
+      "file": "public/privacy_policy_1920x1080.png",
+      "sizeBytes": 112517,
+      "timestamp": "2026-11-15T17:45:47.014Z"
+    },
+    {
+      "file": "public/privacy_policy_390x844.png",
+      "sizeBytes": 55360,
+      "timestamp": "2026-11-15T17:45:47.305Z"
+    },
+    {
+      "file": "public/terms_conditions_1920x1080.png",
+      "sizeBytes": 114224,
+      "timestamp": "2026-11-15T17:45:48.831Z"
+    },
+    {
+      "file": "public/terms_conditions_390x844.png",
+      "sizeBytes": 53922,
+      "timestamp": "2026-11-15T17:45:49.122Z"
+    },
+    {
+      "file": "auth/login_1920x1080.png",
+      "sizeBytes": 36985,
+      "timestamp": "2026-11-15T17:45:50.806Z"
+    },
+    {
+      "file": "auth/login_390x844.png",
+      "sizeBytes": 28666,
+      "timestamp": "2026-11-15T17:45:51.086Z"
+    },
+    {
+      "file": "auth/login_validation_feedback.png",
+      "sizeBytes": 41929,
+      "timestamp": "2026-11-15T17:45:52.404Z"
+    },
+    {
+      "file": "auth/forgot_password_1920x1080.png",
+      "sizeBytes": 23856,
+      "timestamp": "2026-11-15T17:45:53.820Z"
+    },
+    {
+      "file": "auth/reset_password_1920x1080.png",
+      "sizeBytes": 28009,
+      "timestamp": "2026-11-15T17:45:55.069Z"
+    },
+    {
+      "file": "workspace/dashboard_1920x1080.png",
+      "sizeBytes": 155095,
+      "timestamp": "2026-11-15T17:45:57.168Z"
+    },
+    {
+      "file": "workspace/dashboard_1366x768.png",
+      "sizeBytes": 102465,
+      "timestamp": "2026-11-15T17:45:57.469Z"
+    },
+    {
+      "file": "workspace/dashboard_1024x768.png",
+      "sizeBytes": 98435,
+      "timestamp": "2026-11-15T17:45:57.782Z"
+    },
+    {
+      "file": "workspace/dashboard_768x1024.png",
+      "sizeBytes": 82580,
+      "timestamp": "2026-11-15T17:45:58.112Z"
+    },
+    {
+      "file": "workspace/dashboard_390x844.png",
+      "sizeBytes": 56605,
+      "timestamp": "2026-11-15T17:45:58.405Z"
+    },
+    {
+      "file": "workspace/dashboard_360x800.png",
+      "sizeBytes": 50861,
+      "timestamp": "2026-11-15T17:45:58.688Z"
+    },
+    {
+      "file": "workspace/account_profile_1920x1080.png",
+      "sizeBytes": 88179,
+      "timestamp": "2026-11-15T17:46:00.209Z"
+    },
+    {
+      "file": "workspace/account_profile_390x844.png",
+      "sizeBytes": 53773,
+      "timestamp": "2026-11-15T17:46:00.504Z"
+    },
+    {
+      "file": "workspace/account_security_1920x1080.png",
+      "sizeBytes": 70128,
+      "timestamp": "2026-11-15T17:46:02.057Z"
+    },
+    {
+      "file": "workspace/account_preferences_1920x1080.png",
+      "sizeBytes": 72090,
+      "timestamp": "2026-11-15T17:46:03.323Z"
+    },
+    {
+      "file": "workspace/workflow_tasks_1920x1080.png",
+      "sizeBytes": 74448,
+      "timestamp": "2026-11-15T17:46:04.574Z"
+    },
+    {
+      "file": "workspace/workflow_tasks_390x844.png",
+      "sizeBytes": 43439,
+      "timestamp": "2026-11-15T17:46:04.887Z"
+    },
+    {
+      "file": "workspace/notifications_1920x1080.png",
+      "sizeBytes": 56734,
+      "timestamp": "2026-11-15T17:46:06.406Z"
+    },
+    {
+      "file": "workspace/notifications_390x844.png",
+      "sizeBytes": 29994,
+      "timestamp": "2026-11-15T17:46:06.702Z"
+    },
+    {
+      "file": "documents/documents_list_1920x1080.png",
+      "sizeBytes": 196157,
+      "timestamp": "2026-11-15T17:46:08.487Z"
+    },
+    {
+      "file": "documents/documents_list_1366x768.png",
+      "sizeBytes": 129225,
+      "timestamp": "2026-11-15T17:46:08.787Z"
+    },
+    {
+      "file": "documents/documents_list_1024x768.png",
+      "sizeBytes": 106260,
+      "timestamp": "2026-11-15T17:46:09.080Z"
+    },
+    {
+      "file": "documents/documents_list_768x1024.png",
+      "sizeBytes": 115830,
+      "timestamp": "2026-11-15T17:46:09.402Z"
+    },
+    {
+      "file": "documents/documents_list_390x844.png",
+      "sizeBytes": 52241,
+      "timestamp": "2026-11-15T17:46:09.704Z"
+    },
+    {
+      "file": "documents/documents_list_360x800.png",
+      "sizeBytes": 49148,
+      "timestamp": "2026-11-15T17:46:09.993Z"
+    },
+    {
+      "file": "documents/document_create_1920x1080.png",
+      "sizeBytes": 185310,
+      "timestamp": "2026-11-15T17:46:11.540Z"
+    },
+    {
+      "file": "documents/document_create_390x844.png",
+      "sizeBytes": 53305,
+      "timestamp": "2026-11-15T17:46:11.887Z"
+    },
+    {
+      "file": "documents/templates_builder_1920x1080.png",
+      "sizeBytes": 69465,
+      "timestamp": "2026-11-15T17:46:13.424Z"
+    },
+    {
+      "file": "documents/templates_builder_390x844.png",
+      "sizeBytes": 33311,
+      "timestamp": "2026-11-15T17:46:13.754Z"
+    },
+    {
+      "file": "documents/global_search_1920x1080.png",
+      "sizeBytes": 67904,
+      "timestamp": "2026-11-15T17:46:15.293Z"
+    },
+    {
+      "file": "documents/global_search_390x844.png",
+      "sizeBytes": 36119,
+      "timestamp": "2026-11-15T17:46:15.634Z"
+    },
+    {
+      "file": "documents/document_detail_1920x1080.png",
+      "sizeBytes": 124548,
+      "timestamp": "2026-11-15T17:46:17.160Z"
+    },
+    {
+      "file": "documents/document_detail_390x844.png",
+      "sizeBytes": 52249,
+      "timestamp": "2026-11-15T17:46:17.487Z"
+    },
+    {
+      "file": "correspondence/correspondence_1920x1080.png",
+      "sizeBytes": 133593,
+      "timestamp": "2026-11-15T17:46:19.300Z"
+    },
+    {
+      "file": "correspondence/correspondence_1366x768.png",
+      "sizeBytes": 102096,
+      "timestamp": "2026-11-15T17:46:19.602Z"
+    },
+    {
+      "file": "correspondence/correspondence_1024x768.png",
+      "sizeBytes": 81600,
+      "timestamp": "2026-11-15T17:46:19.901Z"
+    },
+    {
+      "file": "correspondence/correspondence_768x1024.png",
+      "sizeBytes": 69532,
+      "timestamp": "2026-11-15T17:46:20.218Z"
+    },
+    {
+      "file": "correspondence/correspondence_390x844.png",
+      "sizeBytes": 44680,
+      "timestamp": "2026-11-15T17:46:20.527Z"
+    },
+    {
+      "file": "correspondence/correspondence_360x800.png",
+      "sizeBytes": 42256,
+      "timestamp": "2026-11-15T17:46:20.808Z"
+    },
+    {
+      "file": "correspondence/incoming_letters_1920x1080.png",
+      "sizeBytes": 133150,
+      "timestamp": "2026-11-15T17:46:22.349Z"
+    },
+    {
+      "file": "correspondence/outgoing_letters_1920x1080.png",
+      "sizeBytes": 78491,
+      "timestamp": "2026-11-15T17:46:23.608Z"
+    },
+    {
+      "file": "correspondence/memoranda_1920x1080.png",
+      "sizeBytes": 78191,
+      "timestamp": "2026-11-15T17:46:24.876Z"
+    },
+    {
+      "file": "correspondence/office_routing_1920x1080.png",
+      "sizeBytes": 132950,
+      "timestamp": "2026-11-15T17:46:26.147Z"
+    },
+    {
+      "file": "records/research_outputs_1920x1080.png",
+      "sizeBytes": 76678,
+      "timestamp": "2026-11-15T17:46:27.409Z"
+    },
+    {
+      "file": "records/research_outputs_390x844.png",
+      "sizeBytes": 44557,
+      "timestamp": "2026-11-15T17:46:27.720Z"
+    },
+    {
+      "file": "records/staff_records_1920x1080.png",
+      "sizeBytes": 80309,
+      "timestamp": "2026-11-15T17:46:29.239Z"
+    },
+    {
+      "file": "records/staff_records_390x844.png",
+      "sizeBytes": 47691,
+      "timestamp": "2026-11-15T17:46:29.553Z"
+    },
+    {
+      "file": "records/digital_archive_1920x1080.png",
+      "sizeBytes": 94228,
+      "timestamp": "2026-11-15T17:46:31.077Z"
+    },
+    {
+      "file": "records/digital_archive_390x844.png",
+      "sizeBytes": 55496,
+      "timestamp": "2026-11-15T17:46:31.390Z"
+    },
+    {
+      "file": "records/accreditation_evidence_1920x1080.png",
+      "sizeBytes": 103136,
+      "timestamp": "2026-11-15T17:46:32.926Z"
+    },
+    {
+      "file": "records/accreditation_evidence_390x844.png",
+      "sizeBytes": 53291,
+      "timestamp": "2026-11-15T17:46:33.262Z"
+    },
+    {
+      "file": "records/projects_innovation_1920x1080.png",
+      "sizeBytes": 97579,
+      "timestamp": "2026-11-15T17:46:34.853Z"
+    },
+    {
+      "file": "records/projects_innovation_390x844.png",
+      "sizeBytes": 53887,
+      "timestamp": "2026-11-15T17:46:35.177Z"
+    },
+    {
+      "file": "records/signatures_stamps_1920x1080.png",
+      "sizeBytes": 100118,
+      "timestamp": "2026-11-15T17:46:36.758Z"
+    },
+    {
+      "file": "records/signatures_stamps_390x844.png",
+      "sizeBytes": 53066,
+      "timestamp": "2026-11-15T17:46:37.107Z"
+    },
+    {
+      "file": "administration/reports_1920x1080.png",
+      "sizeBytes": 97557,
+      "timestamp": "2026-11-15T17:46:38.944Z"
+    },
+    {
+      "file": "administration/reports_1366x768.png",
+      "sizeBytes": 92651,
+      "timestamp": "2026-11-15T17:46:39.265Z"
+    },
+    {
+      "file": "administration/reports_1024x768.png",
+      "sizeBytes": 84053,
+      "timestamp": "2026-11-15T17:46:39.590Z"
+    },
+    {
+      "file": "administration/reports_768x1024.png",
+      "sizeBytes": 70322,
+      "timestamp": "2026-11-15T17:46:39.979Z"
+    },
+    {
+      "file": "administration/reports_390x844.png",
+      "sizeBytes": 48061,
+      "timestamp": "2026-11-15T17:46:40.315Z"
+    },
+    {
+      "file": "administration/reports_360x800.png",
+      "sizeBytes": 46519,
+      "timestamp": "2026-11-15T17:46:40.618Z"
+    },
+    {
+      "file": "administration/data_imports_exports_1920x1080.png",
+      "sizeBytes": 89908,
+      "timestamp": "2026-11-15T17:46:42.165Z"
+    },
+    {
+      "file": "administration/data_imports_exports_390x844.png",
+      "sizeBytes": 50705,
+      "timestamp": "2026-11-15T17:46:42.490Z"
+    },
+    {
+      "file": "administration/admin_users_1920x1080.png",
+      "sizeBytes": 252150,
+      "timestamp": "2026-11-15T17:46:44.029Z"
+    },
+    {
+      "file": "administration/admin_users_390x844.png",
+      "sizeBytes": 59288,
+      "timestamp": "2026-11-15T17:46:44.341Z"
+    },
+    {
+      "file": "administration/admin_roles_1920x1080.png",
+      "sizeBytes": 134658,
+      "timestamp": "2026-11-15T17:46:45.883Z"
+    },
+    {
+      "file": "administration/admin_roles_390x844.png",
+      "sizeBytes": 52716,
+      "timestamp": "2026-11-15T17:46:46.212Z"
+    },
+    {
+      "file": "administration/admin_organization_1920x1080.png",
+      "sizeBytes": 115556,
+      "timestamp": "2026-11-15T17:46:47.746Z"
+    },
+    {
+      "file": "administration/admin_organization_390x844.png",
+      "sizeBytes": 51868,
+      "timestamp": "2026-11-15T17:46:48.074Z"
+    },
+    {
+      "file": "administration/admin_office_procedures_1920x1080.png",
+      "sizeBytes": 98396,
+      "timestamp": "2026-11-15T17:46:49.595Z"
+    },
+    {
+      "file": "administration/admin_permissions_1920x1080.png",
+      "sizeBytes": 143760,
+      "timestamp": "2026-11-15T17:46:50.851Z"
+    },
+    {
+      "file": "administration/configuration_center_workflows_1920x1080.png",
+      "sizeBytes": 129129,
+      "timestamp": "2026-11-15T17:46:52.114Z"
+    },
+    {
+      "file": "administration/configuration_center_numbering_1920x1080.png",
+      "sizeBytes": 80655,
+      "timestamp": "2026-11-15T17:46:52.573Z"
+    },
+    {
+      "file": "administration/admin_reference_data_1920x1080.png",
+      "sizeBytes": 111815,
+      "timestamp": "2026-11-15T17:46:53.829Z"
+    },
+    {
+      "file": "administration/admin_audit_ledger_1920x1080.png",
+      "sizeBytes": 184629,
+      "timestamp": "2026-11-15T17:46:55.107Z"
+    },
+    {
+      "file": "administration/admin_audit_ledger_390x844.png",
+      "sizeBytes": 60353,
+      "timestamp": "2026-11-15T17:46:55.424Z"
+    },
+    {
+      "file": "administration/admin_operations_1920x1080.png",
+      "sizeBytes": 113411,
+      "timestamp": "2026-11-15T17:46:56.965Z"
+    },
+    {
+      "file": "administration/admin_system_settings_1920x1080.png",
+      "sizeBytes": 124275,
+      "timestamp": "2026-11-15T17:46:58.232Z"
+    },
+    {
+      "file": "administration/help_user_guide_1920x1080.png",
+      "sizeBytes": 132986,
+      "timestamp": "2026-11-15T17:46:59.501Z"
+    },
+    {
+      "file": "administration/help_user_guide_390x844.png",
+      "sizeBytes": 54158,
+      "timestamp": "2026-11-15T17:46:59.829Z"
+    },
+    {
+      "file": "administration/error_forbidden_1920x1080.png",
+      "sizeBytes": 58417,
+      "timestamp": "2026-11-15T17:47:01.376Z"
+    },
+    {
+      "file": "administration/error_not_found_1920x1080.png",
+      "sizeBytes": 54698,
+      "timestamp": "2026-11-15T17:47:02.667Z"
+    },
+    {
+      "file": "themes/dashboard_light_theme.png",
+      "sizeBytes": 155095,
+      "timestamp": "2026-11-15T17:47:04.270Z"
+    },
+    {
+      "file": "themes/dashboard_dark_theme.png",
+      "sizeBytes": 157620,
+      "timestamp": "2026-11-15T17:47:04.638Z"
+    },
+    {
+      "file": "rbac/pilot_readonly_forbidden_redirection.png",
+      "sizeBytes": 56599,
+      "timestamp": "2026-11-15T17:47:18.222Z"
+    }
+  ],
+  "interactiveControlsCount": 2263,
+  "interactiveDetails": [],
+  "modalsTested": [],
+  "themeTests": [
+    {
+      "mode": "light",
+      "verified": true
+    },
+    {
+      "mode": "dark",
+      "verified": true
+    }
+  ],
+  "rbacTests": [
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/users",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    },
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/roles",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    },
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/organization",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    },
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/permissions",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    },
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/configuration",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    },
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/settings",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    },
+    {
+      "testedAccount": "pilot.readonly@wu.edu.et",
+      "attemptedRoute": "/admin/operations",
+      "actualRoute": "/forbidden",
+      "redirectedToForbidden": true,
+      "status": "PASS"
+    }
+  ],
+  "consoleErrors": [],
+  "networkErrors": [],
+  "summary": {
+    "totalRoutes": 38,
+    "routesPassed": 43,
+    "routesFailed": 0,
+    "totalInteractiveAudited": 2263,
+    "interactivePassed": 2263,
+    "screenshotsCount": 95
+  }
+}

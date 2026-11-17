@@ -158,8 +158,8 @@ describe('AppSidebar Collapsible Accordion Navigation', () => {
     const activeLink = wrapper.find('a[aria-current="page"]')
     expect(activeLink.exists()).toBe(true)
     expect(activeLink.text()).toContain('My tasks')
-    expect(activeLink.classes()).toContain('bg-[#e8f3fc]')
-    expect(activeLink.classes()).toContain('border-l-[#0075de]')
+    expect(activeLink.classes()).toContain('bg-primary-subtle')
+    expect(activeLink.classes()).toContain('text-primary')
   })
 
   it('5. hides restricted menu items when actor lacks required permission', async () => {

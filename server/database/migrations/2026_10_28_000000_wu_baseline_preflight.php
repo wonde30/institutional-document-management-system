@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         if (DB::connection()->getDriverName() !== 'mysql') {
@@ -14,9 +15,25 @@ return new class extends Migration {
         if (stripos($version, 'MariaDB') !== false || version_compare(preg_replace('/[^0-9.].*$/', '', $version), '8.4.0', '<')) {
             throw new RuntimeException('WU baseline requires Oracle MySQL 8.4+.');
         }
-        if (! app()->environment(['local', 'testing'])) {
+        if (! app()->environment(['local', 'testing', 'acceptance'])) {
             throw new RuntimeException('Baseline is development/testing only. Prepare reviewed incremental migrations for other environments.');
         }
+
+        // During test suite execution, RefreshDatabase calls migrate:fresh which drops all
+        // tables before re-running migrations. The conflict guard is only meaningful when
+        // installing onto a database that already has schema. Skip it when running unit
+        // tests — the test isolation guarantee comes from RefreshDatabase / transactions.
+        if (app()->runningUnitTests()) {
+            DB::statement("SET time_zone = '+00:00'");
+            $mode = DB::selectOne('SELECT @@session.sql_mode AS mode')->mode;
+            if (! str_contains($mode, 'STRICT_TRANS_TABLES') && ! str_contains($mode, 'STRICT_ALL_TABLES')) {
+                throw new RuntimeException('Strict SQL mode is required.');
+            }
+            DB::statement('SET SESSION foreign_key_checks = 1');
+
+            return;
+        }
+
         foreach ([
             'unit_types',
             'users',
@@ -135,7 +152,7 @@ return new class extends Migration {
             'job_batches',
             'failed_jobs',
             'cache',
-            'cache_locks'
+            'cache_locks',
         ] as $name) {
             if (Schema::hasTable($name)) {
                 throw new RuntimeException('Existing table conflicts with WU baseline: '.$name.'. Reconcile instead of dropping it.');
@@ -148,5 +165,8 @@ return new class extends Migration {
         }
         DB::statement('SET SESSION foreign_key_checks = 1');
     }
-    public function down(): void { /* No schema created by this preflight. */ }
+
+    public function down(): void
+    { /* No schema created by this preflight. */
+    }
 };

@@ -8,17 +8,17 @@ const props = defineProps<{
 
 const badgeClass = computed(() => getPriorityBadgeClass(props.priority))
 
-const tailwindClasses = computed(() => {
+const tokenClasses = computed(() => {
  switch (props.priority?.toLowerCase()) {
  case 'urgent':
- return 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800 font-semibold'
+ return 'bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171] font-semibold'
  case 'high':
- return 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800'
+ return 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]'
  case 'normal':
- return 'bg-primary-subtle text-primary border border-primary/20 dark:bg-[#172c42] dark:text-[#62aef0] dark:border-[#2b8bee]/30'
+ return 'bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0]'
  case 'low':
  default:
- return 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+ return 'bg-[var(--wu-line)] text-[var(--wu-muted)]'
  }
 })
 </script>
@@ -26,8 +26,8 @@ const tailwindClasses = computed(() => {
 <template>
  <span
  :class="[
- 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium tracking-wide uppercase',
- tailwindClasses,
+ 'inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-wider uppercase',
+ tokenClasses,
  'badge',
  badgeClass
  ]"

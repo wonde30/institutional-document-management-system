@@ -38,15 +38,24 @@ class WorkflowController extends Controller
     public function tasks(Request $request): JsonResponse
     {
         $actor = $request->user();
+        $status = $request->query('status', 'open');
+
         $query = WorkflowTask::with([
             'instance.documentVersion.document',
             'state',
             'assignedUser',
             'assignedUnit',
+            'requiredRole',
             'delegatedTo',
             'participants.user',
-        ])
-            ->whereNull('closed_at');
+            'decision.decidedBy',
+        ]);
+
+        if ($status === 'closed') {
+            $query->whereNotNull('closed_at');
+        } elseif ($status !== 'all') {
+            $query->whereNull('closed_at');
+        }
 
         $permittedUnitIds = $actor ? $actor->getPermittedUnitIds('workflow.view') : [];
         $scope = $request->query('scope', 'mine');
@@ -72,11 +81,16 @@ class WorkflowController extends Controller
             }
         }
 
-        $tasks = $query->orderBy('due_at')->paginate($request->query('per_page', 25));
+        $orderColumn = $status === 'closed' ? 'closed_at' : 'due_at';
+        $orderDirection = $status === 'closed' ? 'desc' : 'asc';
+        $tasks = $query->orderBy($orderColumn, $orderDirection)->paginate($request->query('per_page', 25));
 
         return response()->json([
             'success' => true,
-            'data' => $tasks,
+            // The list is returned in the same envelope as every other
+            // paginated endpoint: the records in "data" and the paging
+            // counters in "meta".
+            'data' => $tasks->items(),
             'meta' => [
                 'current_page' => $tasks->currentPage(),
                 'last_page' => $tasks->lastPage(),
@@ -143,8 +157,7 @@ class WorkflowController extends Controller
         $actor = $request->user();
         $isAssigned = $task->assigned_user_id === $actor->id;
         $canDelegate = $isAssigned
-            || $actor->hasRole('super_admin')
-            || $actor->hasRole('admin')
+            || $actor->hasPermission('system.configure')
             || $actor->hasPermission('workflow.delegate', $task->assigned_unit_id)
             || $actor->hasPermission('workflow.manage', $task->assigned_unit_id);
 
@@ -182,7 +195,7 @@ class WorkflowController extends Controller
         $actor = $request->user();
         $task = WorkflowTask::with(['instance.documentVersion.document'])->findOrFail($id);
 
-        if (! $actor->hasRole('super_admin') && ! $actor->hasRole('admin') && ! $actor->hasPermission('workflows.manage')) {
+        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('workflow.manage', $task->assigned_unit_id) && ! $actor->hasPermission('workflow.reassign', $task->assigned_unit_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You are not authorized to reassign this workflow task.',

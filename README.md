@@ -7,8 +7,11 @@ WU-DMS is an institutional-grade document repository, correspondence management,
 ## Architecture Overview
 
 ```
-DMS/
+WU-DMS/
+├── .github/    # Continuous Integration workflows
 ├── client/     # Frontend Single Page Application (Vue 3, TypeScript, Pinia, Tailwind CSS)
+├── docs/       # Technical, operational, and architectural documentation suite
+├── scripts/    # Workflow and repository validation tooling
 └── server/     # Backend REST API Service (Laravel 13, PHP 8.4+, MySQL 8.4 InnoDB)
 ```
 
@@ -129,12 +132,32 @@ npm run build
 * **Account Recovery:** Recovery links are delivered by mail, are single use, are rate limited per account and per source address, and terminate every session established with the previous credential. The recovery response is identical for a registered and an unregistered address.
 * **Physical Custody Rule:** Digital scanning never authorizes the physical destruction of official university records without a formal Gazetted disposal order.
 
-The complete authorization specification is in [`docs/AUTHORIZATION_MODEL.md`](docs/AUTHORIZATION_MODEL.md);
-the deployment configuration registry is in [`docs/CONFIGURATION_CATALOG.md`](docs/CONFIGURATION_CATALOG.md);
-the operational arrangements, including the scheduler requirement and the continuous integration pipeline, are in [`docs/OPERATIONS.md`](docs/OPERATIONS.md);
-the proposal traceability matrix is in [`docs/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md`](docs/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md);
-the forward roadmap is in [`docs/NEXT_PHASE_ROADMAP.md`](docs/NEXT_PHASE_ROADMAP.md);
-and the current verification scorecard is in [`docs/BUILD_STATUS.md`](docs/BUILD_STATUS.md).
+## Documentation
+
+The full technical, operational, and architectural documentation suite is organized in [`docs/`](docs/README.md):
+
+* **Architecture:**
+  * System Architecture Specification: [`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)
+  * Dynamic Scoped Authorization Model: [`docs/architecture/AUTHORIZATION_MODEL.md`](docs/architecture/AUTHORIZATION_MODEL.md)
+  * Relational RBAC Matrix (NIST SP 800-162): [`docs/architecture/RBAC_AUTHORIZATION_MATRIX.md`](docs/architecture/RBAC_AUTHORIZATION_MATRIX.md)
+  * Document Registration & Official Letters: [`docs/architecture/DOCUMENT_REGISTRATION_WORKFLOW.md`](docs/architecture/DOCUMENT_REGISTRATION_WORKFLOW.md)
+  * Frontend Routing Architecture: [`docs/architecture/ROUTING_ARCHITECTURE.md`](docs/architecture/ROUTING_ARCHITECTURE.md)
+  * Institutional Configuration Center: [`docs/architecture/INSTITUTIONAL_CONFIGURATION_CENTER.md`](docs/architecture/INSTITUTIONAL_CONFIGURATION_CENTER.md)
+* **Deployment:**
+  * Production Deployment Guide: [`docs/deployment/PRODUCTION_DEPLOYMENT_GUIDE.md`](docs/deployment/PRODUCTION_DEPLOYMENT_GUIDE.md)
+* **Development:**
+  * REST API Contract Specification: [`docs/development/API_CONTRACT_AUDIT.md`](docs/development/API_CONTRACT_AUDIT.md)
+  * Authentication & Session Security: [`docs/development/AUTHENTICATION_SECURITY_AUDIT.md`](docs/development/AUTHENTICATION_SECURITY_AUDIT.md)
+  * Runtime System Settings Catalog: [`docs/development/CONFIGURATION_CATALOG.md`](docs/development/CONFIGURATION_CATALOG.md)
+  * Dataset Import & Export Catalog: [`docs/development/DATA_IMPORT_EXPORT_CATALOG.md`](docs/development/DATA_IMPORT_EXPORT_CATALOG.md)
+  * Security Threat Model & Remediation: [`docs/development/SECURITY_FINDINGS.md`](docs/development/SECURITY_FINDINGS.md)
+  * Engineering Implementation Changelog: [`docs/development/IMPLEMENTATION_CHANGELOG.md`](docs/development/IMPLEMENTATION_CHANGELOG.md)
+* **Operations:**
+  * Production Operations Runbook: [`docs/operations/OPERATIONS.md`](docs/operations/OPERATIONS.md)
+  * College of Informatics Pilot Runbook: [`docs/operations/COLLEGE_OF_INFORMATICS_PILOT_RUNBOOK.md`](docs/operations/COLLEGE_OF_INFORMATICS_PILOT_RUNBOOK.md)
+  * Quality Scorecard & Verification Matrix: [`docs/operations/BUILD_STATUS.md`](docs/operations/BUILD_STATUS.md)
+  * Proposal Traceability Matrix: [`docs/operations/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md`](docs/operations/PROPOSAL_IMPLEMENTATION_TRACEABILITY.md)
+  * Next Phase Roadmap: [`docs/operations/NEXT_PHASE_ROADMAP.md`](docs/operations/NEXT_PHASE_ROADMAP.md)
 
 ---
 

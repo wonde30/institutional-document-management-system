@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { institutionalApi, organizationUnitsApi } from '@/api/client'
-import type { OrganizationUnit } from '@/types'
+import type { OrganizationUnit, ResearchRecord } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -30,30 +30,25 @@ const loading = ref(true)
 const isSubmitting = ref(false)
 const units = ref<OrganizationUnit[]>([])
 
-interface ResearchItem {
- id: number
- document_id: number
- document?: {
- id: number
- reference_number: string
- title: string
- }
- lead_unit_id: number
- lead_office?: { name: string }
- publication_status: 'ready_to_publish' | 'published' | 'withdrawn'
- completed_at: string
- external_selection_ref?: string | null
- authors?: Array<{ author_name: string; affiliation?: string }>
-}
+const researchList = ref<ResearchRecord[]>([])
 
-const researchList = ref<ResearchItem[]>([])
+/**
+ * Whether a research output is published in the repository.
+ *
+ * The repository publishes a record by linking it to a publication, so the
+ * publication state is derived from that link rather than from a separate
+ * status column.
+ */
+function isPublished(record: ResearchRecord): boolean {
+ return Array.isArray(record.publications) && record.publications.length > 0
+}
 
 const searchQuery = ref('')
 const filterStatus = ref('')
 const showModal = ref(false)
 const showDetailModal = ref(false)
 const showVersionModal = ref(false)
-const selectedResearch = ref<ResearchItem | null>(null)
+const selectedResearch = ref<ResearchRecord | null>(null)
 
 // Create Form (F-RESEARCH)
 const form = ref({
@@ -67,8 +62,7 @@ const form = ref({
 
 // Revision Form
 const versionForm = ref({
- change_summary: '',
- file_path: '',
+ change_note: '',
 })
 const isSubmittingVersion = ref(false)
 
@@ -83,7 +77,7 @@ async function loadData() {
  researchList.value = resRes.data.data || []
  units.value = unitsRes.data.data || []
  if (!form.value.office_id && units.value.length > 0) {
- form.value.office_id = units.value[0].id
+  form.value.office_id = authStore.activeUnitId || authStore.primaryUnit?.unit_id || units.value[0].id
  }
  } catch (err: any) {
  toast.error(err.response?.data?.message || 'Failed to retrieve research outputs.')
@@ -101,36 +95,36 @@ const filteredList = computed(() => {
  title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
  ref.toLowerCase().includes(searchQuery.value.toLowerCase())
 
- const matchesStatus = !filterStatus.value || item.publication_status === filterStatus.value
+ const matchesStatus =
+ !filterStatus.value ||
+ (filterStatus.value === 'published' ? isPublished(item) : !isPublished(item))
  return matchesSearch && matchesStatus
  })
 })
 
-function inspectResearch(item: ResearchItem) {
+function inspectResearch(item: ResearchRecord) {
  selectedResearch.value = item
  showDetailModal.value = true
 }
 
-function openVersionModal(item: ResearchItem) {
+function openVersionModal(item: ResearchRecord) {
  selectedResearch.value = item
  versionForm.value = {
- change_summary: '',
- file_path: '',
+ change_note: '',
  }
  showVersionModal.value = true
 }
 
 async function submitRevision() {
  if (!selectedResearch.value) return
- if (!versionForm.value.change_summary.trim()) {
+ if (!versionForm.value.change_note.trim()) {
  toast.error('Change note is required.')
  return
  }
  isSubmittingVersion.value = true
  try {
  await institutionalApi.uploadResearchVersion(selectedResearch.value.id, {
- change_summary: versionForm.value.change_summary.trim(),
- file_path: versionForm.value.file_path || 'uploads/research_rev.pdf',
+ change_note: versionForm.value.change_note.trim(),
  })
  toast.success('New revision uploaded successfully.')
  showVersionModal.value = false
@@ -142,8 +136,8 @@ async function submitRevision() {
  }
 }
 
-async function togglePublication(item: ResearchItem) {
- const newAction = item.publication_status === 'published' ? 'withdraw' : 'publish'
+async function togglePublication(item: ResearchRecord) {
+ const newAction = isPublished(item) ? 'withdraw' : 'publish'
  try {
  await institutionalApi.togglePublication(item.id, newAction)
  toast.success(`Research output ${newAction === 'publish' ? 'published to repository' : 'withdrawn'}.`)
@@ -188,16 +182,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- INSTITUTIONAL RECORDS / FINALIZED RESEARCH
- </div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink-secondary flex items-center gap-2">
- <BookOpen class="w-6 h-6 text-primary" />
- Finalized Faculty Research Repository
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <BookOpen class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Finalized Faculty Research Repository</span>
  </h1>
- <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+ <p class="text-xs text-ink-muted mt-0.5">
  Departmental publication of research completed and selected through external university processes.
  </p>
  </div>
@@ -249,7 +240,6 @@ onMounted(() => {
  <option value="">All publication states</option>
  <option value="published">Published in Repository</option>
  <option value="ready_to_publish">Ready to Publish</option>
- <option value="withdrawn">Withdrawn</option>
  </select>
  </div>
  </div>
@@ -281,25 +271,24 @@ onMounted(() => {
  </div>
  <small class="block text-[11px] text-primary font-mono mt-0.5">
  {{ item.document?.reference_number }}
- <span v-if="item.external_selection_ref" class="text-ink-muted">· Selection Ref: {{ item.external_selection_ref }}</span>
+ <span v-if="item.external_selection_reference" class="text-ink-muted">· Selection Ref: {{ item.external_selection_reference }}</span>
  </small>
  </td>
  <td class="py-3 px-4 text-ink-muted">
- {{ item.lead_office?.name || 'Academic Unit' }}
+ {{ item.document?.ownerUnit?.name || '—' }}
  </td>
  <td class="py-3 px-4 text-ink-muted whitespace-nowrap">
- {{ item.completed_at ? new Date(item.completed_at).toLocaleDateString() : 'Completed' }}
+ {{ item.completed_on ? new Date(item.completed_on).toLocaleDateString() : '—' }}
  </td>
  <td class="py-3 px-4">
  <span
  class="px-2 py-0.5 rounded text-[11px] font-semibold"
  :class="{
- 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]': item.publication_status === 'published',
- 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]': item.publication_status === 'ready_to_publish',
- 'bg-surface-muted text-ink-muted ': item.publication_status === 'withdrawn',
+ 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]': isPublished(item),
+ 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]': !isPublished(item),
  }"
  >
- {{ item.publication_status.replace('_', ' ') }}
+ {{ isPublished(item) ? 'Published' : 'Ready to publish' }}
  </span>
  </td>
  <td class="py-3 px-4 text-right">
@@ -325,10 +314,10 @@ onMounted(() => {
  <button
  type="button"
  class="text-xs font-medium"
- :class="item.publication_status === 'published' ? 'text-amber-700 hover:underline' : 'text-primary hover:underline'"
+ :class="isPublished(item) ? 'text-amber-700 hover:underline' : 'text-primary hover:underline'"
  @click="togglePublication(item)"
  >
- {{ item.publication_status === 'published' ? 'Withdraw' : 'Publish' }}
+ {{ isPublished(item) ? 'Withdraw' : 'Publish' }}
  </button>
  </div>
  </td>
@@ -453,17 +442,17 @@ onMounted(() => {
  <span class="block text-[10px] uppercase font-bold text-ink-muted">1. University Evaluation</span>
  <span class="font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 block">Approved Externally</span>
  <span class="text-[10px] text-ink-muted block mt-0.5">
- Ref: {{ selectedResearch.external_selection_ref || 'Senate/Council Record' }}
+ Ref: {{ selectedResearch.external_selection_reference || '—' }}
  </span>
  </div>
 
  <div class="p-2.5 rounded-md bg-surface border border-hairline">
  <span class="block text-[10px] uppercase font-bold text-ink-muted">2. Repository State</span>
  <span class="font-semibold capitalize text-primary mt-0.5 block">
- {{ selectedResearch.publication_status.replace('_', ' ') }}
+ {{ isPublished(selectedResearch) ? 'Published' : 'Ready to publish' }}
  </span>
  <span class="text-[10px] text-ink-muted block mt-0.5">
- Scoped to {{ selectedResearch.lead_office?.name || 'Department' }}
+ Scoped to {{ selectedResearch.document?.ownerUnit?.name || '—' }}
  </span>
  </div>
  </div>
@@ -472,11 +461,11 @@ onMounted(() => {
  <div class="grid grid-cols-2 gap-4 text-xs">
  <div>
  <span class="block text-ink-muted">Owning Department</span>
- <span class="font-medium text-ink-secondary">{{ selectedResearch.lead_office?.name }}</span>
+ <span class="font-medium text-ink-secondary">{{ selectedResearch.document?.ownerUnit?.name || '—' }}</span>
  </div>
  <div>
  <span class="block text-ink-muted">Completion Date</span>
- <span class="font-medium text-ink-secondary">{{ selectedResearch.completed_at }}</span>
+ <span class="font-medium text-ink-secondary">{{ selectedResearch.completed_on || '—' }}</span>
  </div>
  </div>
  </div>
@@ -500,19 +489,9 @@ onMounted(() => {
  Revision Change Note *
  </label>
  <BaseInput
- v-model="versionForm.change_summary"
+ v-model="versionForm.change_note"
  placeholder="e.g. Revised methodology section per external peer-review findings"
  required
- />
- </div>
-
- <div>
- <label class="block font-semibold text-ink-secondary mb-1">
- File Reference / Upload
- </label>
- <input
- type="file"
- class="block w-full text-xs text-ink-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-subtle file:text-primary dark:file:bg-[#172c42] dark:file:text-[#62aef0]"
  />
  </div>
 

@@ -44,8 +44,23 @@ class WorkflowVersion extends Model
         return $this->belongsTo(WorkflowDefinition::class, 'definition_id');
     }
 
+    public function workflowDefinition(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowDefinition::class, 'definition_id');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function states(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(WorkflowState::class, 'workflow_version_id');
+    }
+
+    public function transitions(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
+        return $this->hasManyThrough(WorkflowTransition::class, WorkflowState::class, 'workflow_version_id', 'from_state_id');
     }
 }

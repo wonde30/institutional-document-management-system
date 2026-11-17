@@ -48,6 +48,14 @@ return [
             'label' => 'Session & Access',
             'description' => 'Boundaries that govern an authenticated session.',
         ],
+        'workflow' => [
+            'label' => 'Workflow & Routing',
+            'description' => 'Default routing, due dates, and escalation parameters for institutional workflows.',
+        ],
+        'notifications' => [
+            'label' => 'Notification Operations',
+            'description' => 'Operational alert thresholds and reminder dispatch schedules.',
+        ],
     ],
 
     /*
@@ -65,6 +73,83 @@ return [
             'type' => 'string',
             'default' => 'Wollo University',
             'rules' => ['required', 'string', 'max:200'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.name_am' => [
+            'label' => 'Institution Amharic Name',
+            'description' => 'Official institutional Amharic name shown on institutional letterheads and portal headings.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => 'ወሎ ዩኒቨርሲቲ',
+            'rules' => ['required', 'string', 'max:200'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.approved_logo_path' => [
+            'label' => 'Approved Institution Logo Path',
+            'description' => 'Authoritative relative path to the officially approved institutional emblem or seal graphic stored in controlled institutional storage. Note: institution.logo_path is supported as a compatibility alias.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => null,
+            'rules' => ['nullable', 'string', 'max:500'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.letter_phone' => [
+            'label' => 'Official Letter Phone',
+            'description' => 'Standard telephone number printed in the institutional letter footer. Left blank until verified institutional contact is provided.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => null,
+            'rules' => ['nullable', 'string', 'max:50'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.letter_fax' => [
+            'label' => 'Official Letter Fax',
+            'description' => 'Standard fax number printed in the institutional letter footer. Left blank until verified institutional contact is provided.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => null,
+            'rules' => ['nullable', 'string', 'max:50'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.letter_pobox' => [
+            'label' => 'Official Letter P.O. Box',
+            'description' => 'Postal address printed in the institutional letter footer. Left blank until verified institutional contact is provided.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => null,
+            'rules' => ['nullable', 'string', 'max:50'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.letter_reply_notice_am' => [
+            'label' => 'Letter Reply Notice (Amharic)',
+            'description' => 'Amharic notice instructing correspondents to quote reference number and date.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => 'መልስ ሲፅፉ የደብዳቤያችንን ቁጥርና ቀን ይጠቅሱ',
+            'rules' => ['required', 'string', 'max:255'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'institution.letter_reply_notice_en' => [
+            'label' => 'Letter Reply Notice (English)',
+            'description' => 'English notice instructing correspondents to quote reference number when replying.',
+            'category' => 'institution',
+            'type' => 'string',
+            'default' => 'please quote our ref. number when replying',
+            'rules' => ['required', 'string', 'max:255'],
             'scope' => 'global',
             'editable' => true,
         ],
@@ -139,6 +224,50 @@ return [
             'rules' => ['required', 'string', 'max:100'],
             'scope' => 'global',
             'editable' => false,
+        ],
+
+        'workflow.default_due_days' => [
+            'label' => 'Default Task Due Days',
+            'description' => 'Standard business days allowed for workflow task completion before marking overdue.',
+            'category' => 'workflow',
+            'type' => 'integer',
+            'default' => 5,
+            'rules' => ['required', 'integer', 'min:1', 'max:90'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'workflow.escalation_enabled' => [
+            'label' => 'Automatic Workflow Escalation',
+            'description' => 'Automatically notify department supervisor when assigned tasks exceed due date.',
+            'category' => 'workflow',
+            'type' => 'boolean',
+            'default' => true,
+            'rules' => ['required', 'boolean'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'notifications.overdue_reminders_enabled' => [
+            'label' => 'Overdue Task Reminders',
+            'description' => 'Dispatch automated reminders for pending correspondence and workflow assignments.',
+            'category' => 'notifications',
+            'type' => 'boolean',
+            'default' => true,
+            'rules' => ['required', 'boolean'],
+            'scope' => 'global',
+            'editable' => true,
+        ],
+
+        'notifications.daily_digest_time' => [
+            'label' => 'Daily Digest Dispatch Time',
+            'description' => 'Time of day (24-hour format HH:MM) when daily operational summaries are delivered.',
+            'category' => 'notifications',
+            'type' => 'string',
+            'default' => '08:00',
+            'rules' => ['required', 'string', 'regex:/^(?:2[0-3]|[01][0-9]):[0-5][0-9]$/'],
+            'scope' => 'global',
+            'editable' => true,
         ],
 
     ],

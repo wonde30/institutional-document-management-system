@@ -77,7 +77,10 @@ describe('Public Institutional Portal Views', () => {
     expect(wrapper.text()).toContain('Role-Based Access Boundaries')
     expect(wrapper.text()).toContain('Stateful Cookies & Browser Security')
     expect(wrapper.text()).toContain('Information Technology Directorate')
-    expect(wrapper.text()).toContain('ict.support@wu.edu.et')
+    // The published contact route is described. No address is invented on a
+    // page that states the institutional contact details.
+    expect(wrapper.text()).toContain('Data Protection Officer')
+    expect(wrapper.text()).not.toContain('ict.support@wu.edu.et')
   })
 
   it('renders TermsConditionsView with statutory preservation rules and signature validity', async () => {

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -215,14 +215,12 @@ onMounted(loadSettings)
 
 <template>
   <div class="space-y-6 max-w-4xl">
-    <div>
-      <div class="text-[11px] font-bold tracking-widest text-primary uppercase mb-1">
-        ADMINISTRATION / SYSTEM CONFIGURATION
-      </div>
-      <h1 class="text-2xl font-bold tracking-tight text-ink-secondary">
-        Institutional Settings &amp; Environment Boundaries
+    <div class="border-b border-hairline pb-4">
+      <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+        <Settings class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+        <span>Institutional Settings &amp; Environment Boundaries</span>
       </h1>
-      <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+      <p class="text-xs text-ink-muted mt-0.5">
         Runtime configuration is stored by the server and audited on every change. Deployment
         configuration remains managed by the environment and is shown for reference only.
       </p>
@@ -307,7 +305,7 @@ onMounted(loadSettings)
                 <p class="text-[11px] text-ink-muted mt-0.5">{{ setting.description }}</p>
               </div>
               <span
-                class="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                class="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded wu-badge"
                 :class="
                   setting.editable
                     ? 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]'
@@ -328,9 +326,13 @@ onMounted(loadSettings)
                   :error="fieldErrors[setting.key]"
                   @update:model-value="(value: string) => (draft[setting.key] = value)"
                 />
-                <BaseInput
+                <BaseSelect
                   v-else-if="setting.type === 'boolean'"
-                  :model-value="textValue(setting) === 'true' ? 'true' : 'false'"
+                  :model-value="draft[setting.key] ? 'true' : 'false'"
+                  :options="[
+                    { label: 'Enabled', value: 'true' },
+                    { label: 'Disabled', value: 'false' },
+                  ]"
                   :disabled="!setting.editable || isSaving"
                   :error="fieldErrors[setting.key]"
                   @update:model-value="(value: string) => (draft[setting.key] = value === 'true')"
@@ -404,7 +406,7 @@ onMounted(loadSettings)
               class="text-[11px] font-mono text-right"
               :class="entry.sensitive ? 'text-ink-faint italic' : 'text-ink'"
             >
-              {{ entry.sensitive ? 'managed externally' : entry.value || '—' }}
+              {{ entry.sensitive ? 'managed externally' : entry.value || 'â€”' }}
             </span>
           </div>
         </div>
@@ -432,7 +434,7 @@ onMounted(loadSettings)
 
         <div class="flex items-center justify-between gap-3">
           <p class="text-[11px] text-ink-muted" role="status" aria-live="polite">
-            <template v-if="isSaving">Saving configuration…</template>
+            <template v-if="isSaving">Saving configurationâ€¦</template>
             <template v-else-if="hasUnsavedChanges">
               {{ dirtyKeys.length }} unsaved change{{ dirtyKeys.length === 1 ? '' : 's' }}
             </template>
@@ -499,3 +501,4 @@ onMounted(loadSettings)
     </ModalDialog>
   </div>
 </template>
+

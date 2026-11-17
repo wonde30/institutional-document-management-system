@@ -34,19 +34,30 @@ export function useToast() {
     toasts.value = toasts.value.filter((t) => t.id !== id)
   }
 
-  function success(message: string, title?: string) {
+  function resolveToastPayload(arg1: string, arg2?: string): { title?: string; message: string } {
+    if (arg2 !== undefined) {
+      return { title: arg1, message: arg2 }
+    }
+    return { message: arg1 }
+  }
+
+  function success(messageOrTitle: string, titleOrMessage?: string) {
+    const { title, message } = resolveToastPayload(messageOrTitle, titleOrMessage)
     return add({ message, title, type: 'success' })
   }
 
-  function error(message: string, title?: string) {
+  function error(messageOrTitle: string, titleOrMessage?: string) {
+    const { title, message } = resolveToastPayload(messageOrTitle, titleOrMessage)
     return add({ message, title, type: 'error', duration: 6000 })
   }
 
-  function warning(message: string, title?: string) {
+  function warning(messageOrTitle: string, titleOrMessage?: string) {
+    const { title, message } = resolveToastPayload(messageOrTitle, titleOrMessage)
     return add({ message, title, type: 'warning', duration: 5000 })
   }
 
-  function info(message: string, title?: string) {
+  function info(messageOrTitle: string, titleOrMessage?: string) {
+    const { title, message } = resolveToastPayload(messageOrTitle, titleOrMessage)
     return add({ message, title, type: 'info' })
   }
 

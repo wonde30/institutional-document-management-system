@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -317,15 +317,13 @@ onMounted(loadAll)
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
       <div>
-        <div class="notion-eyebrow text-primary mb-1">
-          TRUST &amp; REPORTING / DATA OPERATIONS
-        </div>
-        <h1 class="text-2xl font-semibold tracking-tight text-ink-secondary">
-          Data Imports &amp; Structured Exports
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+          <ArrowUpDown class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+          <span>Data Imports &amp; Structured Exports</span>
         </h1>
-        <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+        <p class="text-xs text-ink-muted mt-0.5">
           Run a validated batch import against an authorised organizational unit, or generate a
           structured export of the records you are permitted to reach.
         </p>
@@ -435,7 +433,7 @@ onMounted(loadAll)
           <!-- Upload progress -->
           <div v-if="isUploading" class="space-y-1.5">
             <div class="flex items-center justify-between text-[11px] text-ink-muted">
-              <span>Uploading the dataset file…</span>
+              <span>Uploading the dataset fileâ€¦</span>
               <span>{{ uploadPercent }}%</span>
             </div>
             <div class="h-1.5 w-full rounded-full bg-canvas-soft overflow-hidden">
@@ -468,26 +466,26 @@ onMounted(loadAll)
         <div v-if="inspection" class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
           <div class="flex items-start justify-between gap-3">
             <h2 class="text-sm font-semibold text-ink-secondary">Validation preview</h2>
-            <span class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-canvas-soft text-ink-muted border border-hairline">
+            <span class="text-[11px] font-medium px-1.5 py-0.5 rounded">
               Nothing has been created yet
             </span>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="p-3 rounded-lg bg-canvas-soft/60 border border-hairline">
-              <div class="text-[10px] uppercase tracking-wide text-ink-muted">Total records</div>
+              <div class="text-[12px] text-ink-muted">Total records</div>
               <div class="text-lg font-semibold text-ink">{{ inspection.total_rows }}</div>
             </div>
             <div class="p-3 rounded-lg bg-canvas-soft/60 border border-hairline">
-              <div class="text-[10px] uppercase tracking-wide text-ink-muted">Valid</div>
+              <div class="text-[12px] text-ink-muted">Valid</div>
               <div class="text-lg font-semibold text-[#1aae39] dark:text-[#42cf63]">{{ inspection.valid_rows }}</div>
             </div>
             <div class="p-3 rounded-lg bg-canvas-soft/60 border border-hairline">
-              <div class="text-[10px] uppercase tracking-wide text-ink-muted">Invalid</div>
+              <div class="text-[12px] text-ink-muted">Invalid</div>
               <div class="text-lg font-semibold text-[#e03e3e] dark:text-[#f87171]">{{ inspection.invalid_rows }}</div>
             </div>
             <div class="p-3 rounded-lg bg-canvas-soft/60 border border-hairline">
-              <div class="text-[10px] uppercase tracking-wide text-ink-muted">Duplicates</div>
+              <div class="text-[12px] text-ink-muted">Duplicates</div>
               <div class="text-lg font-semibold text-ink">{{ inspection.duplicate_rows }}</div>
             </div>
           </div>
@@ -497,8 +495,8 @@ onMounted(loadAll)
             <h3 class="text-xs font-semibold text-ink-secondary">
               Records that need attention ({{ inspection.errors.length }})
             </h3>
-            <div class="max-h-64 overflow-y-auto border border-hairline rounded-lg">
-              <table class="w-full text-xs text-left">
+            <div class="max-h-64 overflow-auto border border-hairline rounded-lg">
+              <table class="w-full text-xs text-left min-w-[480px]">
                 <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider sticky top-0">
                   <tr>
                     <th class="p-2.5 w-16">Row</th>
@@ -509,7 +507,7 @@ onMounted(loadAll)
                 <tbody class="divide-y divide-hairline text-ink-secondary">
                   <tr v-for="(rowError, index) in inspection.errors" :key="index">
                     <td class="p-2.5 font-mono text-[11px]">{{ rowError.row_number }}</td>
-                    <td class="p-2.5 font-mono text-[11px]">{{ rowError.column_name || '—' }}</td>
+                    <td class="p-2.5 font-mono text-[11px]">{{ rowError.column_name || 'â€”' }}</td>
                     <td class="p-2.5">{{ rowError.message }}</td>
                   </tr>
                 </tbody>
@@ -585,7 +583,8 @@ onMounted(loadAll)
             description="An inspected dataset appears here with its validation outcome."
           />
 
-          <table v-else class="w-full text-xs text-left">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left min-w-[560px]">
             <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider">
               <tr>
                 <th class="p-3.5">File</th>
@@ -623,7 +622,7 @@ onMounted(loadAll)
                   <button
                     v-if="operation.executable"
                     type="button"
-                    class="px-2.5 py-1 text-xs font-medium text-primary hover:underline"
+                    class="px-2.5 py-1 min-h-[32px] inline-flex items-center text-xs font-medium text-primary hover:underline cursor-pointer"
                     @click="executeImportFor(operation)"
                   >
                     Execute
@@ -631,7 +630,7 @@ onMounted(loadAll)
                   <button
                     v-else-if="operation.status === 'validated'"
                     type="button"
-                    class="px-2.5 py-1 text-xs font-medium text-[#e03e3e] hover:underline"
+                    class="px-2.5 py-1 min-h-[32px] inline-flex items-center text-xs font-medium text-[#e03e3e] hover:underline cursor-pointer"
                     @click="pendingDiscard = operation"
                   >
                     Discard
@@ -639,7 +638,7 @@ onMounted(loadAll)
                   <button
                     v-else-if="operation.failed_rows > 0"
                     type="button"
-                    class="px-2.5 py-1 text-xs font-medium text-primary hover:underline"
+                    class="px-2.5 py-1 min-h-[32px] inline-flex items-center text-xs font-medium text-primary hover:underline cursor-pointer"
                     @click="downloadErrorReport(operation)"
                   >
                     Error report
@@ -648,6 +647,7 @@ onMounted(loadAll)
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -720,7 +720,8 @@ onMounted(loadAll)
             description="A generated file appears here with its record count and expiry."
           />
 
-          <table v-else class="w-full text-xs text-left">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left min-w-[560px]">
             <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider">
               <tr>
                 <th class="p-3.5">Dataset</th>
@@ -736,13 +737,13 @@ onMounted(loadAll)
                 <td class="p-3.5">{{ operation.record_count }} rows</td>
                 <td class="p-3.5 font-mono text-[11px]">{{ formatBytes(operation.file_size) }}</td>
                 <td class="p-3.5 text-ink-muted">
-                  {{ operation.expires_at ? new Date(operation.expires_at).toLocaleString() : '—' }}
+                  {{ operation.expires_at ? new Date(operation.expires_at).toLocaleString() : 'â€”' }}
                 </td>
                 <td class="p-3.5 text-right">
                   <button
                     v-if="operation.retrievable"
                     type="button"
-                    class="px-2.5 py-1 text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+                    class="px-2.5 py-1 min-h-[32px] text-xs font-medium text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
                     @click="downloadExport(operation)"
                   >
                     <Download class="w-3.5 h-3.5" />
@@ -753,6 +754,7 @@ onMounted(loadAll)
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </template>
@@ -771,8 +773,8 @@ onMounted(loadAll)
         </p>
         <div class="flex justify-end gap-2 pt-1">
           <BaseButton variant="outline" @click="pendingDiscard = null">Keep it</BaseButton>
-          <BaseButton variant="primary" @click="discardImport">
-            <Plus class="w-3.5 h-3.5 mr-1" />
+          <BaseButton variant="danger" @click="discardImport">
+            <X class="w-3.5 h-3.5 mr-1" />
             Discard
           </BaseButton>
         </div>
@@ -780,3 +782,4 @@ onMounted(loadAll)
     </ModalDialog>
   </div>
 </template>
+

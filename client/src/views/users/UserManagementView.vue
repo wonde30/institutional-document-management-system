@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usersApi, organizationUnitsApi, rolesApi, permissionsApi } from '@/api/client'
-import type { User, OrganizationUnit, RoleItem, PermissionItem, PaginationMeta, UserDirectPermission } from '@/types'
+import type {
+ User,
+ OrganizationUnit,
+ RoleItem,
+ PermissionItem,
+ PaginationMeta,
+ UserDirectPermission,
+ PermissionLineageData,
+ PermissionLineageItem,
+} from '@/types'
 import ModalDialog from '@/components/ModalDialog.vue'
 import DataTable, { type TableColumn } from '@/components/data-display/DataTable.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -13,6 +22,7 @@ import {
  UserPlus,
  Edit2,
  Shield,
+ ShieldCheck,
  Building2,
  Mail,
  Lock,
@@ -29,6 +39,10 @@ import {
  UserX,
  Trash2,
  Calendar,
+ ArrowRight,
+ Clock,
+ Info,
+ Check,
 } from 'lucide-vue-next'
 
 const toast = useToast()
@@ -102,6 +116,73 @@ const membershipForm = ref({
 const showStatusConfirmModal = ref(false)
 const targetStatusUser = ref<User | null>(null)
 const pendingStatus = ref<'active' | 'inactive'>('inactive')
+
+// Effective Permissions & Access Lineage Modal
+const showLineageModal = ref(false)
+const loadingLineage = ref(false)
+const lineageData = ref<PermissionLineageData | null>(null)
+const lineageUnitFilter = ref<number | ''>('')
+const lineageSearch = ref('')
+const lineageModuleFilter = ref('')
+const lineageStatusFilter = ref<'all' | 'effective' | 'non_effective'>('all')
+
+async function fetchLineage(userId: number, unitId?: number | null) {
+ loadingLineage.value = true
+ try {
+  const res = await usersApi.getEffectivePermissions(userId, unitId ?? undefined)
+  lineageData.value = res.data.data
+ } catch (err: any) {
+  toast.error('Lineage Error', err.response?.data?.message || 'Failed to load permission lineage.')
+ } finally {
+  loadingLineage.value = false
+ }
+}
+
+async function openLineageModal(user: User) {
+ selectedUser.value = user
+ lineageUnitFilter.value = user.primary_membership?.unit_id || ''
+ lineageSearch.value = ''
+ lineageModuleFilter.value = ''
+ lineageStatusFilter.value = 'all'
+ showLineageModal.value = true
+ await fetchLineage(user.id, lineageUnitFilter.value ? Number(lineageUnitFilter.value) : null)
+}
+
+async function handleLineageUnitChange() {
+ if (!selectedUser.value) return
+ await fetchLineage(selectedUser.value.id, lineageUnitFilter.value ? Number(lineageUnitFilter.value) : null)
+}
+
+const filteredLineage = computed(() => {
+ if (!lineageData.value?.lineage) return []
+ return lineageData.value.lineage.filter((item) => {
+  if (lineageSearch.value) {
+   const q = lineageSearch.value.toLowerCase()
+   const match =
+    item.permission_code.toLowerCase().includes(q) ||
+    item.permission_name.toLowerCase().includes(q) ||
+    item.source_name.toLowerCase().includes(q)
+   if (!match) return false
+  }
+  if (lineageModuleFilter.value && item.module !== lineageModuleFilter.value) {
+   return false
+  }
+  if (lineageStatusFilter.value === 'effective' && !item.is_effective) {
+   return false
+  }
+  if (lineageStatusFilter.value === 'non_effective' && item.is_effective) {
+   return false
+  }
+  return true
+ })
+})
+
+const distinctLineageModules = computed(() => {
+ if (!lineageData.value?.lineage) return []
+ const set = new Set<string>()
+ lineageData.value.lineage.forEach((item) => set.add(item.module))
+ return Array.from(set).sort()
+})
 
 const tableColumns: TableColumn[] = [
  { key: 'name', label: 'User & Email', sortable: true },
@@ -339,24 +420,52 @@ async function handleAssignDirectPermission() {
  }
 }
 
-async function handleRevokeDirectPermission(perm: UserDirectPermission) {
- if (!selectedUser.value) return
- isSubmitting.value = true
- try {
- await rolesApi.revokeUserPermission({
- user_id: selectedUser.value.id,
- permission_id: perm.permission_id,
- scope_id: perm.scope_id,
- })
- toast.success('Revoked', `Direct permission ${perm.permission_code} revoked.`)
- await loadData(pagination.value.current_page)
- // Update selectedUser local reference
- selectedUser.value = users.value.find(u => u.id === selectedUser.value?.id) || null
- } catch (err: any) {
- toast.error('Revocation Error', err.response?.data?.message || 'Could not revoke permission.')
- } finally {
- isSubmitting.value = false
- }
+async function handleRevokeRole(userOrRole: any, roleOrNone?: any) {
+  const targetUser = roleOrNone ? userOrRole : selectedUser.value
+  const targetRole = roleOrNone ? roleOrNone : userOrRole
+  if (!targetUser) return
+
+  isSubmitting.value = true
+  try {
+    await rolesApi.revokeUserRole({
+      user_id: targetUser.id,
+      role_id: targetRole.role_id,
+      scope_id: targetRole.scope_id,
+    })
+    toast.success('Role Revoked', `Role "${targetRole.role_name || targetRole.role_code}" revoked successfully.`)
+    await loadData(pagination.value.current_page)
+    if (showLineageModal.value && selectedUser.value?.id === targetUser.id) {
+      await fetchLineage(targetUser.id, lineageUnitFilter.value ? Number(lineageUnitFilter.value) : null)
+    }
+  } catch (err: any) {
+    toast.error('Revocation Error', err.response?.data?.message || 'Could not revoke role.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+async function handleRevokeDirectPermission(userOrPerm: any, permOrNone?: any) {
+  const targetUser = permOrNone ? userOrPerm : selectedUser.value
+  const targetPerm = permOrNone ? permOrNone : userOrPerm
+  if (!targetUser) return
+
+  isSubmitting.value = true
+  try {
+    await rolesApi.revokeUserPermission({
+      user_id: targetUser.id,
+      permission_id: targetPerm.permission_id,
+      scope_id: targetPerm.scope_id,
+    })
+    toast.success('Permission Revoked', `Direct permission "${targetPerm.permission_code || ''}" revoked.`)
+    await loadData(pagination.value.current_page)
+    if (showLineageModal.value && selectedUser.value?.id === targetUser.id) {
+      await fetchLineage(targetUser.id, lineageUnitFilter.value ? Number(lineageUnitFilter.value) : null)
+    }
+  } catch (err: any) {
+    toast.error('Revocation Error', err.response?.data?.message || 'Could not revoke permission.')
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 async function handleAssignMembership() {
@@ -390,16 +499,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- INSTITUTIONAL ADMINISTRATION / USER ROSTER
- </div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink-secondary flex items-center gap-2.5">
- <Users class="w-6 h-6 text-primary" />
- User Accounts & Staff Directory
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <Users class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>User Accounts & Staff Directory</span>
  </h1>
- <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+ <p class="text-xs text-ink-muted mt-0.5">
  Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status.
  </p>
  </div>
@@ -557,10 +663,11 @@ onMounted(() => {
  <span
  v-for="(role, idx) in item.roles || []"
  :key="idx"
- class="text-[10px] font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline"
+ class="text-[10px] font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline inline-flex items-center gap-1 group"
  >
- {{ role.role_name || role.role_code }}
+ <span>{{ role.role_name || role.role_code }}</span>
  <span v-if="role.scope_kind" class="text-[9px] text-primary font-medium uppercase ml-0.5">({{ role.scope_kind }})</span>
+ <button type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke role assignment" @click.stop="handleRevokeRole(item, role)">&times;</button>
  </span>
  <span v-if="!item.roles || item.roles.length === 0" class="text-[11px] text-ink-muted">
  None assigned
@@ -573,10 +680,11 @@ onMounted(() => {
  <span
  v-for="(dp, idx) in item.direct_permissions || []"
  :key="idx"
- class="text-[10px] font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20"
+ class="text-[10px] font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20 inline-flex items-center gap-1 group"
  :title="`Direct Single-User Permission in ${dp.scope_kind} scope`"
  >
- {{ dp.permission_code }}
+ <span>{{ dp.permission_code }}</span>
+ <button type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke direct permission override" @click.stop="handleRevokeDirectPermission(item, dp)">&times;</button>
  </span>
  <span v-if="!item.direct_permissions || item.direct_permissions.length === 0" class="text-[11px] text-ink-muted">
  None
@@ -646,6 +754,16 @@ onMounted(() => {
  @click="openMembershipModal(item)"
  >
  <Building2 class="w-4 h-4" />
+ </button>
+
+ <!-- Inspect Effective Access Lineage Button -->
+ <button
+ type="button"
+ class="p-1 text-ink-muted hover:text-emerald-600 hover:bg-canvas-soft rounded transition-colors"
+ title="Inspect Effective Permissions & Lineage"
+ @click="openLineageModal(item)"
+ >
+ <ShieldCheck class="w-4 h-4 text-emerald-600" />
  </button>
 
  <!-- Edit User Button -->
@@ -832,6 +950,15 @@ onMounted(() => {
  @click="openMembershipModal(user)"
  >
  <Building2 class="w-4 h-4" />
+ </button>
+
+ <button
+ type="button"
+ class="p-1.5 text-ink-muted hover:text-emerald-600 hover:bg-canvas-soft rounded-md transition-colors"
+ title="Inspect Effective Permissions & Lineage"
+ @click="openLineageModal(user)"
+ >
+ <ShieldCheck class="w-4 h-4 text-emerald-600" />
  </button>
 
  <button
@@ -1209,6 +1336,241 @@ onMounted(() => {
  @click="handleConfirmToggleStatus"
  >
  Confirm {{ pendingStatus === 'active' ? 'Activation' : 'Deactivation' }}
+ </BaseButton>
+ </div>
+ </template>
+ </ModalDialog>
+
+ <!-- Inspect Access & Effective Permissions Lineage Modal -->
+ <ModalDialog
+ :open="showLineageModal"
+ :title="`Effective Permissions & Access Lineage: ${selectedUser?.name || 'Staff'}`"
+ size="xl"
+ @close="showLineageModal = false"
+ >
+ <div class="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+ <!-- Target Evaluation Scope & Context Bar -->
+ <div class="p-3 bg-surface-muted border border-hairline rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+ <div class="space-y-0.5">
+ <div class="text-xs font-semibold text-ink-secondary flex items-center gap-1.5">
+ <Building2 class="w-4 h-4 text-primary" />
+ Evaluation Scope Context
+ </div>
+ <p class="text-[11px] text-ink-muted">
+ Inspect effective permissions for this staff member either globally or within an organizational unit.
+ </p>
+ </div>
+ <div class="flex items-center gap-2">
+ <label class="text-xs font-medium text-ink-secondary whitespace-nowrap">Target Unit:</label>
+ <select
+ v-model="lineageUnitFilter"
+ class="text-xs rounded border border-hairline bg-surface text-ink-secondary px-2.5 py-1.5 focus:outline-none focus:border-primary"
+ @change="handleLineageUnitChange"
+ >
+ <option value="">Global Evaluation (Unrestricted / All Units)</option>
+ <option v-for="u in units" :key="u.id" :value="u.id">
+ {{ u.name }} ({{ u.code }})
+ </option>
+ </select>
+ </div>
+ </div>
+
+ <!-- Warnings Banner -->
+ <div
+ v-if="lineageData && lineageData.warnings && lineageData.warnings.length > 0"
+ class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg space-y-1.5"
+ >
+ <div class="text-xs font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+ <AlertCircle class="w-4 h-4 text-amber-600 dark:text-amber-400" />
+ Access Configuration Warnings ({{ lineageData.warnings.length }})
+ </div>
+ <ul class="text-[11px] text-amber-700 dark:text-amber-300 space-y-0.5 list-disc list-inside">
+ <li v-for="(warn, wIdx) in lineageData.warnings" :key="wIdx">
+ {{ warn }}
+ </li>
+ </ul>
+ </div>
+
+ <!-- Summary KPI Row -->
+ <div v-if="lineageData" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+ <div class="p-3 bg-surface border border-hairline rounded-lg">
+ <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Effective Capabilities</div>
+ <div class="text-lg font-bold text-emerald-600 mt-0.5">{{ lineageData.effective_count }}</div>
+ <div class="text-[10px] text-ink-muted">in {{ lineageData.target_unit_name || 'Global Scope' }}</div>
+ </div>
+ <div class="p-3 bg-surface border border-hairline rounded-lg">
+ <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Assigned Roles</div>
+ <div class="text-lg font-bold text-ink-secondary mt-0.5">{{ selectedUser?.roles?.length || 0 }}</div>
+ <div class="text-[10px] text-ink-muted">catalog roles assigned</div>
+ </div>
+ <div class="p-3 bg-surface border border-hairline rounded-lg">
+ <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Direct Overrides</div>
+ <div class="text-lg font-bold text-amber-600 mt-0.5">{{ selectedUser?.direct_permissions?.length || 0 }}</div>
+ <div class="text-[10px] text-ink-muted">single-user grants</div>
+ </div>
+ <div class="p-3 bg-surface border border-hairline rounded-lg">
+ <div class="text-[10px] uppercase font-semibold text-ink-muted tracking-wider">Scopes Held</div>
+ <div class="text-lg font-bold text-primary mt-0.5">{{ lineageData.scopes_held?.length || 0 }}</div>
+ <div class="text-[10px] text-ink-muted">distinct scopes</div>
+ </div>
+ </div>
+
+ <!-- Filters & Search Toolbar -->
+ <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+ <div class="relative flex-1 max-w-sm">
+ <Search class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-ink-muted" />
+ <input
+ v-model="lineageSearch"
+ type="text"
+ placeholder="Filter permissions or source role..."
+ class="w-full text-xs pl-8 pr-3 py-1.5 rounded border border-hairline bg-surface text-ink-secondary focus:outline-none focus:border-primary"
+ />
+ </div>
+
+ <div class="flex items-center gap-2">
+ <!-- Module Filter -->
+ <select
+ v-model="lineageModuleFilter"
+ class="text-xs rounded border border-hairline bg-surface text-ink-secondary px-2.5 py-1.5 focus:outline-none focus:border-primary"
+ >
+ <option value="">All Modules</option>
+ <option v-for="m in distinctLineageModules" :key="m" :value="m">
+ {{ m }}
+ </option>
+ </select>
+
+ <!-- Status Filter -->
+ <select
+ v-model="lineageStatusFilter"
+ class="text-xs rounded border border-hairline bg-surface text-ink-secondary px-2.5 py-1.5 focus:outline-none focus:border-primary"
+ >
+ <option value="all">All Grants ({{ lineageData?.lineage?.length || 0 }})</option>
+ <option value="effective">Effective Only</option>
+ <option value="non_effective">Inactive / Expired / Out of Scope</option>
+ </select>
+ </div>
+ </div>
+
+ <!-- Loading State -->
+ <div v-if="loadingLineage" class="py-12 text-center text-xs text-ink-muted">
+ <RefreshCw class="w-5 h-5 mx-auto animate-spin text-primary mb-2" />
+ Calculating effective permissions and scope lineage...
+ </div>
+
+ <!-- Empty State -->
+ <div v-else-if="filteredLineage.length === 0" class="py-8 text-center text-xs text-ink-muted border border-dashed border-hairline rounded-lg">
+ No permission records match the selected scope and filters.
+ </div>
+
+ <!-- Lineage Table -->
+ <div v-else class="border border-hairline rounded-lg overflow-hidden">
+ <table class="w-full text-left text-xs">
+ <thead class="bg-surface-muted text-ink-muted uppercase tracking-wider text-[10px] font-semibold border-b border-hairline">
+ <tr>
+ <th class="px-3 py-2">Permission & Description</th>
+ <th class="px-3 py-2">Lineage Path (User &rarr; Source &rarr; Scope)</th>
+ <th class="px-3 py-2">Scope / Unit</th>
+ <th class="px-3 py-2">Validity</th>
+ <th class="px-3 py-2 text-right">Effective Status</th>
+ </tr>
+ </thead>
+ <tbody class="divide-y divide-hairline">
+ <tr
+ v-for="(item, idx) in filteredLineage"
+ :key="idx"
+ class="hover:bg-surface-hover/50 transition-colors"
+ :class="{ 'opacity-60 bg-surface-muted/30': !item.is_effective }"
+ >
+ <!-- Permission & Module -->
+ <td class="px-3 py-2.5 align-top">
+ <div class="font-mono text-xs font-medium text-ink-secondary flex items-center gap-1.5">
+ <span class="text-[9px] uppercase px-1 py-0.2 rounded bg-surface-muted text-ink-muted border border-hairline font-sans font-semibold">
+ {{ item.module }}
+ </span>
+ {{ item.permission_code }}
+ </div>
+ <div class="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
+ {{ item.permission_name }}
+ </div>
+ </td>
+
+ <!-- Lineage Path (Visual User -> Source -> Permission -> Scope) -->
+ <td class="px-3 py-2.5 align-top">
+ <div class="flex items-center flex-wrap gap-1 text-[11px]">
+ <span class="font-medium text-ink-secondary">{{ selectedUser?.name?.split(' ')[0] || 'User' }}</span>
+ <ArrowRight class="w-3 h-3 text-ink-muted shrink-0" />
+ <span
+ class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+ :class="item.source_type === 'direct' ? 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]' : 'bg-surface-muted text-ink-secondary border border-hairline'"
+ >
+ {{ item.source_name }}
+ </span>
+ <ArrowRight class="w-3 h-3 text-ink-muted shrink-0" />
+ <span class="font-mono text-[10px] text-ink-secondary">{{ item.permission_code }}</span>
+ </div>
+ </td>
+
+ <!-- Scope -->
+ <td class="px-3 py-2.5 align-top">
+ <div class="text-[11px] font-medium text-ink-secondary flex items-center gap-1">
+ <span
+ class="uppercase text-[9px] font-semibold px-1 py-0.2 rounded"
+ :class="{
+ 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300': item.scope_kind === 'global',
+ 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300': item.scope_kind === 'unit',
+ 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300': item.scope_kind === 'subtree',
+ }"
+ >
+ {{ item.scope_kind }}
+ </span>
+ <span class="text-ink-muted truncate max-w-[180px] sm:max-w-[260px] lg:max-w-xs" :title="item.scope_unit_name || ''">
+ {{ item.scope_unit_name || 'All Units' }}
+ </span>
+ </div>
+ </td>
+
+ <!-- Validity / Expiration -->
+ <td class="px-3 py-2.5 align-top whitespace-nowrap">
+ <div v-if="item.expires_at" class="text-[11px]" :class="item.is_expired ? 'text-rose-600 font-semibold' : 'text-ink-muted'">
+ <div class="flex items-center gap-1">
+ <Clock class="w-3 h-3" />
+ {{ new Date(item.expires_at).toLocaleDateString() }}
+ </div>
+ <div v-if="item.is_expired" class="text-[10px] text-rose-500 font-medium">Expired</div>
+ </div>
+ <span v-else class="text-[11px] text-ink-muted">Indefinite</span>
+ </td>
+
+ <!-- Status Badge -->
+ <td class="px-3 py-2.5 align-top text-right whitespace-nowrap">
+ <span
+ class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1"
+ :class="{
+ 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63] border border-[#1aae39]/20': item.is_effective,
+ 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373] border border-[#e03e3e]/20': item.status_label === 'Expired',
+ 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-300': item.status_label === 'Out of Scope',
+ 'bg-surface-muted text-ink-muted border border-hairline': item.status_label !== 'Expired' && item.status_label !== 'Out of Scope' && !item.is_effective,
+ }"
+ >
+ <Check v-if="item.is_effective" class="w-3 h-3 text-[#1aae39]" />
+ <span v-else class="w-1.5 h-1.5 rounded-full bg-current" />
+ {{ item.status_label }}
+ </span>
+ </td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <template #footer>
+ <div class="flex items-center justify-between">
+ <div class="text-[11px] text-ink-muted flex items-center gap-1">
+ <Info class="w-3.5 h-3.5" />
+ Dynamic lineage is evaluated instantly in real-time; permissions apply without re-login.
+ </div>
+ <BaseButton variant="outline" size="sm" @click="showLineageModal = false">
+ Close
  </BaseButton>
  </div>
  </template>

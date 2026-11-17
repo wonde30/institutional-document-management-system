@@ -63,8 +63,27 @@ class SettingsService
      *
      * @return array<string, mixed>|null
      */
+    /**
+     * Supported compatibility aliases mapping deprecated or alternative keys
+     * to authoritative configuration keys.
+     *
+     * @var array<string, string>
+     */
+    protected const KEY_ALIASES = [
+        'institution.logo_path' => 'institution.approved_logo_path',
+    ];
+
+    /**
+     * Resolve any alias to its authoritative configuration key.
+     */
+    public function canonicalKey(string $key): string
+    {
+        return self::KEY_ALIASES[$key] ?? $key;
+    }
+
     public function definition(string $key): ?array
     {
+        $key = $this->canonicalKey($key);
         $definition = $this->catalogue()[$key] ?? null;
 
         return is_array($definition) ? $definition : null;
@@ -98,6 +117,7 @@ class SettingsService
      */
     public function value(string $key, ?int $unitId = null): string|int|bool|null
     {
+        $key = $this->canonicalKey($key);
         $definition = $this->definition($key);
 
         if ($definition === null) {
@@ -134,6 +154,7 @@ class SettingsService
      */
     public function effectiveValue(string $key, ?int $unitId = null): string|int|bool|null
     {
+        $key = $this->canonicalKey($key);
         $definition = $this->definition($key);
 
         if ($definition === null) {
@@ -211,6 +232,7 @@ class SettingsService
      */
     public function set(string $key, string|int|bool|null $value, ?int $unitId, Request $request): array
     {
+        $key = $this->canonicalKey($key);
         $definition = $this->definition($key);
 
         if ($definition === null) {
@@ -307,6 +329,7 @@ class SettingsService
      */
     public function reset(string $key, ?int $unitId, Request $request): array
     {
+        $key = $this->canonicalKey($key);
         $definition = $this->definition($key);
 
         if ($definition === null) {
@@ -433,6 +456,7 @@ class SettingsService
      */
     public function forget(string $key, ?int $unitId = null): void
     {
+        $key = $this->canonicalKey($key);
         $this->cache->forget($this->cacheKey($key, $unitId));
         $this->cache->forget($this->cacheKey($key, null));
 

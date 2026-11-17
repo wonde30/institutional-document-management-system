@@ -1,6 +1,7 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { institutionalApi } from '@/api/client'
+import { institutionalApi, documentsApi } from '@/api/client'
+import { downloadBlob } from '@/utils/formatters'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -41,6 +42,8 @@ const selectedCycleId = ref<number | null>(null)
 const standards = ref<AccreditationStandard[]>([])
 const evidenceList = ref<AccreditationEvidence[]>([])
 const summary = ref<AccreditationCycleSummary | null>(null)
+const repoDocuments = ref<any[]>([])
+const loadingDocs = ref(false)
 
 const searchQuery = ref('')
 const filterStandard = ref<number | ''>('')
@@ -171,7 +174,21 @@ const filteredList = computed(() => {
  })
 })
 
+async function loadRepoDocuments() {
+  if (repoDocuments.value.length > 0) return
+  loadingDocs.value = true
+  try {
+    const res = await documentsApi.list({ per_page: 50 })
+    repoDocuments.value = (res.data as any).data || []
+  } catch {
+    // Non-fatal
+  } finally {
+    loadingDocs.value = false
+  }
+}
+
 function openAttachModal() {
+  loadRepoDocuments()
  if (!selectedCycleId.value) {
  toast.error('Cycle Required', 'Please select or create an active accreditation cycle first.')
  return
@@ -256,16 +273,9 @@ async function handleExportDossier() {
  try {
  const res = await institutionalApi.exportAccreditationDossier(selectedCycleId.value)
  if (res.data.success && res.data.data) {
- const blob = new Blob([JSON.stringify(res.data.data, null, 2)], { type: 'application/json' })
- const url = URL.createObjectURL(blob)
- const a = document.createElement('a')
- a.href = url
- a.download = `WU_HERQA_Dossier_Cycle_${selectedCycleId.value}.json`
- document.body.appendChild(a)
- a.click()
- document.body.removeChild(a)
- URL.revokeObjectURL(url)
- toast.success('Export Ready', 'Institutional compliance dossier downloaded successfully.')
+  const blob = new Blob([JSON.stringify(res.data.data, null, 2)], { type: 'application/json' })
+  downloadBlob(blob, `WU_HERQA_Dossier_Cycle_${selectedCycleId.value}.json`)
+  toast.success('Export Ready', 'Institutional compliance dossier downloaded successfully.')
  }
  } catch (err: any) {
  toast.error('Export Error', err.response?.data?.message || 'Failed to export dossier.')
@@ -280,16 +290,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- INSTITUTIONAL RECORDS / ACCREDITATION & QUALITY ASSURANCE
- </div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink-secondary flex items-center gap-2">
- <ClipboardCheck class="w-6 h-6 text-primary" />
- Accreditation & Quality Assurance
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <ClipboardCheck class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Accreditation & Quality Assurance</span>
  </h1>
- <p class="text-xs sm:text-sm text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-0.5">
  Map frozen document versions to official national HERQA quality standards with traceable audit reviews.
  </p>
  </div>
@@ -476,7 +483,7 @@ onMounted(() => {
  'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373] border border-[#e03e3e]/20': item.latest_review.decision === 'rejected',
  }"
  >
- {{ item.latest_review.decision.replace('_', ' ').toUpperCase() }}
+ {{ item.latest_review.decision.replace('_', ' ') }}
  </span>
  <p v-if="item.latest_review.comment" class="text-[11px] text-ink-muted mt-1 italic line-clamp-1">
  "{{ item.latest_review.comment }}"
@@ -540,6 +547,25 @@ onMounted(() => {
 
  <div>
  <label class="block text-xs font-semibold text-ink-secondary mb-1">
+ Select Document from Repository
+ </label>
+ <select
+ class="w-full text-xs rounded-md border border-hairline bg-surface text-ink-secondary px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 mb-2"
+ @change="(e: Event) => { const v = (e.target as HTMLSelectElement).value; if (v) attachForm.document_version_id = Number(v) }"
+ >
+ <option value="">-- Choose from repository documents or enter version ID below --</option>
+ <option
+ v-for="doc in repoDocuments"
+ :key="doc.id"
+ :value="doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id"
+ >
+ {{ doc.reference_number }} â€” {{ doc.title }} (Ver ID: {{ doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id }})
+ </option>
+ </select>
+ </div>
+
+ <div>
+ <label class="block text-xs font-semibold text-ink-secondary mb-1">
  Document Version ID *
  </label>
  <BaseInput
@@ -548,7 +574,7 @@ onMounted(() => {
  placeholder="e.g. 1"
  />
  <p class="text-[11px] text-ink-muted mt-1">
- Specify the exact numerical ID of the finalized document version in the institutional repository.
+ Selected or specified numerical ID of the finalized document version in the institutional repository.
  </p>
  </div>
 
@@ -659,3 +685,4 @@ onMounted(() => {
  </ModalDialog>
  </div>
 </template>
+

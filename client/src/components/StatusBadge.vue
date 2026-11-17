@@ -13,32 +13,32 @@ const formattedStatus = computed(() => {
 
 const badgeClass = computed(() => getStatusBadgeClass(props.status))
 
-const tailwindClasses = computed(() => {
+const tokenClasses = computed(() => {
  switch (props.status?.toLowerCase()) {
  case 'approved':
  case 'completed':
  case 'dispatched':
  case 'executed':
  case 'acknowledged':
- return 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60'
+ return 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]'
  case 'pending_review':
  case 'under_review':
  case 'assigned':
  case 'in_progress':
  case 'pending':
- return 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60'
+ return 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]'
  case 'rejected':
  case 'overdue':
  case 'cancelled':
- return 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60'
+ return 'bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171]'
  case 'archived':
  case 'disposed':
- return 'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+ return 'bg-[var(--wu-line)] text-[var(--wu-muted)]'
  case 'draft':
  case 'received':
  case 'sent':
  default:
- return 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60'
+ return 'bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0]'
  }
 })
 </script>
@@ -46,8 +46,8 @@ const tailwindClasses = computed(() => {
 <template>
  <span
  :class="[
- 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium tracking-wide transition-colors',
- tailwindClasses,
+ 'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium',
+ tokenClasses,
  'badge',
  badgeClass
  ]"

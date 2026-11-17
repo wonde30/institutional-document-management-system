@@ -36,4 +36,14 @@ class DispositionRequest extends Model
     {
         return $this->belongsTo(User::class, 'requested_by');
     }
+
+    public function decision(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(DispositionDecision::class, 'request_id');
+    }
+
+    public function execution(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(DispositionExecution::class, 'request_id');
+    }
 }

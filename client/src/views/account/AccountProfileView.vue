@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/client'
@@ -26,14 +26,23 @@ const toast = useToast()
 
 const activeTab = ref<'profile' | 'security' | 'preferences'>('profile')
 
-// Sync tab with path
-onMounted(() => {
+// Sync the tab with the path.
+//
+// The three account routes render this component, so the instance is reused
+// when the path changes. The tab therefore follows the route, not the mount.
+watch(
+ () => route.path,
+ () => {
  if (route.path.includes('/security')) {
  activeTab.value = 'security'
  } else if (route.path.includes('/preferences')) {
  activeTab.value = 'preferences'
+ } else {
+ activeTab.value = 'profile'
  }
-})
+ },
+ { immediate: true }
+)
 
 function setTab(tab: 'profile' | 'security' | 'preferences') {
  activeTab.value = tab
@@ -66,8 +75,7 @@ async function handlePasswordUpdate() {
  try {
  await authApi.changePassword({
  current_password: currentPassword.value,
- password: newPassword.value,
- password_confirmation: confirmNewPassword.value,
+ new_password: newPassword.value,
  })
  toast.success('Password updated successfully.')
  currentPassword.value = ''
@@ -88,15 +96,13 @@ function handleSavePreferences() {
 <template>
  <div class="space-y-6">
  <!-- Page Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- ACCOUNT MANAGEMENT
- </div>
- <h1 class="notion-heading-2 text-ink">
- Account & Security Profile
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <User class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Account & Security Profile</span>
  </h1>
- <p class="notion-body-sm text-ink-muted mt-0.5">
+ <p class="text-xs text-ink-muted mt-0.5">
  Manage your institutional identity, authentication credentials, and display preferences.
  </p>
  </div>
@@ -167,7 +173,19 @@ function handleSavePreferences() {
  </div>
  <div>
  <span class="block text-ink-muted">Primary Institutional Unit</span>
- <span class="font-medium text-ink">{{ authStore.primaryUnit?.unit_name || 'Information Technology Directorate' }}</span>
+ <span class="font-medium text-ink">{{ authStore.primaryUnit?.unit_name || authStore.activeUnit?.name || 'Central Administration' }}</span>
+ </div>
+ <div>
+ <span class="block text-ink-muted">Assigned System Roles</span>
+ <div class="flex flex-wrap gap-1 mt-1">
+ <span
+ v-for="role in (authStore.userRoles.length ? authStore.userRoles : ['Staff'])"
+ :key="role"
+ class="px-2 py-0.5 rounded text-[11px] font-medium bg-primary-subtle text-primary border border-primary/20"
+ >
+ {{ role }}
+ </span>
+ </div>
  </div>
  </div>
  </div>
@@ -180,13 +198,37 @@ function handleSavePreferences() {
  </h2>
 
  <div class="divide-y divide-hairline-subtle text-xs">
- <div class="py-2.5 flex items-center justify-between">
+ <div
+ v-for="unit in authStore.availableUnits"
+ :key="unit.id"
+ class="py-2.5 flex items-center justify-between"
+ >
  <div>
  <div class="font-medium text-ink">
- {{ authStore.primaryUnit?.unit_name || 'Computer Science Department' }}
+ {{ unit.name }}
  </div>
  <div class="text-ink-muted text-[11px]">
- Role: {{ authStore.userRoles[0] || 'Department Staff' }} · Scope: Unit
+ Code: {{ unit.code }} · Type: {{ unit.unit_type || 'Academic / Administrative' }}
+ </div>
+ </div>
+ <span
+ v-if="unit.id === (authStore.primaryUnit?.unit_id || authStore.activeUnitId)"
+ class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]"
+ >
+ {{ unit.id === authStore.primaryUnit?.unit_id ? 'Primary Office' : 'Active Office' }}
+ </span>
+ </div>
+
+ <div
+ v-if="!authStore.availableUnits || authStore.availableUnits.length === 0"
+ class="py-2.5 flex items-center justify-between"
+ >
+ <div>
+ <div class="font-medium text-ink">
+ {{ authStore.primaryUnit?.unit_name || authStore.activeUnit?.name || 'Central Administration' }}
+ </div>
+ <div class="text-ink-muted text-[11px]">
+ Role: {{ authStore.userRoles[0] || 'Institutional Staff' }} · Scope: Unit
  </div>
  </div>
  <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399]">

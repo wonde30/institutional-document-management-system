@@ -160,16 +160,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="text-[11px] font-bold tracking-widest text-primary uppercase mb-1">
- ADMINISTRATION / ORGANIZATION STRUCTURE
- </div>
- <h1 class="text-2xl font-bold tracking-tight text-ink-secondary flex items-center gap-2.5">
- <Building2 class="w-7 h-7 text-primary" />
- Institutional Organization Structure
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <Building2 class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Institutional Organization Structure</span>
  </h1>
- <p class="text-sm text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-0.5">
  Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.
  </p>
  </div>
@@ -190,7 +187,7 @@ onMounted(() => {
  <!-- Stats Overview -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
  <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs flex items-center gap-4">
- <div class="p-3 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg">
+ <div class="p-3 bg-primary-subtle text-primary rounded-lg">
  <Building2 class="w-6 h-6" />
  </div>
  <div>
@@ -210,7 +207,7 @@ onMounted(() => {
  </div>
 
  <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs flex items-center gap-4">
- <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
+ <div class="p-3 bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] rounded-lg">
  <CheckCircle2 class="w-6 h-6" />
  </div>
  <div>

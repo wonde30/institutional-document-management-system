@@ -102,21 +102,20 @@ class AdminManagementTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'data' => [
-                    'data' => [
-                        '*' => ['id', 'action', 'target_type'],
-                    ],
+                    '*' => ['id', 'action', 'target_type'],
                 ],
+                'meta' => ['current_page', 'last_page', 'total'],
             ]);
 
         // Filter by action
         $filterRes = $this->getJson('/api/v1/audit-events?action=security_audit_test');
         $filterRes->assertStatus(200);
-        $this->assertCount(1, $filterRes->json('data.data'));
+        $this->assertCount(1, $filterRes->json('data'));
 
         // Filter by nonexistent action
         $emptyRes = $this->getJson('/api/v1/audit-events?action=nonexistent_action_xyz');
         $emptyRes->assertStatus(200);
-        $this->assertCount(0, $emptyRes->json('data.data'));
+        $this->assertCount(0, $emptyRes->json('data'));
     }
 
     public function test_staff_cannot_retrieve_audit_events(): void

@@ -7,14 +7,18 @@ namespace App\Services;
 use App\Models\AuditEvent;
 use App\Models\DigitizationRecord;
 use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\DocumentRelation;
 use App\Models\DocumentRelationType;
 use App\Models\DocumentVersion;
 use App\Models\FileObject;
+use App\Models\NumberingPolicy;
+use App\Models\OrganizationUnit;
 use App\Models\PhysicalCustodyEvent;
 use App\Models\PhysicalOriginal;
 use App\Models\User;
 use App\Models\VersionFile;
+use App\Services\EthiopianDateService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,23 +27,89 @@ use Illuminate\Support\Str;
 class DocumentRepositoryService
 {
     /**
-     * Generate an atomic reference number for a sequence key (e.g. DOC, CORR).
+     * Generate a provisional reference number for draft records without burning official sequence numbers.
      */
-    public function generateReferenceNumber(string $sequenceKey = 'DOC'): string
+    public function generateDraftReferenceNumber(string $sequenceKey = 'DOC'): string
     {
         $currentYear = date('Y');
+        $random = strtoupper(Str::random(8));
 
-        return DB::transaction(function () use ($sequenceKey, $currentYear) {
+        return sprintf('DRAFT/%s/%s/%s', strtoupper($sequenceKey), $currentYear, $random);
+    }
+
+    /**
+     * Generate an atomic reference number for a sequence key (e.g. DOC, CORR),
+     * driven by configurable NumberingPolicy if configured.
+     */
+    public function generateReferenceNumber(string $sequenceKey = 'DOC', ?int $unitId = null, ?int $categoryId = null): string
+    {
+        return DB::transaction(function () use ($sequenceKey, $unitId, $categoryId) {
+            $policy = NumberingPolicy::where('active', 1)
+                ->where(function ($q) use ($sequenceKey) {
+                    $q->where('code', strtolower($sequenceKey))
+                      ->orWhere('code', strtoupper($sequenceKey));
+                })
+                ->first()
+                ?? NumberingPolicy::where('active', 1)->first();
+
+            $currentYear = date('Y');
+
+            if (! $policy) {
+                // Canonical baseline fallback
+                $seq = DB::table('reference_sequences')
+                    ->where('sequence_key', $sequenceKey)
+                    ->where('period_key', $currentYear)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $seq) {
+                    DB::table('reference_sequences')->insert([
+                        'sequence_key' => $sequenceKey,
+                        'period_key' => $currentYear,
+                        'next_value' => 2,
+                    ]);
+                    $seqVal = 1;
+                } else {
+                    $seqVal = $seq->next_value;
+                    DB::table('reference_sequences')
+                        ->where('id', $seq->id)
+                        ->update(['next_value' => $seqVal + 1]);
+                }
+
+                return sprintf('WU/%s/%s/%06d', $sequenceKey, $currentYear, $seqVal);
+            }
+
+            // Configurable Numbering Policy
+            $prefix = ! empty($policy->prefix) ? $policy->prefix : 'WU';
+
+            // Resolve year component
+            $yearStr = null;
+            if ($policy->year_format === 'ethiopian_year') {
+                $eth = EthiopianDateService::fromGregorian((int) date('Y'), (int) date('n'), (int) date('j'));
+                $yearStr = (string) $eth['year'];
+            } elseif ($policy->year_format === 'calendar_year') {
+                $yearStr = $currentYear;
+            }
+
+            // Resolve period key for sequence reset
+            $periodKey = match ($policy->reset_policy) {
+                'monthly' => date('Y-m'),
+                'never' => 'all_time',
+                default => $yearStr ?? $currentYear,
+            };
+
+            $seqKey = $policy->code ?: $sequenceKey;
+
             $seq = DB::table('reference_sequences')
-                ->where('sequence_key', $sequenceKey)
-                ->where('period_key', $currentYear)
+                ->where('sequence_key', $seqKey)
+                ->where('period_key', $periodKey)
                 ->lockForUpdate()
                 ->first();
 
             if (! $seq) {
                 DB::table('reference_sequences')->insert([
-                    'sequence_key' => $sequenceKey,
-                    'period_key' => $currentYear,
+                    'sequence_key' => $seqKey,
+                    'period_key' => $periodKey,
                     'next_value' => 2,
                 ]);
                 $seqVal = 1;
@@ -50,7 +120,34 @@ class DocumentRepositoryService
                     ->update(['next_value' => $seqVal + 1]);
             }
 
-            return sprintf('WU/%s/%s/%06d', $sequenceKey, $currentYear, $seqVal);
+            $length = max(3, min(10, $policy->sequence_length ?: 6));
+            $formattedSeq = sprintf("%0{$length}d", $seqVal);
+
+            $parts = [$prefix];
+
+            if ($policy->include_unit_code && $unitId) {
+                $unitCode = OrganizationUnit::where('id', $unitId)->value('code');
+                if ($unitCode) {
+                    $parts[] = $unitCode;
+                }
+            }
+
+            if ($policy->include_category_code && $categoryId) {
+                $catCode = DocumentCategory::where('id', $categoryId)->value('code');
+                if ($catCode) {
+                    $parts[] = strtoupper($catCode);
+                }
+            } else {
+                $parts[] = strtoupper($sequenceKey);
+            }
+
+            if ($yearStr !== null) {
+                $parts[] = $yearStr;
+            }
+
+            $parts[] = $formattedSeq;
+
+            return implode('/', $parts);
         });
     }
 
@@ -63,7 +160,11 @@ class DocumentRepositoryService
     {
         $actorId = $actor ? $actor->id : (int) ($attributes['created_by'] ?? 1);
         $now = now()->format('Y-m-d H:i:s.u');
-        $referenceNumber = $attributes['reference_number'] ?? $this->generateReferenceNumber($attributes['sequence_key'] ?? 'DOC');
+        $referenceNumber = $attributes['reference_number'] ?? $this->generateReferenceNumber(
+            $attributes['sequence_key'] ?? 'DOC',
+            isset($attributes['owner_unit_id']) ? (int) $attributes['owner_unit_id'] : null,
+            isset($attributes['category_id']) ? (int) $attributes['category_id'] : null
+        );
 
         return DB::transaction(function () use ($attributes, $file, $actorId, $now, $referenceNumber) {
             $document = Document::create([

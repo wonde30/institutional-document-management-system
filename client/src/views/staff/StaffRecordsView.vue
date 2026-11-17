@@ -13,15 +13,9 @@ import {
  Plus,
  RefreshCw,
  Search,
- Info,
- Archive,
- Shield,
- FileCheck2,
  Trash2,
  CheckCircle2,
  AlertTriangle,
- FolderTree,
- Building2,
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -29,7 +23,6 @@ const toast = useToast()
 const loading = ref(true)
 const isSubmitting = ref(false)
 const units = ref<OrganizationUnit[]>([])
-const activeTab = ref<'originals' | 'verification' | 'locations'>('originals')
 
 interface StaffRecordItem {
  id: number
@@ -39,12 +32,21 @@ interface StaffRecordItem {
  reference_number: string
  title: string
  }
- item_code: string
+ physical_reference: string
  retention_requirement: 'required' | 'not_required' | 'unknown'
- storage_location: string
- record_type?: string
- is_disposed?: boolean
- digitization_records?: Array<{ status: string }>
+ custody_events?: Array<{
+ id: number
+ action: string
+ reason?: string | null
+ occurred_at: string
+ location?: { id: number; code: string; name: string } | null
+ }>
+ digitization_records?: Array<{
+ id: number
+ verification_status: string
+ verified_at?: string | null
+ verification_note?: string | null
+ }>
 }
 
 const recordsList = ref<StaffRecordItem[]>([])
@@ -53,9 +55,15 @@ const searchQuery = ref('')
 const filterRetention = ref('')
 const showModal = ref(false)
 const showDisposalModal = ref(false)
+const showVerifyModal = ref(false)
 const selectedRecord = ref<StaffRecordItem | null>(null)
 const disposalOrderRef = ref('')
+const disposalReason = ref('')
+const senateDisposalOrder = ref('')
 const isSubmittingDisposal = ref(false)
+const verifyStatus = ref<'accepted' | 'rejected'>('accepted')
+const verifyNote = ref('')
+const isSubmittingVerify = ref(false)
 
 const form = ref({
  title: '',
@@ -76,7 +84,7 @@ async function loadData() {
  recordsList.value = staffRes.data.data || []
  units.value = unitsRes.data.data || []
  if (!form.value.office_id && units.value.length > 0) {
- form.value.office_id = units.value[0].id
+  form.value.office_id = authStore.activeUnitId || authStore.primaryUnit?.unit_id || units.value[0].id
  }
  } catch (err: any) {
  toast.error(err.response?.data?.message || 'Failed to retrieve staff records.')
@@ -89,7 +97,7 @@ const filteredList = computed(() => {
  return recordsList.value.filter((item) => {
  const title = item.document?.title || ''
  const ref = item.document?.reference_number || ''
- const itemCode = item.item_code || ''
+ const itemCode = item.physical_reference || ''
  const matchesSearch =
  !searchQuery.value ||
  title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -101,19 +109,51 @@ const filteredList = computed(() => {
  })
 })
 
-async function handleVerifyScan(item: StaffRecordItem) {
+function latestScan(item: StaffRecordItem) {
+ const records = item.digitization_records ?? []
+ if (records.length === 0) return null
+ return records.reduce((latest, record) => (record.id > latest.id ? record : latest))
+}
+
+function isDisposed(item: StaffRecordItem): boolean {
+ return item.custody_events?.some((event) => event.action === 'destroy') ?? false
+}
+
+function latestLocation(item: StaffRecordItem): string {
+ const withLocation = item.custody_events?.find((event) => event.location)
+ return withLocation?.location?.name || 'Not recorded'
+}
+
+function openVerifyModal(item: StaffRecordItem) {
+ selectedRecord.value = item
+ verifyStatus.value = 'accepted'
+ verifyNote.value = ''
+ showVerifyModal.value = true
+}
+
+async function handleVerifyScan() {
+ if (!selectedRecord.value) return
+ isSubmittingVerify.value = true
  try {
- await institutionalApi.verifyStaffScan(item.id)
- toast.success('Scan verified. Note: Verified scan does NOT authorize physical destruction.')
+ await institutionalApi.verifyStaffScan(selectedRecord.value.id, {
+ verification_status: verifyStatus.value,
+ verification_note: verifyNote.value.trim() || undefined,
+ })
+ toast.success('Scan verification recorded. A verified scan does NOT authorize physical destruction.')
+ showVerifyModal.value = false
  await loadData()
  } catch (err: any) {
  toast.error(err.response?.data?.message || 'Verification update failed.')
+ } finally {
+ isSubmittingVerify.value = false
  }
 }
 
 function openDisposalModal(item: StaffRecordItem) {
  selectedRecord.value = item
  disposalOrderRef.value = ''
+ disposalReason.value = ''
+ senateDisposalOrder.value = ''
  showDisposalModal.value = true
 }
 
@@ -123,10 +163,23 @@ async function handleExecuteDisposal() {
  toast.error('Legal Counsel or Senate authorization order reference is required.')
  return
  }
+ if (!disposalReason.value.trim()) {
+ toast.error('A disposal reason is required for the audit record.')
+ return
+ }
+ if (
+ selectedRecord.value.retention_requirement === 'required' &&
+ !senateDisposalOrder.value.trim()
+ ) {
+ toast.error('An executive Senate/Legal Counsel disposal order is required for retention-required records.')
+ return
+ }
  isSubmittingDisposal.value = true
  try {
  await institutionalApi.disposeStaffPhysical(selectedRecord.value.id, {
- disposal_order_reference: disposalOrderRef.value.trim(),
+ authorization_reference: disposalOrderRef.value.trim(),
+ reason: disposalReason.value.trim(),
+ executive_senate_disposal_order: senateDisposalOrder.value.trim() || undefined,
  })
  toast.success('Physical original disposal logged and executed under official authorization.')
  showDisposalModal.value = false
@@ -173,16 +226,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- INSTITUTIONAL RECORDS / STAFF DOSSIERS & PHYSICAL ORIGINALS
- </div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink-secondary flex items-center gap-2">
- <Users class="w-6 h-6 text-primary" />
- Staff Records & Physical Original Custody
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <Users class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Staff Records & Physical Original Custody</span>
  </h1>
- <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+ <p class="text-xs text-ink-muted mt-0.5">
  Dual tracking of electronic staff dossiers alongside physical paper original location, custodian, and retention rules.
  </p>
  </div>
@@ -213,35 +263,8 @@ onMounted(() => {
  </p>
  </div>
 
- <!-- Navigation Tabs -->
- <div class="border-b border-hairline flex gap-6 text-xs font-medium">
- <button
- type="button"
- @click="activeTab = 'originals'"
- class="pb-3 border-b-2 flex items-center gap-2 transition-colors"
- :class="activeTab === 'originals'
- ? 'border-primary text-primary font-semibold'
- : 'border-transparent text-ink-muted hover:text-ink-secondary '"
- >
- <Archive class="w-4 h-4" />
- Physical Originals Inventory & Tracking
- </button>
-
- <button
- type="button"
- @click="activeTab = 'locations'"
- class="pb-3 border-b-2 flex items-center gap-2 transition-colors"
- :class="activeTab === 'locations'
- ? 'border-primary text-primary font-semibold'
- : 'border-transparent text-ink-muted hover:text-ink-secondary '"
- >
- <FolderTree class="w-4 h-4" />
- Physical Storage Locations
- </button>
- </div>
-
- <!-- Tab 1: Physical Originals Table -->
- <section v-if="activeTab === 'originals'" class="bg-surface rounded-lg border border-hairline overflow-hidden shadow-xs">
+ <!-- Physical Originals Table -->
+ <section class="bg-surface rounded-lg border border-hairline overflow-hidden shadow-xs">
  <div class="p-3 sm:p-4 border-b border-hairline flex flex-col sm:flex-row items-center justify-between gap-3">
  <div class="relative w-full sm:w-80">
  <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -285,16 +308,16 @@ onMounted(() => {
  :key="item.id"
  class="hover:bg-surface-hover transition-colors"
  >
- <td class="py-3 px-4">
- <div class="font-medium text-ink-secondary">
+ <td class="py-3 px-4 max-w-[200px] sm:max-w-xs md:max-w-md">
+ <div class="font-medium text-ink-secondary truncate" :title="item.document?.title">
  {{ item.document?.title }}
  </div>
- <small class="block text-[11px] text-primary font-mono mt-0.5">
- Item Code: {{ item.item_code }}
+ <small class="block text-[11px] text-primary font-mono mt-0.5 truncate">
+ Physical code: {{ item.physical_reference }}
  </small>
  </td>
  <td class="py-3 px-4 text-ink-muted">
- {{ item.storage_location || 'Human Resources Central Archive / Vault' }}
+ {{ latestLocation(item) }}
  </td>
  <td class="py-3 px-4">
  <span
@@ -307,28 +330,39 @@ onMounted(() => {
  >
  {{ item.retention_requirement.replace('_', ' ') }}
  </span>
- <span v-if="item.is_disposed" class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold">
+ <span v-if="isDisposed(item)" class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold">
  Disposed
  </span>
  </td>
  <td class="py-3 px-4">
- <span class="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
- <CheckCircle2 class="w-3.5 h-3.5" /> Legible Scan Attached
+ <span
+ v-if="latestScan(item)"
+ class="inline-flex items-center gap-1 text-[11px] font-medium"
+ :class="latestScan(item)?.verification_status === 'accepted'
+ ? 'text-emerald-600 dark:text-emerald-400'
+ : latestScan(item)?.verification_status === 'rejected'
+ ? 'text-rose-600 dark:text-rose-400'
+ : 'text-amber-600 dark:text-amber-400'"
+ >
+ <CheckCircle2 class="w-3.5 h-3.5" />
+ {{ latestScan(item)?.verification_status }}
  </span>
+ <span v-else class="text-[11px] text-ink-muted">No scan on file</span>
  </td>
  <td class="py-3 px-4 text-right">
  <div class="flex items-center justify-end gap-2">
  <button
+ v-if="latestScan(item)"
  type="button"
  class="text-xs font-medium text-primary hover:underline"
- @click="handleVerifyScan(item)"
- title="Verify scan fidelity"
+ @click="openVerifyModal(item)"
+ title="Record scan verification"
  >
  Verify Scan
  </button>
 
  <button
- v-if="!item.is_disposed"
+ v-if="!isDisposed(item)"
  type="button"
  class="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline inline-flex items-center gap-1"
  @click="openDisposalModal(item)"
@@ -347,34 +381,6 @@ onMounted(() => {
  </tr>
  </tbody>
  </table>
- </div>
- </section>
-
- <!-- Tab 2: Storage Locations -->
- <section v-else-if="activeTab === 'locations'" class="p-5 rounded-lg bg-surface border border-hairline space-y-4">
- <h2 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
- <FolderTree class="w-4 h-4 text-primary" />
- Physical Storage Hierarchy (Dessie Campus / KIOT)
- </h2>
-
- <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
- <div class="p-3.5 rounded-md border border-hairline space-y-1">
- <div class="font-semibold text-ink-secondary">Human Resources Vault Room 12</div>
- <div class="text-ink-muted">Main Administrative Building · Ground Floor</div>
- <div class="text-[11px] text-primary font-medium">Cabinet A to F (Active Dossiers)</div>
- </div>
-
- <div class="p-3.5 rounded-md border border-hairline space-y-1">
- <div class="font-semibold text-ink-secondary">Central Archive Depot B</div>
- <div class="text-ink-muted">Library Basement Preservation Facility</div>
- <div class="text-[11px] text-primary font-medium">Shelves 1 to 24 (Permanent Retention)</div>
- </div>
-
- <div class="p-3.5 rounded-md border border-hairline space-y-1">
- <div class="font-semibold text-ink-secondary">KIOT Campus Registrar Store</div>
- <div class="text-ink-muted">Kombolcha Campus Administration Wing</div>
- <div class="text-[11px] text-primary font-medium">Section ET-K (Engineering Originals)</div>
- </div>
  </div>
  </section>
 
@@ -426,7 +432,17 @@ onMounted(() => {
 
  <div>
  <label class="block font-semibold text-ink-secondary mb-1">
- Storage Location Reference *
+ Physical Reference Code
+ </label>
+ <BaseInput
+ v-model="form.physical_reference"
+ placeholder="e.g. HR-PHY-2026-0041"
+ />
+ </div>
+
+ <div>
+ <label class="block font-semibold text-ink-secondary mb-1">
+ Custody Location Note
  </label>
  <BaseInput
  v-model="form.location_description"
@@ -435,7 +451,7 @@ onMounted(() => {
  </div>
 
  <div class="p-3 rounded-md bg-canvas-soft border border-hairline text-ink-muted">
- Reminder: Registering this record records the custodian location. A scanned PDF can be attached for search and access without altering the paper original's permanent preservation status.
+ Digital scans are attached through the document record's digitization action. Registering a physical original here records custody and retention only.
  </div>
  </div>
 
@@ -454,6 +470,54 @@ onMounted(() => {
  </BaseButton>
  </div>
  </template>
+ </ModalDialog>
+
+ <!-- Scan Verification Modal -->
+ <ModalDialog
+ :open="showVerifyModal"
+ title="Record Scan Verification"
+ @close="showVerifyModal = false"
+ >
+ <form @submit.prevent="handleVerifyScan" class="space-y-4 text-xs">
+ <p class="text-ink-muted leading-relaxed">
+ Confirm whether the digitized scan is a faithful reproduction of the physical original. Verification does not authorize disposal of the physical record.
+ </p>
+
+ <div>
+ <label class="block font-semibold text-ink-secondary mb-1">
+ Verification Decision *
+ </label>
+ <select
+ v-model="verifyStatus"
+ class="w-full text-xs rounded-md border border-hairline bg-surface text-ink-secondary px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+ >
+ <option value="accepted">Accepted — scan is legible and complete</option>
+ <option value="rejected">Rejected — rescan required</option>
+ </select>
+ </div>
+
+ <div>
+ <label class="block font-semibold text-ink-secondary mb-1">
+ Verification Note
+ </label>
+ <BaseInput
+ v-model="verifyNote"
+ placeholder="Optional note recorded in the audit ledger"
+ />
+ </div>
+
+ <div class="pt-2 flex justify-end gap-2">
+ <BaseButton variant="outline" size="sm" type="button" @click="showVerifyModal = false">Cancel</BaseButton>
+ <BaseButton
+ variant="primary"
+ size="sm"
+ type="submit"
+ :loading="isSubmittingVerify"
+ >
+ Save Verification
+ </BaseButton>
+ </div>
+ </form>
  </ModalDialog>
 
  <!-- Physical Disposal Modal -->
@@ -482,6 +546,31 @@ onMounted(() => {
  placeholder="e.g. WU/SENATE/DISP/2026/012"
  required
  />
+ </div>
+
+ <div>
+ <label class="block font-semibold text-ink-secondary mb-1">
+ Disposal Reason *
+ </label>
+ <BaseInput
+ v-model="disposalReason"
+ placeholder="Reason recorded in the custody and audit ledger"
+ required
+ />
+ </div>
+
+ <div v-if="selectedRecord?.retention_requirement === 'required'">
+ <label class="block font-semibold text-ink-secondary mb-1">
+ Executive Senate / Legal Counsel Disposal Order *
+ </label>
+ <BaseInput
+ v-model="senateDisposalOrder"
+ placeholder="Order identifier or official directive reference"
+ required
+ />
+ <p class="text-[11px] text-ink-muted mt-1">
+ This record requires physical retention. Disposal is only permitted with an explicit executive disposal order.
+ </p>
  </div>
 
  <div class="pt-2 flex justify-end gap-2">

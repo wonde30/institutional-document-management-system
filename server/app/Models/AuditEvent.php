@@ -13,6 +13,17 @@ class AuditEvent extends Model
     protected $table = 'audit_events';
     public $timestamps = false;
 
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            throw new \RuntimeException('Audit events are immutable and cannot be modified.');
+        });
+
+        static::deleting(function () {
+            throw new \RuntimeException('Audit events are permanent and cannot be deleted.');
+        });
+    }
+
     protected $fillable = [
         'actor_id',
         'action',

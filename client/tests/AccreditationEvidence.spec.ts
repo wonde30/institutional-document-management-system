@@ -184,7 +184,7 @@ describe('Accreditation Evidence View & Navigation Security', () => {
     expect(wrapper.text()).toContain('Export Dossier')
     expect(wrapper.text()).toContain('HERQA_STD_02')
     expect(wrapper.text()).toContain('Medical School Curriculum Revision')
-    expect(wrapper.text()).toContain('ACCEPTED')
+    expect(wrapper.text()).toContain('accepted') // lowercase in badge
     expect(wrapper.text()).toContain('Evaluate')
   })
 })

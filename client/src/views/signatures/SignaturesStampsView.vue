@@ -57,6 +57,15 @@ const verifyingId = ref<number | null>(null)
 const verificationModalOpen = ref(false)
 const selectedVerification = ref<SignatureVerificationItem | null>(null)
 
+// Apply Stamp Modal State
+const applyStampModalOpen = ref(false)
+const selectedStampForApplication = ref<StampDefinitionItem | null>(null)
+const applyStampForm = ref({
+ document_version_id: '',
+ reason: 'Official office seal application per administrative directive',
+})
+const isApplyingStamp = ref(false)
+
 const form = ref({
  document_version_id: '',
  signer_id: '',
@@ -125,8 +134,10 @@ const filteredStamps = computed(() => {
 })
 
 function openSignatureModal() {
+ const firstDoc = documents.value[0]
+ const firstVerId = firstDoc?.current_version?.id || firstDoc?.versions?.[0]?.id || firstDoc?.id || ''
  form.value = {
- document_version_id: documents.value[0]?.id ? String(documents.value[0].id) : '1',
+ document_version_id: firstVerId ? String(firstVerId) : '',
  signer_id: users.value[0]?.id ? String(users.value[0].id) : '',
  purpose: 'Official Institutional Endorsement',
  expires_at: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
@@ -198,20 +209,55 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
  verifyingId.value = null
  }
 }
+
+function openApplyStampModal(stamp: StampDefinitionItem) {
+ selectedStampForApplication.value = stamp
+ const firstDoc = documents.value[0]
+ const firstVerId = firstDoc?.current_version?.id || firstDoc?.versions?.[0]?.id || firstDoc?.id || ''
+ applyStampForm.value = {
+ document_version_id: firstVerId ? String(firstVerId) : '',
+ reason: `Official office seal application for ${stamp.name}`,
+ }
+ applyStampModalOpen.value = true
+}
+
+async function submitApplyStamp() {
+ if (!selectedStampForApplication.value || !applyStampForm.value.document_version_id || !applyStampForm.value.reason) {
+ toast.error('Validation Error', 'Please select a document version and provide a reason.')
+ return
+ }
+
+ isApplyingStamp.value = true
+ try {
+ const res = await institutionalApi.applyStamp({
+ document_version_id: Number(applyStampForm.value.document_version_id),
+ stamp_id: selectedStampForApplication.value.id,
+ reason: applyStampForm.value.reason,
+ })
+
+ if (res.data.success) {
+ toast.success('Seal Applied', 'Official office stamp successfully applied to document version.')
+ applyStampModalOpen.value = false
+ await fetchData()
+ }
+ } catch (err: any) {
+ toast.error('Application Failed', err.response?.data?.message || err.message || 'Failed to apply stamp.')
+ } finally {
+ isApplyingStamp.value = false
+ }
+}
 </script>
 
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- TRUST & IDENTITY INFRASTRUCTURE
- </div>
- <h1 class="text-2xl font-semibold text-ink-secondary tracking-tight mt-0.5">
- Signatures & Stamps
+ <h1 class="text-xl sm:text-2xl font-bold text-ink tracking-tight flex items-center gap-2.5">
+ <Stamp class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Signatures & Stamps</span>
  </h1>
- <p class="text-xs text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-0.5">
  Cryptographic signing requests, authorized signers, and departmental office seal registries.
  </p>
  </div>
@@ -360,14 +406,14 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
  </td>
  <td class="py-3 px-4">
  <div class="font-medium text-ink-secondary">
- {{ sig.document_version?.document?.title || 'Institutional Document' }}
+ {{ sig.document_version?.document?.title || 'Unnamed document' }}
  </div>
  <div class="text-[11px] text-ink-muted font-mono">
- {{ sig.document_version?.document?.reference_number || 'WU/DOC/2026/0001' }} · Revision {{ sig.document_version?.version_number || 1 }}
+ {{ sig.document_version?.document?.reference_number || '—' }}<span v-if="sig.document_version?.version_number"> · Revision {{ sig.document_version.version_number }}</span>
  </div>
  </td>
  <td class="py-3 px-4">
- <div class="font-medium text-ink-secondary">{{ sig.signer?.name || 'Assigned Signer' }}</div>
+ <div class="font-medium text-ink-secondary">{{ sig.signer?.name || '—' }}</div>
  <div class="text-[11px] text-ink-muted">{{ sig.signer?.email }}</div>
  </td>
  <td class="py-3 px-4 text-ink-muted">
@@ -449,7 +495,7 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
  <th class="py-3 px-4">Stamp Name</th>
  <th class="py-3 px-4">Designated Department / Unit</th>
  <th class="py-3 px-4">Active Status</th>
- <th class="py-3 px-4 text-right">Placement Policy</th>
+ <th class="py-3 px-4 text-right">Actions</th>
  </tr>
  </thead>
  <tbody class="divide-y divide-hairline">
@@ -476,8 +522,18 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
  {{ stamp.active ? 'Active Artwork' : 'Retired' }}
  </span>
  </td>
- <td class="py-3 px-4 text-right text-[11px] text-ink-muted">
- Authorized operator only
+ <td class="py-3 px-4 text-right">
+ <button
+ v-if="stamp.active"
+ type="button"
+ class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition cursor-pointer"
+ title="Apply this office seal to a document version"
+ @click="openApplyStampModal(stamp)"
+ >
+ <Stamp class="w-3.5 h-3.5" />
+ <span>Apply Seal</span>
+ </button>
+ <span v-else class="text-[11px] text-ink-muted">Retired</span>
  </td>
  </tr>
 
@@ -631,7 +687,7 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
  required
  class="w-full px-3 py-1.5 bg-surface border border-hairline rounded-md text-xs text-ink-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
  >
- <option v-for="d in documents" :key="d.id" :value="d.id">
+ <option v-for="d in documents" :key="d.id" :value="d.current_version?.id || d.versions?.[0]?.id || d.id">
  {{ d.reference_number }} — {{ d.title }}
  </option>
  </select>
@@ -777,6 +833,88 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
  Close Inspector
  </button>
  </div>
+ </div>
+ </div>
+
+ <!-- Modal: Apply Office Seal -->
+ <div
+ v-if="applyStampModalOpen && selectedStampForApplication"
+ class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 backdrop-blur-xs"
+ @click.self="applyStampModalOpen = false"
+ >
+ <div class="bg-surface border border-hairline rounded-lg max-w-lg w-full p-6 shadow-xl space-y-4">
+ <div class="flex items-center justify-between pb-3 border-b border-hairline">
+ <div class="flex items-center gap-2.5">
+ <Stamp class="w-5 h-5 text-primary" />
+ <div>
+ <h2 class="text-sm font-semibold text-ink-secondary">
+ Apply Official Office Seal
+ </h2>
+ <p class="text-[11px] text-ink-muted">
+ Affix authorized departmental seal onto document version
+ </p>
+ </div>
+ </div>
+ <button
+ type="button"
+ class="text-ink-muted hover:text-ink-secondary p-1"
+ @click="applyStampModalOpen = false"
+ >
+ <X class="w-4 h-4" />
+ </button>
+ </div>
+
+ <div class="p-3 bg-canvas-soft border border-hairline rounded-md text-xs space-y-1">
+ <div class="font-medium text-ink-secondary">Selected Stamp: {{ selectedStampForApplication.name }}</div>
+ <div class="text-ink-muted text-[11px]">Designated Unit: {{ selectedStampForApplication.unit?.name || 'Institutional Office' }}</div>
+ </div>
+
+ <form class="space-y-4" @submit.prevent="submitApplyStamp">
+ <div>
+ <label class="block text-xs font-semibold text-ink-secondary mb-1">
+ Target Document Version *
+ </label>
+ <select
+ v-model="applyStampForm.document_version_id"
+ required
+ class="w-full px-3 py-1.5 bg-surface border border-hairline rounded-md text-xs text-ink-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+ >
+ <option v-for="d in documents" :key="d.id" :value="d.current_version?.id || d.versions?.[0]?.id || d.id">
+ {{ d.reference_number }} — {{ d.title }}
+ </option>
+ </select>
+ </div>
+
+ <div>
+ <label class="block text-xs font-semibold text-ink-secondary mb-1">
+ Administrative Justification & Placement Reason *
+ </label>
+ <textarea
+ v-model="applyStampForm.reason"
+ required
+ rows="3"
+ placeholder="State official reason for seal application per institutional directive..."
+ class="w-full px-3 py-1.5 bg-surface border border-hairline rounded-md text-xs text-ink-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+ ></textarea>
+ </div>
+
+ <div class="flex items-center justify-end gap-2 pt-3 border-t border-hairline">
+ <button
+ type="button"
+ class="px-3 py-1.5 rounded-md border border-hairline text-xs font-medium text-ink-secondary hover:bg-canvas-soft"
+ @click="applyStampModalOpen = false"
+ >
+ Cancel
+ </button>
+ <button
+ type="submit"
+ :disabled="isApplyingStamp"
+ class="px-4 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-semibold transition disabled:opacity-50"
+ >
+ {{ isApplyingStamp ? 'Applying Seal...' : 'Affix Official Seal' }}
+ </button>
+ </div>
+ </form>
  </div>
  </div>
  </div>

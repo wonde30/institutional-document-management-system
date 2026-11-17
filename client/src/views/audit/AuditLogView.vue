@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { auditApi } from '@/api/client'
 import type { AuditEvent, PaginationMeta } from '@/types'
@@ -51,8 +51,7 @@ async function loadEvents(page = 1) {
  action: filterAction.value || undefined,
  target_type: filterTargetType.value || undefined,
  })
- const data = res.data.data
- events.value = Array.isArray(data) ? data : (data as any).data || []
+ events.value = res.data.data || []
  const meta = (res.data as any).meta
  if (meta) {
  pagination.value = {
@@ -91,16 +90,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Page Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="text-[11px] font-bold tracking-widest text-primary uppercase mb-1">
- ADMINISTRATION / AUDIT LOG
- </div>
- <h1 class="text-2xl font-bold tracking-tight text-ink-secondary flex items-center gap-2.5">
- <ShieldCheck class="w-7 h-7 text-primary" />
- Security Audit Ledger & Immutable Trails
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <ShieldCheck class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Security Audit Ledger & Immutable Trails</span>
  </h1>
- <p class="text-sm text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-0.5">
  Cryptographically referenced, immutable administrative event log tracking system actions across Wollo University DMS.
  </p>
  </div>
@@ -120,12 +116,12 @@ onMounted(() => {
  Filter Security Events
  </div>
 
- <div class="flex items-center gap-3 w-full sm:w-auto">
+ <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
  <input
  v-model="filterAction"
  type="text"
  placeholder="Filter by action (e.g. auth.login)..."
- class="text-xs rounded-lg border border-hairline bg-surface text-ink-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+ class="w-full sm:w-auto text-xs rounded-lg border border-hairline bg-surface text-ink-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
  @keyup.enter="loadEvents(1)"
  />
 
@@ -133,7 +129,7 @@ onMounted(() => {
  v-model="filterTargetType"
  type="text"
  placeholder="Filter by target (e.g. document)..."
- class="text-xs rounded-lg border border-hairline bg-surface text-ink-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+ class="w-full sm:w-auto text-xs rounded-lg border border-hairline bg-surface text-ink-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
  @keyup.enter="loadEvents(1)"
  />
 
@@ -157,7 +153,7 @@ onMounted(() => {
  >
  <template #cell-occurred_at="{ value }">
  <span class="font-mono text-xs text-ink-muted">
- {{ value ? new Date(value).toISOString().replace('T', ' ').slice(0, 19) : '—' }}
+ {{ value ? new Date(value).toISOString().replace('T', ' ').slice(0, 19) : 'â€”' }}
  </span>
  </template>
 
@@ -182,7 +178,7 @@ onMounted(() => {
 
  <template #cell-target="{ item }">
  <div class="text-xs">
- <span class="font-semibold text-ink-secondary uppercase text-[11px]">{{ item.target_type }}</span>
+ <span class="font-semibold text-ink-secondary text-[11px]">{{ item.target_type }}</span>
  <span class="font-mono text-ink-muted ml-1">#{{ item.target_id }}</span>
  </div>
  </template>
@@ -236,13 +232,13 @@ onMounted(() => {
 
  <div class="p-3 rounded-lg bg-canvas-soft border border-hairline">
  <span class="text-ink-muted block mb-1 font-medium">IP Address</span>
- <span class="font-mono text-ink-secondary">{{ selectedEvent.ip_address || '—' }}</span>
+ <span class="font-mono text-ink-secondary">{{ selectedEvent.ip_address || 'â€”' }}</span>
  </div>
 
  <div class="p-3 rounded-lg bg-canvas-soft border border-hairline">
  <span class="text-ink-muted block mb-1 font-medium">Request UUID</span>
  <span class="font-mono text-ink-secondary text-[10px] break-all">
- {{ selectedEvent.request_id || '—' }}
+ {{ selectedEvent.request_id || 'â€”' }}
  </span>
  </div>
  </div>
@@ -266,3 +262,4 @@ onMounted(() => {
  </ModalDialog>
  </div>
 </template>
+

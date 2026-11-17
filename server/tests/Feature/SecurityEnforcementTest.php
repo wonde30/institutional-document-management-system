@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Models\Document;
+use App\Models\AuthorizationScope;
+use App\Models\ConfidentialityLevel;
+use App\Models\CorrespondenceType;
 use App\Models\DocumentCategory;
 use App\Models\OrganizationUnit;
+use App\Models\Permission;
+use App\Models\Priority;
 use App\Models\UnitType;
 use App\Models\User;
+use App\Models\UserPermission;
 use Database\Seeders\BaselineReferenceVocabularySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,8 +21,11 @@ class SecurityEnforcementTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $staff;
+
     protected OrganizationUnit $unitA;
+
     protected OrganizationUnit $unitB;
 
     protected function setUp(): void
@@ -49,17 +57,22 @@ class SecurityEnforcementTest extends TestCase
 
     public function test_deactivated_account_is_blocked_with_403(): void
     {
-        $token = $this->authenticateAs($this->staff);
+        $this->authenticateAs($this->staff);
 
         // Active account succeeds
         $this->getJson('/api/v1/auth/me')
             ->assertStatus(200);
 
-        // Deactivate account and forget resolved guards
+        // Deactivate account. Do NOT call forgetGuards() here: the guard
+        // instance already holds the authenticated user, so the next request
+        // reaches ValidateAuthorizationVersion which checks the user's status
+        // and returns 403 Forbidden before serving any data.
+        // (Calling forgetGuards() would drop the guard instance so Sanctum
+        // cannot re-resolve the user from the array-driver session, yielding
+        // 401 instead — a correct block but a weaker verification.)
         $this->staff->update(['status' => 'inactive']);
-        $this->app['auth']->forgetGuards();
 
-        // Subsequent request fails closed with 403
+        // Subsequent request must be rejected with 403 by the account-status middleware.
         $response = $this->getJson('/api/v1/auth/me');
         $response->assertStatus(403)
             ->assertJsonPath('success', false);
@@ -84,10 +97,10 @@ class SecurityEnforcementTest extends TestCase
         ]);
 
         // Grant permission expired 5 minutes ago
-        $scope = \App\Models\AuthorizationScope::firstOrCreate(['kind' => 'global', 'unit_id' => null]);
-        $perm = \App\Models\Permission::where('code', 'documents.create')->first();
+        $scope = AuthorizationScope::firstOrCreate(['kind' => 'global', 'unit_id' => null]);
+        $perm = Permission::where('code', 'documents.create')->first();
 
-        \App\Models\UserPermission::create([
+        UserPermission::create([
             'user_id' => $restrictedUser->id,
             'permission_id' => $perm->id,
             'scope_id' => $scope->id,
@@ -104,7 +117,7 @@ class SecurityEnforcementTest extends TestCase
         $response = $this->postJson('/api/v1/documents', [
             'title' => 'Expired Grant Registration Attempt',
             'category_id' => DocumentCategory::first()->id,
-            'confidentiality_id' => \App\Models\ConfidentialityLevel::first()->id,
+            'confidentiality_id' => ConfidentialityLevel::first()->id,
             'owner_unit_id' => $this->unitA->id,
             'document_date' => '2026-10-29',
         ]);
@@ -149,10 +162,10 @@ class SecurityEnforcementTest extends TestCase
             ->postJson('/api/v1/correspondences', [
                 'title' => 'Cross Unit Rogue Correspondence',
                 'category_id' => DocumentCategory::first()->id,
-                'confidentiality_id' => \App\Models\ConfidentialityLevel::first()->id,
+                'confidentiality_id' => ConfidentialityLevel::first()->id,
                 'owner_unit_id' => $this->unitB->id,
-                'type_id' => \App\Models\CorrespondenceType::first()->id,
-                'priority_id' => \App\Models\Priority::first()->id,
+                'type_id' => CorrespondenceType::first()->id,
+                'priority_id' => Priority::first()->id,
                 'purpose_code' => 'rogue_entry',
                 'correspondence_date' => '2026-10-29',
             ]);

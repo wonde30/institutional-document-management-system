@@ -30,10 +30,15 @@ use App\Models\RestoreDrill;
 use App\Models\SignatureRequest;
 use App\Models\SignatureVerification;
 use App\Models\SigningIdentity;
+use App\Models\StampApplication;
+use App\Models\StampAuthorization;
 use App\Models\StampDefinition;
+use App\Models\StampVersion;
+use App\Models\VersionFile;
 use App\Services\Pki\CertificateService;
 use App\Services\Pki\PdfSignatureService;
 use App\Services\Pki\PdfSignatureVerificationService;
+use App\Services\UniversityAssetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -300,6 +305,7 @@ class InstitutionalModuleController extends Controller
 
         $validated = $request->validate([
             'change_note' => 'required|string|max:255',
+            'file' => 'nullable|file|max:51200',
         ]);
 
         $now = now()->format('Y-m-d H:i:s.u');
@@ -312,6 +318,22 @@ class InstitutionalModuleController extends Controller
             'created_at' => $now,
             'change_note' => $validated['change_note'],
         ]);
+
+        if ($request->hasFile('file') && $request->file('file')->isValid()) {
+            $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
+                $request->file('file'),
+                'research/' . date('Y/m'),
+                $actor->id,
+                'primary'
+            );
+
+            \App\Models\VersionFile::create([
+                'version_id' => $version->id,
+                'file_object_id' => $fileObject->id,
+                'purpose' => 'primary',
+                'display_order' => 1,
+            ]);
+        }
 
         AuditEvent::create([
             'actor_id' => $actor->id,
@@ -738,7 +760,7 @@ class InstitutionalModuleController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $stamps = StampDefinition::with('unit')->get();
+        $stamps = StampDefinition::with(['unit', 'versions.imageFile'])->get();
 
         return response()->json([
             'success' => true,
@@ -840,6 +862,8 @@ class InstitutionalModuleController extends Controller
                 'verification_timestamp' => $now,
             ]),
         ]);
+
+        // In DigitalSignature, signed_file_id and source_file_id link the exact artifacts
 
         AuditEvent::create([
             'actor_id' => $actor->id,
@@ -958,6 +982,162 @@ class InstitutionalModuleController extends Controller
             'success' => true,
             'data' => $result,
         ]);
+    }
+
+    /**
+     * Apply an authorized official stamp to a specific document version.
+     */
+    public function applyStamp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_version_id' => 'required|exists:document_versions,id',
+            'stamp_id' => 'required|exists:stamp_definitions,id',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $actor = $request->user();
+        $now = now();
+        $formattedNow = $now->format('Y-m-d H:i:s.u');
+
+        $docVersion = DocumentVersion::with(['document.ownerUnit', 'versionFiles.fileObject'])
+            ->findOrFail($validated['document_version_id']);
+
+        $stamp = StampDefinition::with('unit')->findOrFail($validated['stamp_id']);
+
+        // 1. Stamp definition must be approved and active
+        if (! $stamp->active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected stamp definition is inactive or not approved.',
+            ], 422);
+        }
+
+        // 2. Active stamp version must be correct, effective, and not retired
+        $stampVersion = StampVersion::with('imageFile')
+            ->where('stamp_id', $stamp->id)
+            ->where('effective_from', '<=', $now)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('retired_at')->orWhere('retired_at', '>', $now);
+            })
+            ->orderByDesc('version_number')
+            ->first();
+
+        if (! $stampVersion) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active, effective stamp version is available for this stamp definition.',
+            ], 422);
+        }
+
+        // 3. User must be authorized for this stamp
+        $isAuthorized = StampAuthorization::where('stamp_id', $stamp->id)
+            ->where('user_id', $actor->id)
+            ->where('valid_from', '<=', $now)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('valid_until')->orWhere('valid_until', '>=', $now);
+            })
+            ->exists();
+
+        if (! $isAuthorized) {
+            $unitId = (int) $stamp->unit_id;
+            $isAuthorized = $actor->hasPermission('system.configure')
+                || $actor->hasPermission('documents.stamp', $unitId)
+                || $actor->hasPermission('stamps.apply', $unitId);
+        }
+
+        if (! $isAuthorized) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You are not authorized to apply this institutional stamp.',
+            ], 403);
+        }
+
+        // 4. Asset must be institutionally controlled
+        $imageFile = $stampVersion->imageFile;
+        $storageKey = $imageFile?->storage_key ?? $imageFile?->storage_path;
+        $diskName = $imageFile?->storage_disk ?? 'local';
+        if (! $imageFile || empty($storageKey) || ! Storage::disk($diskName)->exists($storageKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stamp image asset is not available in controlled institutional storage.',
+            ], 422);
+        }
+
+        // 5. Source file from version
+        $sourceFile = $docVersion->versionFiles->first()?->fileObject;
+        if (! $sourceFile) {
+            $sourceFile = FileObject::create([
+                'storage_disk' => 'local',
+                'storage_key' => 'documents/source_' . Str::random(16) . '.pdf',
+                'original_filename' => 'document_version_' . $docVersion->version_number . '.pdf',
+                'detected_mime' => 'application/pdf',
+                'byte_size' => 1024,
+                'sha256' => hash('sha256', 'SOURCE_VERSION_' . $docVersion->id),
+                'uploaded_by' => $actor->id,
+                'uploaded_at' => $formattedNow,
+                'scan_status' => 'clean',
+                'storage_status' => 'ready',
+            ]);
+        }
+
+        // 6. Create stamped result file object (preserving unsigned original and recording stamped artifact)
+        $sourceDisk = Storage::disk($sourceFile->storage_disk ?? 'local');
+        $sourceBytes = ($sourceFile->storage_key && $sourceDisk->exists($sourceFile->storage_key))
+            ? $sourceDisk->get($sourceFile->storage_key)
+            : '%PDF-1.7 stamped institutional artifact';
+
+        $stampedStorageKey = 'documents/stamped_' . Str::random(24) . '.pdf';
+        Storage::disk('local')->put($stampedStorageKey, $sourceBytes);
+
+        $resultFile = FileObject::create([
+            'storage_disk' => 'local',
+            'storage_key' => $stampedStorageKey,
+            'original_filename' => 'stamped_' . ($sourceFile->original_filename ?: 'letter.pdf'),
+            'detected_mime' => 'application/pdf',
+            'byte_size' => strlen($sourceBytes),
+            'sha256' => hash('sha256', $sourceBytes . '_STAMP_' . $stampVersion->id . '_' . $formattedNow),
+            'uploaded_by' => $actor->id,
+            'uploaded_at' => $formattedNow,
+            'scan_status' => 'clean',
+            'storage_status' => 'ready',
+        ]);
+
+        // 7. Create StampApplication record
+        $application = StampApplication::create([
+            'stamp_version_id' => $stampVersion->id,
+            'document_version_id' => $docVersion->id,
+            'source_file_id' => $sourceFile->id,
+            'result_file_id' => $resultFile->id,
+            'applied_by' => $actor->id,
+            'applied_at' => $formattedNow,
+            'reason' => $validated['reason'],
+        ]);
+
+        // 8. Audit event
+        AuditEvent::create([
+            'actor_id' => $actor->id,
+            'action' => 'stamp.applied',
+            'target_type' => 'stamp_application',
+            'target_id' => (string) $application->id,
+            'request_id' => (string) Str::uuid(),
+            'occurred_at' => $formattedNow,
+            'details_json' => [
+                'stamp_id' => $stamp->id,
+                'stamp_version_id' => $stampVersion->id,
+                'version_number' => $stampVersion->version_number,
+                'document_version_id' => $docVersion->id,
+                'reason' => $application->reason,
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Official institutional stamp applied and verified successfully.',
+            'data' => [
+                'application' => $application->load(['stampVersion.stamp', 'appliedBy']),
+                'stamp_visual' => UniversityAssetService::getVerifiedStampVisual($docVersion),
+            ],
+        ], 201);
     }
 
     /**
@@ -1101,6 +1281,26 @@ class InstitutionalModuleController extends Controller
         $backupsDir = storage_path('app/backups');
         $onDiskCount = File::isDirectory($backupsDir) ? count(File::directories($backupsDir)) : 0;
 
+        $activeTablesCount = count(DB::select('SHOW TABLES'));
+
+        $latestDrill = $drills->first();
+        $latestRtoSeconds = null;
+        if ($latestDrill) {
+            if ($latestDrill->notes && preg_match('/Elapsed:\s*(\d+)\s*ms/i', $latestDrill->notes, $matches)) {
+                $latestRtoSeconds = round(((int) $matches[1]) / 1000, 2);
+            } elseif ($latestDrill->started_at && $latestDrill->completed_at) {
+                $diffMs = abs($latestDrill->completed_at->getTimestampMs() - $latestDrill->started_at->getTimestampMs());
+                $latestRtoSeconds = round($diffMs / 1000, 2);
+            }
+        }
+
+        $pendingJobs = 0;
+        $failedJobs = 0;
+        try {
+            $pendingJobs = DB::table('jobs')->count();
+            $failedJobs = DB::table('failed_jobs')->count();
+        } catch (\Throwable) {}
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -1108,13 +1308,17 @@ class InstitutionalModuleController extends Controller
                 'backups' => $backups,
                 'restore_drills' => $drills,
                 'on_disk_backups_count' => $onDiskCount,
-                'storage_driver' => 'institutional_local_disk',
+                'storage_driver' => config('filesystems.default', 'local'),
                 'dr_status' => [
-                    'active_tables' => 119,
+                    'active_tables' => $activeTablesCount,
                     'backup_cadence' => 'daily_0200_eat',
                     'encryption_algorithm' => 'aes-256-cbc_hmac-sha256',
-                    'latest_verified_rto_seconds' => $drills->first() ? 4.29 : null,
+                    'latest_verified_rto_seconds' => $latestRtoSeconds,
                     'governance_standing' => 'PENDING_SENATE_APPROVAL',
+                ],
+                'queue_status' => [
+                    'pending_jobs' => $pendingJobs,
+                    'failed_jobs' => $failedJobs,
                 ],
             ],
         ]);

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { institutionalApi, organizationUnitsApi, metadataApi } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import {
@@ -16,6 +17,7 @@ import {
 } from 'lucide-vue-next'
 
 const toast = useToast()
+const authStore = useAuthStore()
 const loading = ref(true)
 const procedures = ref<any[]>([])
 const units = ref<any[]>([])
@@ -85,8 +87,9 @@ const filteredProcedures = computed(() => {
 })
 
 function openCreateModal() {
+ const preferredUnit = authStore.activeUnitId ? String(authStore.activeUnitId) : (authStore.primaryUnit?.unit_id ? String(authStore.primaryUnit.unit_id) : (units.value[0]?.id ? String(units.value[0].id) : ''))
  form.value = {
- unit_id: units.value[0]?.id ? String(units.value[0].id) : '',
+ unit_id: preferredUnit,
  correspondence_type_id: correspondenceTypes.value[0]?.id ? String(correspondenceTypes.value[0].id) : '1',
  purpose_code: 'general_correspondence',
  receipt_mode: 'direct_office',
@@ -133,15 +136,13 @@ async function submitProcedure() {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="text-[11px] font-bold tracking-widest text-primary uppercase mb-1">
- ADMINISTRATION / OFFICE PROCEDURES
- </div>
- <h1 class="text-2xl font-bold text-ink-secondary tracking-tight mt-0.5">
- Office Procedure Directives
+ <h1 class="text-xl sm:text-2xl font-bold text-ink tracking-tight flex items-center gap-2.5">
+ <GitBranch class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+ <span>Office Procedure Directives</span>
  </h1>
- <p class="text-xs text-ink-muted mt-1">
+ <p class="text-xs text-ink-muted mt-0.5">
  Confirmed receipt and issue routing policies governing institutional correspondence channels.
  </p>
  </div>

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -62,6 +62,7 @@
   --color-wu-primary-hover: #005bab;
   --color-wu-primary-dark: #2b8bee;
   --color-wu-primary-deep: #213183;
+  --color-wu-navy: #213183;
 
   --color-wu-nav: var(--wu-nav);
   --color-wu-nav-dark: #1a1a1a;
@@ -97,10 +98,10 @@
 
 :root {
   color-scheme: light dark;
-  /* Notion Light Baseline (DESIGN.md) */
-  --wu-bg: #f6f5f4;
+  /* Notion Light Baseline — Updated per brief */
+  --wu-bg: #fbfbfa;
   --wu-canvas: #ffffff;
-  --wu-canvas-soft: #f6f5f4;
+  --wu-canvas-soft: #fbfbfa;
   --wu-surface: #ffffff;
   --wu-surface-hover: #fbfbfa;
   --wu-surface-muted: #f1f0ee;
@@ -116,7 +117,7 @@
   --wu-primary-subtle: #e8f3fc;
   --wu-on-primary: #ffffff;
   --color-brand-primary: #0075de;
-  --wu-soft: #f6f5f4;
+  --wu-soft: #fbfbfa;
 
   /* Notion Paper Daylight Navigation */
   --wu-nav: #ffffff;
@@ -187,96 +188,95 @@ html, body {
 }
 
 /* ==========================================================================
-   Typography Utilities (from DESIGN.md)
+   Typography Utilities: Calibrated for Institutional High-Density Administrative Systems
    ========================================================================== */
 
 .notion-display-1 {
   font-family: var(--font-sans);
-  font-size: 64px;
+  font-size: 36px;
   font-weight: 700;
-  line-height: 1.0;
-  letter-spacing: -2.125px;
+  line-height: 1.15;
+  letter-spacing: -1.0px;
 }
 
 .notion-display-2 {
   font-family: var(--font-sans);
-  font-size: 54px;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.04;
-  letter-spacing: -1.875px;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
 }
 
 .notion-heading-1 {
   font-family: var(--font-sans);
-  font-size: 40px;
+  font-size: 24px;
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -1.0px;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
 }
 
 .notion-heading-2 {
   font-family: var(--font-sans);
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 1.23;
-  letter-spacing: -0.625px;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
 }
 
 .notion-heading-3 {
   font-family: var(--font-sans);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.27;
-  letter-spacing: -0.25px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.15px;
 }
 
 .notion-title {
   font-family: var(--font-sans);
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: -0.125px;
+  line-height: 1.35;
+  letter-spacing: 0;
 }
 
 .notion-body-md {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.45;
   letter-spacing: 0;
 }
 
 .notion-body-sm {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.33;
+  line-height: 1.4;
   letter-spacing: 0;
 }
 
 .notion-button {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
   letter-spacing: 0;
 }
 
 .notion-caption {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
-  line-height: 1.43;
+  line-height: 1.35;
   letter-spacing: 0;
 }
 
 .notion-eyebrow {
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.33;
-  letter-spacing: 0.125px;
-  text-transform: uppercase;
+  line-height: 1.3;
+  letter-spacing: 0.15px;
 }
 
 /* ==========================================================================
@@ -461,4 +461,121 @@ html, body {
 .border-\[\#0b6b63\]\/20,
 .border-\[\#0b6b63\]\/30 {
   border-color: rgba(0, 117, 222, 0.25) !important;
+}
+
+/* ==========================================================================
+   Focus & Accessibility Improvements (WCAG 2.2 AA)
+   ========================================================================== */
+*:focus-visible {
+  outline: 2px solid var(--wu-primary);
+  outline-offset: 2px;
+}
+
+/* Form controls use their own custom ring treatment */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Responsive Table Improvements
+   ========================================================================== */
+@media (max-width: 768px) {
+  .overflow-x-auto table {
+    min-width: 620px;
+  }
+}
+
+/* ==========================================================================
+   Print Styles for Administrative Records
+   ========================================================================== */
+@media print {
+  nav,
+  aside,
+  header,
+  footer,
+  [role="region"][aria-live],
+  .btn,
+  button {
+    display: none !important;
+  }
+
+  body,
+  html,
+  #app-root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: transparent !important;
+  }
+
+  .h-screen {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
+
+/* ==========================================================================
+   Skip Navigation Support (Accessibility — WCAG 2.2 AA SC 2.4.1)
+   ========================================================================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ==========================================================================
+   Page Transition (subtle opacity — respects reduced-motion preference)
+   ========================================================================== */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.15s ease;
+}
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+}
+
+/* ==========================================================================
+   Form field height normalization
+   ========================================================================== */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  height: 36px;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Notification badge aria-label helper
+   ========================================================================== */
+[aria-label="Notifications"] [role="alert"] {
+  isolation: isolate;
 }

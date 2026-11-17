@@ -48,6 +48,27 @@ vi.mock('@/api/client', () => ({
     signatures: vi.fn().mockResolvedValue({ data: { success: true, data: { signatures: [] } } }),
     verifySignature: vi.fn().mockResolvedValue({ data: { success: true, data: { outcome: 'valid' } } }),
   },
+  organizationUnitsApi: {
+    unitTypes: vi.fn().mockResolvedValue({ data: { success: true, data: [] } }),
+  },
+  metadataApi: {
+    getAll: vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          document_categories: [],
+          confidentiality_levels: [],
+          correspondence_types: [],
+          priorities: [],
+          dispatch_methods: [],
+        },
+      },
+    }),
+    getCategories: vi.fn().mockResolvedValue({ data: { success: true, data: [] } }),
+    getConfidentialityLevels: vi.fn().mockResolvedValue({ data: { success: true, data: [] } }),
+    getCorrespondenceTypes: vi.fn().mockResolvedValue({ data: { success: true, data: [] } }),
+    getPriorities: vi.fn().mockResolvedValue({ data: { success: true, data: [] } }),
+  },
 }))
 
 describe('DocumentDetailView.vue', () => {

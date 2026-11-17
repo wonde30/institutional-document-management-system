@@ -104,7 +104,7 @@ function handleToggleFilters() {
  :placeholder="effectivePlaceholder"
  aria-label="Search"
  @input="onInput"
- class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-hairline bg-surface text-sm text-ink transition focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 shadow-xs"
+ class="w-full pl-10 pr-10 h-9 px-3 py-1.5 rounded-lg border border-hairline bg-surface text-sm text-ink transition focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 shadow-xs"
  />
 
  <button
@@ -124,7 +124,7 @@ function handleToggleFilters() {
  <select
  :value="filterValues[group.key] || ''"
  :aria-label="group.label"
- class="px-3 py-2.5 rounded-xl border border-hairline bg-surface text-xs font-semibold text-ink-secondary hover:bg-canvas-soft transition shadow-xs focus:ring-2 focus:ring-primary/20 focus:outline-hidden cursor-pointer"
+ class="px-3 h-9 px-3 py-1.5 rounded-lg border border-hairline bg-surface text-xs font-semibold text-ink-secondary hover:bg-canvas-soft transition shadow-xs focus:ring-2 focus:ring-primary/20 focus:outline-hidden cursor-pointer"
  @change="handleFilterChange(group.key, ($event.target as HTMLSelectElement).value)"
  >
  <option
@@ -145,7 +145,7 @@ function handleToggleFilters() {
  <button
  v-if="showFilterButton"
  type="button"
- class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-hairline bg-surface text-xs font-semibold text-ink-secondary hover:bg-canvas-soft transition shadow-xs cursor-pointer"
+ class="inline-flex items-center gap-2 px-3.5 h-9 px-3 py-1.5 rounded-lg border border-hairline bg-surface text-xs font-semibold text-ink-secondary hover:bg-canvas-soft transition shadow-xs cursor-pointer"
  @click="handleToggleFilters"
  >
  <Filter class="w-3.5 h-3.5" />

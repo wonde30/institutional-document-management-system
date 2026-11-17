@@ -38,4 +38,9 @@ class LegalHold extends Model
     {
         return $this->belongsTo(User::class, 'released_by');
     }
+
+    public function documents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Document::class, 'legal_hold_documents', 'hold_id', 'document_id');
+    }
 }

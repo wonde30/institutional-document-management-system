@@ -50,4 +50,9 @@ class ArchiveEntry extends Model
     {
         return $this->belongsTo(User::class, 'archived_by');
     }
+
+    public function dispositionRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DispositionRequest::class, 'archive_entry_id');
+    }
 }

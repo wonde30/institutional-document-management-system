@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { correspondenceApi, organizationUnitsApi, usersApi } from '@/api/client'
 import { useMetadataStore } from '@/stores/metadata'
 import type { Correspondence, OrganizationUnit, User, PaginationMeta } from '@/types'
@@ -29,9 +29,13 @@ import {
  AlertCircle,
  Reply,
  CheckCheck,
+ Eye,
+ FileText,
+ Upload,
 } from 'lucide-vue-next'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const metaStore = useMetadataStore()
 const toast = useToast()
@@ -92,8 +96,13 @@ const newCorr = ref({
  external_reference: '',
  correspondence_date: new Date().toISOString().split('T')[0],
  first_receiving_unit_id: '' as number | '',
+ sender_type: 'external' as 'internal' | 'external',
  sender_unit_id: '' as number | '',
+ sender_external_name: '',
+ to_type: 'internal' as 'internal' | 'external',
  to_unit_id: '' as number | '',
+ to_external_name: '',
+ related_document_id: '' as number | '',
 })
 const isSubmittingCreate = ref(false)
 
@@ -106,6 +115,91 @@ const movementForm = ref({
 })
 const isSubmittingMovement = ref(false)
 
+// File attachment for registration
+const newCorrFile = ref<File | null>(null)
+const newCorrFileName = ref('')
+
+function handleCorrFileChange(event: Event) {
+ const target = event.target as HTMLInputElement
+ if (target.files && target.files[0]) {
+ newCorrFile.value = target.files[0]
+ newCorrFileName.value = target.files[0].name
+ }
+}
+
+// Quick View / Inspect Modal State
+const inspectingCorr = ref<Correspondence | null>(null)
+const showInspectModal = ref(false)
+
+function openInspectModal(item: Correspondence) {
+ inspectingCorr.value = item
+ showInspectModal.value = true
+}
+
+function getSenderName(corr: Correspondence): string {
+ const senderPart = corr.participants?.find(p => p.participation_type === 'sender')
+ if (senderPart?.unit?.name) return senderPart.unit.name
+ if (senderPart?.user?.name) return senderPart.user.name
+ if (senderPart?.external_party?.name) return senderPart.external_party.name
+ if (corr.type?.code === 'outgoing') return corr.document?.owner_unit?.name || 'Wollo University'
+ return corr.external_reference ? `Ext: ${corr.external_reference}` : 'External Sender'
+}
+
+function getRecipientName(corr: Correspondence): string {
+ const toPart = corr.participants?.find(p => p.participation_type === 'to')
+ if (toPart?.unit?.name) return toPart.unit.name
+ if (toPart?.user?.name) return toPart.user.name
+ if (toPart?.external_party?.name) return toPart.external_party.name
+ if (corr.first_receiving_unit?.name) return corr.first_receiving_unit.name
+ return 'Designated Office'
+}
+
+function getRoutingStatus(corr: Correspondence): { text: string; class: string } {
+  if (corr.is_closed || corr.document?.lifecycle === 'retired' || corr.lifecycle === 'closed') {
+    return {
+      text: 'Closed',
+      class: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700',
+    }
+  }
+
+  if (corr.dispatches && corr.dispatches.length > 0) {
+    const allDelivered = corr.dispatches.every(d => d.has_delivery_evidence || !!d.evidence_file_id)
+    if (allDelivered) {
+      return {
+        text: 'Delivered (Proof Verified)',
+        class: 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/30',
+      }
+    }
+    const disp = corr.dispatches[0]
+    return {
+      text: 'Dispatched (Pending Proof)',
+      class: 'bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border-[#dd5b00]/30',
+    }
+  }
+
+  if (corr.type?.code === 'outgoing' || corr.is_outgoing) {
+    return {
+      text: 'Pending Dispatch',
+      class: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300/40',
+    }
+  }
+ if (corr.movements && corr.movements.length > 0) {
+ const latest = corr.movements[corr.movements.length - 1]
+ if (latest.receipt?.acknowledged_at) {
+ return { text: `Received: ${latest.to_unit?.name || 'Office'}`, class: 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/20' }
+ }
+ return { text: `In transit to ${latest.to_unit?.name || 'Office'}`, class: 'bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border-[#dd5b00]/20' }
+ }
+ if (corr.assignments && corr.assignments.length > 0) {
+ const assignedUser = corr.assignments[0].assigned_user?.name || 'Officer'
+ return { text: `Assigned: ${assignedUser}`, class: 'bg-primary-subtle text-primary border-primary/20' }
+ }
+ if (corr.received_at) {
+ return { text: 'Logged & Received', class: 'bg-primary-subtle text-primary border-primary/20' }
+ }
+ return { text: 'Registered', class: 'bg-surface-muted text-ink-muted border-hairline' }
+}
+
 // Assignment Form Model
 const assignmentForm = ref({
  assigned_user_id: '' as number | '',
@@ -115,43 +209,72 @@ const assignmentForm = ref({
 })
 const isSubmittingAssignment = ref(false)
 
+const sortBy = ref('registered_at')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+
 const columns: TableColumn[] = [
- { key: 'reference', label: 'Reference #' },
+ { key: 'reference', label: 'Reference #', sortable: true },
  { key: 'title', label: 'Title / Subject' },
+ { key: 'sender_recipient', label: 'Sender & Recipient' },
  { key: 'type', label: 'Type' },
  { key: 'priority', label: 'Priority' },
- { key: 'unit', label: 'First Receipt Unit' },
- { key: 'date', label: 'Letter Date' },
+ { key: 'status', label: 'Routing & Receipt' },
+ { key: 'date', label: 'Letter Date', sortable: true },
 ]
 
+/**
+ * The unit the correspondence is registered against by default.
+ *
+ * The active organizational unit is used when the server published one. The
+ * unit is never invented: when no unit can be determined the field stays
+ * empty and the operator chooses it.
+ */
+function defaultOwnerUnitId(): number | '' {
+ const activeUnitId = authStore.activeUnitId
+ if (activeUnitId !== null) return activeUnitId
+ const primaryUnitId = authStore.primaryUnit?.unit_id
+ if (primaryUnitId) return primaryUnitId
+ return units.value[0]?.id ?? ''
+}
+
 async function loadCatalogs() {
- try {
- const [uRes, usrRes] = await Promise.all([
+ // The two catalogues are loaded independently. A caller may reach the
+ // registry without the capability to list accounts, and a failure of one
+ // catalogue must not empty the other.
+ const [unitsResult, usersResult] = await Promise.allSettled([
  organizationUnitsApi.list({ per_page: 100 }),
  usersApi.list({ per_page: 100 }),
  ])
- units.value = (uRes.data as any).data || []
- users.value = (usrRes.data as any).data || []
 
- if (units.value.length > 0) {
-  const userUnitId = authStore.primaryUnit?.unit_id || units.value.find(u => u.code === 'REG')?.id || units.value[0]?.id || 2
-  newCorr.value.owner_unit_id = userUnitId
-  newCorr.value.first_receiving_unit_id = userUnitId
+ if (unitsResult.status === 'fulfilled') {
+ units.value = unitsResult.value.data.data || []
+ } else {
+ console.error('Failed to load the organizational unit catalogue', unitsResult.reason)
  }
+
+ if (usersResult.status === 'fulfilled') {
+ users.value = usersResult.value.data.data || []
+ } else {
+ console.error('Failed to load the account directory', usersResult.reason)
+ }
+
+ const ownerUnitId = defaultOwnerUnitId()
+ if (ownerUnitId !== '') {
+ newCorr.value.owner_unit_id = ownerUnitId
+ newCorr.value.first_receiving_unit_id = ownerUnitId
+ }
+
  if (metaStore.categories.length > 0 && !newCorr.value.category_id) {
-  newCorr.value.category_id = metaStore.categories[0].id
+ newCorr.value.category_id = metaStore.categories[0].id
  }
  if (metaStore.confidentialityLevels.length > 0 && !newCorr.value.confidentiality_id) {
-  newCorr.value.confidentiality_id = metaStore.confidentialityLevels[0].id
+ newCorr.value.confidentiality_id = metaStore.confidentialityLevels[0].id
  }
  if (metaStore.correspondenceTypes.length > 0 && !newCorr.value.type_id) {
-  newCorr.value.type_id = metaStore.correspondenceTypes[0].id
+ newCorr.value.type_id = metaStore.correspondenceTypes[0].id
  }
  if (metaStore.priorities.length > 0 && !newCorr.value.priority_id) {
-  newCorr.value.priority_id = metaStore.priorities[0].id
- }
- } catch (err) {
- console.error('Failed to load catalogs', err)
+ newCorr.value.priority_id = metaStore.priorities[0].id
  }
 }
 
@@ -161,6 +284,8 @@ async function loadCorrespondences(page = 1) {
  const params: Record<string, unknown> = {
  page,
  search: searchQuery.value || undefined,
+ sort_by: sortBy.value,
+ sort_order: sortOrder.value,
  }
 
  if (selectedTab.value !== 'all') {
@@ -182,22 +307,40 @@ async function loadCorrespondences(page = 1) {
  }
 }
 
+function handleSort(columnKey: string) {
+ const backendKey = columnKey === 'date' ? 'correspondence_date' : columnKey === 'reference' ? 'external_reference' : 'registered_at'
+ if (sortBy.value === backendKey) {
+ sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+ } else {
+ sortBy.value = backendKey
+ sortOrder.value = 'asc'
+ }
+ loadCorrespondences(1)
+}
+
 function openCreateModal() {
- const userUnitId = authStore.primaryUnit?.unit_id || units.value.find(u => u.code === 'REG')?.id || units.value[0]?.id || 2
+ const ownerUnitId = defaultOwnerUnitId()
+ newCorrFile.value = null
+ newCorrFileName.value = ''
  newCorr.value = {
-  title: '',
-  summary: '',
-  category_id: metaStore.categories[0]?.id || 1,
-  confidentiality_id: metaStore.confidentialityLevels[0]?.id || 1,
-  owner_unit_id: userUnitId,
-  type_id: metaStore.correspondenceTypes[0]?.id || 1,
-  priority_id: metaStore.priorities[0]?.id || 1,
-  purpose_code: 'official_communication',
-  external_reference: '',
-  correspondence_date: new Date().toISOString().split('T')[0],
-  first_receiving_unit_id: userUnitId,
-  sender_unit_id: '' as number | '',
-  to_unit_id: '' as number | '',
+ title: '',
+ summary: '',
+ category_id: metaStore.categories[0]?.id ?? '',
+ confidentiality_id: metaStore.confidentialityLevels[0]?.id ?? '',
+ owner_unit_id: ownerUnitId,
+ type_id: metaStore.correspondenceTypes[0]?.id ?? '',
+ priority_id: metaStore.priorities[0]?.id ?? '',
+ purpose_code: 'official_communication',
+ external_reference: '',
+ correspondence_date: new Date().toISOString().split('T')[0],
+ first_receiving_unit_id: ownerUnitId,
+ sender_type: 'external',
+ sender_unit_id: '' as number | '',
+ sender_external_name: '',
+ to_type: 'internal',
+ to_unit_id: ownerUnitId,
+ to_external_name: '',
+ related_document_id: '' as number | '',
  }
  showCreateModal.value = true
 }
@@ -233,21 +376,45 @@ async function submitCreateCorrespondence() {
  try {
  const ownerId = newCorr.value.owner_unit_id
  ? Number(newCorr.value.owner_unit_id)
- : (newCorr.value.first_receiving_unit_id ? Number(newCorr.value.first_receiving_unit_id) : (units.value[0]?.id || 1))
+ : newCorr.value.first_receiving_unit_id
+ ? Number(newCorr.value.first_receiving_unit_id)
+ : null
 
- const payload = {
- ...newCorr.value,
- category_id: Number(newCorr.value.category_id),
- confidentiality_id: Number(newCorr.value.confidentiality_id),
- owner_unit_id: ownerId,
- type_id: Number(newCorr.value.type_id),
- priority_id: Number(newCorr.value.priority_id),
- first_receiving_unit_id: newCorr.value.first_receiving_unit_id ? Number(newCorr.value.first_receiving_unit_id) : null,
- sender_unit_id: newCorr.value.sender_unit_id ? Number(newCorr.value.sender_unit_id) : null,
- to_unit_id: newCorr.value.to_unit_id ? Number(newCorr.value.to_unit_id) : null,
+ if (!ownerId) {
+ toast.error('Select the accountable unit for this correspondence.')
+ return
  }
 
- await correspondenceApi.create(payload)
+ const formData = new FormData()
+ formData.append('title', newCorr.value.title.trim())
+ if (newCorr.value.summary) formData.append('summary', newCorr.value.summary.trim())
+ formData.append('category_id', String(newCorr.value.category_id))
+ formData.append('confidentiality_id', String(newCorr.value.confidentiality_id))
+ formData.append('owner_unit_id', String(ownerId))
+ formData.append('type_id', String(newCorr.value.type_id))
+ formData.append('priority_id', String(newCorr.value.priority_id))
+ formData.append('purpose_code', newCorr.value.purpose_code)
+ formData.append('correspondence_date', newCorr.value.correspondence_date)
+ if (newCorr.value.external_reference) formData.append('external_reference', newCorr.value.external_reference.trim())
+ if (newCorr.value.first_receiving_unit_id) formData.append('first_receiving_unit_id', String(newCorr.value.first_receiving_unit_id))
+ if (newCorr.value.sender_type === 'internal' && newCorr.value.sender_unit_id) {
+ formData.append('sender_unit_id', String(newCorr.value.sender_unit_id))
+ } else if (newCorr.value.sender_type === 'external' && newCorr.value.sender_external_name) {
+ formData.append('sender_external_name', newCorr.value.sender_external_name.trim())
+ }
+ if (newCorr.value.to_type === 'internal' && newCorr.value.to_unit_id) {
+ formData.append('to_unit_id', String(newCorr.value.to_unit_id))
+ } else if (newCorr.value.to_type === 'external' && newCorr.value.to_external_name) {
+ formData.append('to_external_name', newCorr.value.to_external_name.trim())
+ }
+ if (newCorr.value.related_document_id) {
+ formData.append('related_document_id', String(newCorr.value.related_document_id))
+ }
+ if (newCorrFile.value) {
+ formData.append('file', newCorrFile.value)
+ }
+
+ await correspondenceApi.create(formData)
  toast.success('Correspondence logged successfully.')
  showCreateModal.value = false
  loadCorrespondences(1)
@@ -310,7 +477,7 @@ async function submitAssignment() {
 
 function getPendingMovementForUser(item: Correspondence) {
  if (!item.movements || !item.movements.length) return null
- const userUnitId = authStore.primaryUnit?.unit_id
+ const userUnitId = authStore.activeUnitId || authStore.primaryUnit?.unit_id
  const isSuper = authStore.isSuperAdmin
  return item.movements.find((m: any) => {
  const isTarget = isSuper || (userUnitId && m.to_unit_id === userUnitId)
@@ -366,7 +533,7 @@ function openLinkedResponseModal(item: Correspondence) {
  summary: `Official response to incoming letter ${item.document?.reference_number || item.external_reference || ''}`,
  category_id: item.document?.category_id || metaStore.categories[0]?.id || '',
  confidentiality_id: item.document?.confidentiality_id || metaStore.confidentialityLevels[0]?.id || '',
- owner_unit_id: item.first_receiving_unit_id || item.document?.owner_unit_id || '',
+ owner_unit_id: item.first_receiving_unit_id || item.document?.owner_unit_id || authStore.activeUnitId || authStore.primaryUnit?.unit_id || '',
  priority_id: item.priority_id || metaStore.priorities[0]?.id || '',
  purpose_code: 'official_response',
  correspondence_date: new Date().toISOString().split('T')[0],
@@ -406,6 +573,33 @@ async function acknowledgeMovement(corrId: number, movementId: number) {
  }
 }
 
+const showCloseModal = ref(false)
+const closeReason = ref('')
+const isSubmittingClose = ref(false)
+
+function openCloseModal(item: Correspondence) {
+  activeCorrespondence.value = item
+  closeReason.value = ''
+  showCloseModal.value = true
+}
+
+async function submitCloseCorrespondence() {
+  if (!activeCorrespondence.value) return
+  isSubmittingClose.value = true
+  try {
+    await correspondenceApi.close(activeCorrespondence.value.id, {
+      reason: closeReason.value.trim() || undefined,
+    })
+    toast.success('Correspondence item formally closed.')
+    showCloseModal.value = false
+    await loadCorrespondences(pagination.value.current_page)
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || 'Failed to close correspondence.')
+  } finally {
+    isSubmittingClose.value = false
+  }
+}
+
 function syncTabFromRoute() {
  if (route.path.includes('/incoming')) selectedTab.value = 'incoming'
  else if (route.path.includes('/outgoing')) selectedTab.value = 'outgoing'
@@ -430,18 +624,15 @@ onMounted(async () => {
 </script>
 
 <template>
- <div class="space-y-6">
+ <div class="space-y-5">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-5">
+ <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <div class="notion-eyebrow text-primary mb-1">
- RECORDS & ARCHIVES / CORRESPONDENCE REGISTRY
- </div>
- <h1 class="notion-heading-2 text-ink flex items-center gap-2.5">
- <Mail class="w-6 h-6 text-primary" />
+ <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <Mail class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
  <span>Correspondence & Inter-Office Registry</span>
  </h1>
- <p class="mt-1 notion-body-sm text-ink-muted">
+ <p class="mt-0.5 text-xs text-ink-muted">
  Dual-path incoming letter logging, version-bound outgoing dispatch, and inter-office memoranda tracking.
  </p>
  </div>
@@ -451,18 +642,20 @@ onMounted(async () => {
  v-if="authStore.hasPermission('correspondence.register')"
  variant="primary"
  size="sm"
- class="bg-primary hover:bg-primary-hover text-white shadow-xs"
  @click="openCreateModal"
  >
- <Plus class="w-4 h-4 mr-1.5" />
+ <Plus class="w-3.5 h-3.5 mr-1" />
  <span>Log Correspondence</span>
  </BaseButton>
  </div>
  </div>
 
  <!-- Type Tabs Bar -->
- <div class="flex items-center gap-2 border-b border-hairline pb-px text-xs">
+ <div class="flex items-center gap-2 border-b border-hairline pb-px text-xs" role="tablist" aria-label="Correspondence types">
  <button
+ type="button"
+ role="tab"
+ :aria-selected="selectedTab === tab.key"
  v-for="tab in [
  { key: 'all', label: 'All Records' },
  { key: 'incoming', label: 'Incoming Letters' },
@@ -481,7 +674,7 @@ onMounted(async () => {
  </div>
 
  <!-- Search Bar -->
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-3 sm:p-4 shadow-2xs">
  <SearchFilterBar
  v-model="searchQuery"
  placeholder="Search correspondence by reference, subject, or external sender..."
@@ -494,8 +687,12 @@ onMounted(async () => {
  :columns="columns"
  :items="correspondences"
  :loading="isLoading"
+ :sort-by="sortBy === 'correspondence_date' ? 'date' : sortBy === 'external_reference' ? 'reference' : sortBy"
+ :sort-order="sortOrder"
  empty-title="No correspondence records found"
  empty-description="No records match your active query or selected category filter."
+ @sort="handleSort"
+ @row-click="(row) => row.document_id && router.push(`/documents/${row.document_id}`)"
  >
  <template #cell-reference="{ item }">
  <div class="space-y-0.5">
@@ -514,6 +711,17 @@ onMounted(async () => {
  </div>
  </template>
 
+ <template #cell-sender_recipient="{ item }">
+ <div class="space-y-0.5 text-xs">
+ <div class="font-medium text-ink truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getSenderName(item)">
+ <span class="text-[10px] uppercase font-bold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
+ </div>
+ <div class="text-[11px] text-ink-muted truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getRecipientName(item)">
+ <span class="text-[10px] uppercase font-bold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
+ </div>
+ </div>
+ </template>
+
  <template #cell-type="{ item }">
  <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
  {{ item.type?.name }}
@@ -524,8 +732,17 @@ onMounted(async () => {
  <PriorityBadge :priority="item.priority?.code || item.priority?.name" />
  </template>
 
+ <template #cell-status="{ item }">
+ <span
+ class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border inline-block"
+ :class="getRoutingStatus(item).class"
+ >
+ {{ getRoutingStatus(item).text }}
+ </span>
+ </template>
+
  <template #cell-unit="{ item }">
- <span class="text-xs text-ink-muted truncate max-w-[140px] inline-block">
+ <span class="text-xs text-ink-muted truncate max-w-[160px] sm:max-w-[220px] lg:max-w-xs inline-block" :title="item.first_receiving_unit?.name">
  {{ item.first_receiving_unit?.name || 'Wollo University' }}
  </span>
  </template>
@@ -537,13 +754,13 @@ onMounted(async () => {
  </template>
 
  <template #actions="{ item }">
- <div class="flex items-center justify-end gap-1.5" @click.stop>
+ <div class="flex items-center justify-end gap-1.5 flex-wrap" @click.stop>
  <!-- Acknowledge Movement Button -->
  <BaseButton
  v-if="getPendingMovementForUser(item)"
  variant="outline"
  size="sm"
- class="h-7 text-[11px] px-2 text-emerald-700 dark:text-emerald-300 border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
+ class="h-7 text-[11px] px-2 bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/30 hover:bg-[#d6f0dc] dark:hover:bg-[#1b3d27]"
  title="Acknowledge receipt of forwarded letter"
  @click="handleAcknowledgeMovement(item)"
  >
@@ -595,6 +812,28 @@ onMounted(async () => {
  >
  <Reply class="w-3.5 h-3.5 mr-1" /> Reply
  </BaseButton>
+
+ <!-- Close Correspondence Button -->
+ <BaseButton
+ variant="outline"
+ size="sm"
+ class="h-7 text-[11px] px-2 text-rose-600 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+ title="Formally close correspondence item"
+ @click="openCloseModal(item)"
+ >
+ <CheckCircle2 class="w-3.5 h-3.5 mr-1" /> Close
+ </BaseButton>
+
+ <!-- View Details Button -->
+ <BaseButton
+ variant="ghost"
+ size="sm"
+ class="h-7 text-[11px] px-2 text-ink-muted hover:text-ink-secondary"
+ title="Inspect correspondence trail and directives"
+ @click="openInspectModal(item)"
+ >
+ <Eye class="w-3.5 h-3.5 mr-1" /> View
+ </BaseButton>
  </div>
  </template>
  </DataTable>
@@ -602,10 +841,7 @@ onMounted(async () => {
  <!-- Pagination -->
  <Pagination
  v-if="pagination.total > 0"
- :current-page="pagination.current_page"
- :last-page="pagination.last_page"
- :total-items="pagination.total"
- :items-per-page="15"
+ :meta="pagination"
  @page-change="loadCorrespondences"
  />
 
@@ -617,7 +853,7 @@ onMounted(async () => {
  >
  <form @submit.prevent="submitCreateCorrespondence" class="space-y-4">
  <div>
- <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
  Subject / Title *
  </label>
  <BaseInput v-model="newCorr.title" placeholder="e.g. Budget transfer notice from Ministry of Education" required />
@@ -656,6 +892,60 @@ onMounted(async () => {
  </div>
 
  <div class="grid grid-cols-2 gap-3">
+ <div>
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ Originating Sender
+ </label>
+ <div class="flex items-center gap-2 mb-1.5 text-xs">
+ <label class="inline-flex items-center gap-1 cursor-pointer">
+ <input type="radio" value="external" v-model="newCorr.sender_type" class="text-primary" />
+ <span>External Org</span>
+ </label>
+ <label class="inline-flex items-center gap-1 cursor-pointer">
+ <input type="radio" value="internal" v-model="newCorr.sender_type" class="text-primary" />
+ <span>Internal Unit</span>
+ </label>
+ </div>
+ <BaseInput
+ v-if="newCorr.sender_type === 'external'"
+ v-model="newCorr.sender_external_name"
+ placeholder="e.g. Ministry of Education"
+ />
+ <BaseSelect
+ v-else
+ v-model="newCorr.sender_unit_id"
+ :options="units.map((u) => ({ label: u.name, value: u.id }))"
+ />
+ </div>
+
+ <div>
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ Destination Recipient
+ </label>
+ <div class="flex items-center gap-2 mb-1.5 text-xs">
+ <label class="inline-flex items-center gap-1 cursor-pointer">
+ <input type="radio" value="internal" v-model="newCorr.to_type" class="text-primary" />
+ <span>Internal Unit</span>
+ </label>
+ <label class="inline-flex items-center gap-1 cursor-pointer">
+ <input type="radio" value="external" v-model="newCorr.to_type" class="text-primary" />
+ <span>External Org</span>
+ </label>
+ </div>
+ <BaseSelect
+ v-if="newCorr.to_type === 'internal'"
+ v-model="newCorr.to_unit_id"
+ :options="units.map((u) => ({ label: u.name, value: u.id }))"
+ />
+ <BaseInput
+ v-else
+ v-model="newCorr.to_external_name"
+ placeholder="e.g. Commercial Bank of Ethiopia"
+ />
+ </div>
+ </div>
+
+ <div class="grid grid-cols-2 gap-3">
  <BaseSelect
  v-model="newCorr.first_receiving_unit_id"
  label="First Receiving Unit *"
@@ -664,7 +954,7 @@ onMounted(async () => {
  />
 
  <div>
- <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
  Letter Date *
  </label>
  <BaseInput v-model="newCorr.correspondence_date" type="date" required />
@@ -672,15 +962,30 @@ onMounted(async () => {
  </div>
 
  <div>
- <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
  External Reference Number
  </label>
  <BaseInput v-model="newCorr.external_reference" placeholder="e.g. MOE/FIN/2026/099" />
  </div>
 
+ <div>
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ Digital File / Scanned Copy (PDF, DOCX)
+ </label>
+ <input
+ type="file"
+ accept=".pdf,.docx,.doc,.tiff,.png,.jpg"
+ class="w-full text-xs text-ink-secondary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-subtle file:text-primary dark:file:bg-[#172c42] dark:file:text-[#62aef0] hover:file:bg-[#d4e8fa] cursor-pointer"
+ @change="handleCorrFileChange"
+ />
+ <div v-if="newCorrFileName" class="text-[11px] text-ink-muted mt-1 font-mono">
+ Selected: {{ newCorrFileName }}
+ </div>
+ </div>
+
  <div class="flex justify-end gap-2 pt-2">
  <BaseButton variant="ghost" size="sm" type="button" @click="showCreateModal = false">Cancel</BaseButton>
- <BaseButton variant="primary" size="sm" type="submit" :loading="isSubmittingCreate" @click="submitCreateCorrespondence">Commit Correspondence</BaseButton>
+ <BaseButton variant="primary" size="sm" type="submit" :loading="isSubmittingCreate">Commit Correspondence</BaseButton>
  </div>
  </form>
  </ModalDialog>
@@ -707,7 +1012,7 @@ onMounted(async () => {
  />
 
  <div>
- <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
  Handling Directive / Instruction
  </label>
  <BaseTextarea v-model="movementForm.instruction" rows="2" placeholder="e.g. For necessary departmental review and response..." />
@@ -715,7 +1020,7 @@ onMounted(async () => {
 
  <div class="flex justify-end gap-2 pt-2">
  <BaseButton variant="ghost" size="sm" type="button" @click="showMovementModal = false">Cancel</BaseButton>
- <BaseButton variant="primary" size="sm" type="submit" :loading="isSubmittingMovement" @click="submitMovement">Confirm Forwarding</BaseButton>
+ <BaseButton variant="primary" size="sm" type="submit" :loading="isSubmittingMovement">Confirm Forwarding</BaseButton>
  </div>
  </form>
  </ModalDialog>
@@ -742,7 +1047,7 @@ onMounted(async () => {
  />
 
  <div>
- <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+ <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
  Assignment Directive *
  </label>
  <BaseTextarea v-model="assignmentForm.instruction" rows="3" placeholder="Specific action required by the officer..." required />
@@ -750,7 +1055,7 @@ onMounted(async () => {
 
  <div class="flex justify-end gap-2 pt-2">
  <BaseButton variant="ghost" size="sm" type="button" @click="showAssignmentModal = false">Cancel</BaseButton>
- <BaseButton variant="primary" size="sm" type="submit" :loading="isSubmittingAssignment" @click="submitAssignment">Assign Directive</BaseButton>
+ <BaseButton variant="primary" size="sm" type="submit" :loading="isSubmittingAssignment">Assign Directive</BaseButton>
  </div>
  </form>
  </ModalDialog>
@@ -895,6 +1200,214 @@ onMounted(async () => {
  </BaseButton>
  </div>
  </form>
+ </ModalDialog>
+
+ <!-- Quick Inspection Modal -->
+ <ModalDialog
+ :is-open="showInspectModal"
+ title="Institutional Correspondence Record"
+ @close="showInspectModal = false"
+ >
+ <div v-if="inspectingCorr" class="space-y-4">
+ <div class="p-3.5 bg-surface-hover rounded-xl border border-hairline space-y-2">
+ <div class="flex items-center justify-between">
+ <div class="font-mono text-xs font-bold text-primary">
+ {{ inspectingCorr.document?.reference_number }}
+ </div>
+ <span
+ class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border"
+ :class="getRoutingStatus(inspectingCorr).class"
+ >
+ {{ getRoutingStatus(inspectingCorr).text }}
+ </span>
+ </div>
+ <div class="text-sm font-semibold text-ink">
+ {{ inspectingCorr.document?.title }}
+ </div>
+ <p v-if="inspectingCorr.document?.summary" class="text-xs text-ink-muted">
+ {{ inspectingCorr.document.summary }}
+ </p>
+ </div>
+
+ <div class="grid grid-cols-2 gap-3 text-xs border-y border-hairline py-3">
+ <div>
+ <span class="text-ink-muted block text-[10px] uppercase font-bold">Originating Sender</span>
+ <span class="font-medium text-ink">{{ getSenderName(inspectingCorr) }}</span>
+ </div>
+ <div>
+ <span class="text-ink-muted block text-[10px] uppercase font-bold">First Receiving Office</span>
+ <span class="font-medium text-ink">{{ getRecipientName(inspectingCorr) }}</span>
+ </div>
+ <div>
+ <span class="text-ink-muted block text-[10px] uppercase font-bold">Type & Priority</span>
+ <span class="font-medium text-ink">{{ inspectingCorr.type?.name }} &bull; {{ inspectingCorr.priority?.name }}</span>
+ </div>
+ <div>
+ <span class="text-ink-muted block text-[10px] uppercase font-bold">External Reference</span>
+ <span class="font-mono text-ink">{{ inspectingCorr.external_reference || 'None (Internal)' }}</span>
+ </div>
+ </div>
+
+ <!-- Movements History -->
+ <div>
+ <div class="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">
+ Routing & Movements History ({{ inspectingCorr.movements?.length || 0 }})
+ </div>
+ <div v-if="inspectingCorr.movements && inspectingCorr.movements.length > 0" class="space-y-2">
+ <div
+ v-for="m in inspectingCorr.movements"
+ :key="m.id"
+ class="p-2.5 rounded-lg bg-surface border border-hairline text-xs space-y-1"
+ >
+ <div class="flex items-center justify-between font-medium">
+ <span>{{ m.from_unit?.name || 'Unit' }} &rarr; {{ m.to_unit?.name || 'Unit' }}</span>
+ <span class="text-[10px] font-mono text-ink-muted">{{ formatDate(m.sent_at) }}</span>
+ </div>
+ <div v-if="m.instruction" class="text-[11px] text-ink-secondary italic">
+ Instruction: {{ m.instruction }}
+ </div>
+ <div class="text-[10px] text-ink-muted flex items-center gap-1.5">
+ <span v-if="m.receipt?.acknowledged_at" class="text-emerald-600 font-semibold flex items-center gap-1">
+ <CheckCheck class="w-3 h-3" /> Acknowledged by {{ m.receipt.acknowledged_by_user?.name || 'Officer' }}
+ </span>
+ <span v-else class="text-amber-600 font-medium">
+ Pending physical receipt confirmation
+ </span>
+ </div>
+ </div>
+ </div>
+ <div v-else class="text-xs text-ink-muted italic py-2">
+ No physical movements recorded for this letter.
+ </div>
+ </div>
+
+ <!-- Directives & Assignments -->
+ <div v-if="inspectingCorr.assignments && inspectingCorr.assignments.length > 0">
+ <div class="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">
+ Operational Directives & Assignments ({{ inspectingCorr.assignments.length }})
+ </div>
+ <div class="space-y-2">
+ <div
+ v-for="a in inspectingCorr.assignments"
+ :key="a.id"
+ class="p-2.5 rounded-lg bg-surface border border-hairline text-xs space-y-1"
+ >
+ <div class="flex items-center justify-between font-medium">
+ <span class="text-primary font-semibold">Assigned to: {{ a.assigned_user?.name || 'Officer' }} ({{ a.assigned_unit?.name || 'Unit' }})</span>
+ <span v-if="a.due_at" class="text-[10px] text-amber-600 font-mono">Due: {{ formatDate(a.due_at) }}</span>
+ </div>
+ <div class="text-[11px] text-ink-secondary">
+ {{ a.instruction }}
+ </div>
+ <div class="text-[10px] text-ink-muted font-mono">
+ Assigned {{ formatDate(a.assigned_at) }}
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Outgoing Dispatches -->
+ <div v-if="inspectingCorr.dispatches && inspectingCorr.dispatches.length > 0">
+ <div class="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">
+ Official Dispatches & Transmittals ({{ inspectingCorr.dispatches.length }})
+ </div>
+ <div class="space-y-2">
+ <div
+ v-for="d in inspectingCorr.dispatches"
+ :key="d.id"
+ class="p-2.5 rounded-lg bg-emerald-50 dark:bg-[#14301d] border border-emerald-200 dark:border-emerald-800 text-xs space-y-1"
+ >
+ <div class="flex items-center justify-between font-medium text-emerald-800 dark:text-emerald-300">
+ <span>Method: {{ d.method?.name || 'Official Dispatch' }}</span>
+ <span class="text-[10px] font-mono">{{ formatDate(d.dispatched_at) }}</span>
+ </div>
+ <div v-if="d.tracking_reference" class="text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
+ Tracking Ref: {{ d.tracking_reference }}
+ </div>
+ <div class="text-[10px] text-ink-muted">
+ Dispatched by {{ d.dispatched_by_user?.name || 'Authorized Officer' }}
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <div class="flex items-center justify-between pt-2 border-t border-hairline">
+ <BaseButton
+ v-if="inspectingCorr.document_id"
+ variant="primary"
+ size="sm"
+ @click="router.push(`/documents/${inspectingCorr.document_id}`)"
+ >
+ <FileText class="w-3.5 h-3.5 mr-1.5" /> Open Full Document File
+ </BaseButton>
+ <BaseButton variant="ghost" size="sm" @click="showInspectModal = false">Close</BaseButton>
+ </div>
+ </div>
+ </ModalDialog>
+
+ <!-- Formal Closure Modal -->
+ <ModalDialog
+   :show="showCloseModal"
+   title="Formally Close Correspondence"
+   max-width="md"
+   @close="showCloseModal = false"
+ >
+   <form v-if="activeCorrespondence" @submit.prevent="submitCloseCorrespondence" class="space-y-4">
+     <div class="p-3 rounded-lg bg-surface-hover border border-hairline text-xs space-y-1">
+       <div class="font-bold text-ink">
+         {{ activeCorrespondence.document?.title || 'Correspondence Record' }}
+       </div>
+       <div class="font-mono text-ink-muted">
+         {{ activeCorrespondence.document?.reference_number || activeCorrespondence.external_reference }}
+       </div>
+     </div>
+
+     <!-- Closure Prerequisites Warning Banner -->
+     <div
+       v-if="activeCorrespondence.closure_blockers && activeCorrespondence.closure_blockers.length > 0"
+       class="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 space-y-1.5"
+     >
+       <div class="font-semibold flex items-center gap-1.5">
+         <AlertCircle class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+         <span>Closure Prerequisites Unfulfilled</span>
+       </div>
+       <p class="text-[11px] text-amber-800 dark:text-amber-300">
+         This outgoing correspondence cannot be formally closed until required dispatches are delivered and verified:
+       </p>
+       <ul class="list-disc list-inside space-y-0.5 pl-1 text-[11px] font-mono">
+         <li v-for="(blocker, idx) in activeCorrespondence.closure_blockers" :key="idx">
+           {{ blocker }}
+         </li>
+       </ul>
+       <div class="text-[11px] font-medium text-amber-700 dark:text-amber-400 pt-1 border-t border-amber-200 dark:border-amber-800">
+         Rule: Dispatch != Delivery. Record signed proof-of-delivery or verified transmission first.
+       </div>
+     </div>
+
+     <div>
+       <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+         Formal Closure Remarks &amp; Resolution Note
+       </label>
+       <BaseTextarea
+         v-model="closeReason"
+         rows="3"
+         placeholder="Document the resolution, directive completion, or filing rationale..."
+       />
+     </div>
+
+     <div class="flex items-center justify-end gap-3 pt-2">
+       <BaseButton variant="outline" type="button" @click="showCloseModal = false">Cancel</BaseButton>
+       <BaseButton
+         variant="primary"
+         type="submit"
+         :loading="isSubmittingClose"
+         :disabled="activeCorrespondence.can_close === false || (activeCorrespondence.closure_blockers && activeCorrespondence.closure_blockers.length > 0)"
+         class="bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+       >
+         Confirm Closure
+       </BaseButton>
+     </div>
+   </form>
  </ModalDialog>
  </div>
 </template>

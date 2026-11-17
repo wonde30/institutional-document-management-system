@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -82,7 +83,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:160',
             'email' => 'required|email|max:254|unique:users,email',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'status' => ['nullable', Rule::in(['active', 'inactive', 'locked'])],
             'unit_id' => 'nullable|exists:organization_units,id',
             'position_title' => 'nullable|string|max:160',
@@ -161,7 +162,7 @@ class UserController extends Controller
             'name' => 'sometimes|required|string|max:160',
             'email' => ['sometimes', 'required', 'email', 'max:254', Rule::unique('users', 'email')->ignore($user->id)],
             'status' => ['sometimes', 'required', Rule::in(['active', 'inactive', 'locked'])],
-            'password' => 'nullable|string|min:8',
+            'password' => ['nullable', 'string', Password::min(8)->letters()->numbers()],
         ]);
 
         if (! empty($validated['password'])) {
@@ -172,6 +173,15 @@ class UserController extends Controller
         }
 
         if (isset($validated['status']) && $validated['status'] !== $user->status) {
+            if (in_array($validated['status'], ['inactive', 'locked'], true)) {
+                if ($user->hasPermission('system.configure') && User::countActiveSystemAdministrators($user->id) === 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Security restriction: Cannot suspend or lock the last active System Administrator in the institution.',
+                    ], 422);
+                }
+            }
+
             $validated['authz_version'] = ($validated['authz_version'] ?? $user->authz_version) + 1;
             if (in_array($validated['status'], ['inactive', 'locked'], true)) {
                 AuditService::recordAuthEvent(
@@ -274,6 +284,15 @@ class UserController extends Controller
             ], 422);
         }
 
+        if (in_array($validated['status'], ['inactive', 'locked'], true)) {
+            if ($targetUser->hasPermission('system.configure') && User::countActiveSystemAdministrators($targetUser->id) === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Security restriction: Cannot suspend or lock the last active System Administrator in the institution.',
+                ], 422);
+            }
+        }
+
         $oldStatus = $targetUser->status;
         $newStatus = $validated['status'];
 
@@ -310,6 +329,22 @@ class UserController extends Controller
             'success' => true,
             'message' => "User account successfully updated to {$newStatus}.",
             'data' => new UserResource($targetUser),
+        ]);
+    }
+
+    /**
+     * Inspect effective permissions and full lineage for a specific user.
+     */
+    public function effectivePermissions(Request $request, int $id): JsonResponse
+    {
+        $targetUser = User::findOrFail($id);
+        $unitId = $request->filled('unit_id') ? (int) $request->query('unit_id') : null;
+
+        $lineageData = $targetUser->getPermissionLineage($unitId);
+
+        return response()->json([
+            'success' => true,
+            'data' => $lineageData,
         ]);
     }
 }

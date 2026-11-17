@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,9 +69,14 @@ class Correspondence extends Model
         return $this->hasMany(CorrespondenceParticipant::class, 'correspondence_id');
     }
 
-    public function dispatches(): HasMany
+    public function dispatches(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasMany(CorrespondenceDispatch::class, 'correspondence_id');
+        return $this->hasManyThrough(
+            CorrespondenceDispatch::class,
+            CorrespondenceParticipant::class,
+            'correspondence_id',
+            'participant_id'
+        );
     }
 
     public function movements(): HasMany
@@ -81,5 +87,38 @@ class Correspondence extends Model
     public function assignments(): HasMany
     {
         return $this->hasMany(DocumentAssignment::class, 'document_id', 'document_id');
+    }
+
+    /**
+     * Scope a query to only include correspondence accessible by the given user for a specific capability.
+     */
+    public function scopeAccessibleBy(Builder $query, ?User $user, string $permission = 'correspondence.view'): Builder
+    {
+        if (! $user || $user->status !== 'active') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasPermission('system.configure')) {
+            return $query;
+        }
+
+        $permittedUnitIds = $user->getPermittedUnitIds($permission);
+        $userId = $user->id;
+
+        return $query->where(function (Builder $q) use ($permittedUnitIds, $user, $userId) {
+            // Accessible through the underlying document's accessibility scope
+            $q->whereHas('document', fn ($dq) => $dq->accessibleBy($user, 'documents.view'))
+              // Or direct correspondence participation/movement/assignment in user's permitted units
+              ->orWhere(function (Builder $cq) use ($permittedUnitIds, $userId) {
+                  if ($permittedUnitIds === null) {
+                      $cq->whereRaw('1 = 1');
+                  } else {
+                      $cq->whereIn('correspondences.first_receiving_unit_id', $permittedUnitIds)
+                         ->orWhereHas('movements', fn ($mq) => $mq->whereIn('to_unit_id', $permittedUnitIds)->orWhereIn('from_unit_id', $permittedUnitIds))
+                         ->orWhereHas('assignments', fn ($aq) => $aq->whereIn('assigned_unit_id', $permittedUnitIds)->orWhere('assigned_user_id', $userId))
+                         ->orWhereHas('participants.party', fn ($pq) => $pq->where('user_id', $userId)->orWhereIn('unit_id', $permittedUnitIds));
+                  }
+              });
+        });
     }
 }

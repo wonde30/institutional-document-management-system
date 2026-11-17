@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+﻿<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
@@ -9,17 +9,12 @@ import AppSidebar from '@/components/navigation/AppSidebar.vue'
 import ToastContainer from '@/components/ui/ToastContainer.vue'
 import {
  Menu,
- X,
  Bell,
  Sun,
  Moon,
  Laptop,
  ChevronDown,
  LogOut,
- Building2,
- ShieldCheck,
- CheckCheck,
- Compass,
  Search,
  User as UserIcon,
  Lock,
@@ -37,65 +32,9 @@ const mobileMenuOpen = ref(false)
 const showNotifDropdown = ref(false)
 const showUserDropdown = ref(false)
 
-// Institutional screen navigation selector
-const screenOptions = [
- { label: 'Workspace Dashboard', path: '/dashboard' },
- { label: 'My Assigned Tasks', path: '/tasks' },
- { label: 'Notifications Registry', path: '/notifications' },
- { label: 'Document Repository', path: '/documents' },
- { label: 'Register Official Document', path: '/documents/create' },
- { label: 'Authorized Institutional Search', path: '/search' },
- { label: 'Incoming Letters Registry', path: '/letters/incoming' },
- { label: 'Outgoing Letters Registry', path: '/letters/outgoing' },
- { label: 'Internal Memoranda Registry', path: '/memoranda' },
- { label: 'Office Routing & Movement Tracking', path: '/routing' },
- { label: 'Finalized Research Monographs', path: '/research' },
- { label: 'Staff Records & Physical Dossiers', path: '/staff' },
- { label: 'Digital Archive & Retention Schedule', path: '/archive' },
- { label: 'Accreditation Evidence Repository', path: '/accreditation' },
- { label: 'Projects & Institutional Initiatives', path: '/projects' },
- { label: 'Cryptographic Signatures & Official Stamps', path: '/signatures' },
- { label: 'Operational Reports & Analytics', path: '/reports' },
- { label: 'Authorized Data Imports & Exports', path: '/exports' },
- { label: 'User Accounts & Directory', path: '/admin/users' },
- { label: 'Roles & Security Permissions', path: '/admin/roles' },
- { label: 'Organizational Structure & Units', path: '/admin/organization' },
- { label: 'Standard Office Procedures & Workflows', path: '/admin/office-procedures' },
- { label: 'Reference Data Catalogs', path: '/admin/reference-data' },
- { label: 'Institutional Audit Trail', path: '/admin/audit' },
- { label: 'System Operations & Service Health', path: '/admin/operations' },
- { label: 'System Settings & Configuration', path: '/admin/settings' },
- { label: 'Help & User Guidance Manual', path: '/help' },
- { label: 'My Account Profile', path: '/account' },
- { label: 'Account Security & Password', path: '/account/security' },
- { label: 'User Preferences & Timezone', path: '/account/preferences' },
- { label: 'Sign In to Portal', path: '/login' },
- { label: 'Access Forbidden (403)', path: '/forbidden' },
- { label: 'Page Not Found (404)', path: '/not-found' },
-]
-
-const visibleScreenOptions = computed(() => {
- return screenOptions.filter((opt) => {
- if (['/login', '/forbidden', '/not-found'].includes(opt.path)) return false
- const targetRoute = router.getRoutes().find((r) => r.path === opt.path)
- if (!targetRoute) return true
- const requiredPerm = targetRoute.meta?.permission as string | undefined
- if (requiredPerm) {
- return authStore.hasPermission(requiredPerm)
- }
- return true
- })
-})
-
-const currentScreenPath = computed({
- get: () => {
- const match = visibleScreenOptions.value.find((opt) => opt.path === route.path)
- return match ? match.path : '/dashboard'
- },
- set: (val: string) => {
- router.push(val)
- },
-})
+// Template refs for click-outside handling
+const notifDropdownRef = ref<HTMLElement | null>(null)
+const userDropdownRef = ref<HTMLElement | null>(null)
 
 const currentModuleGroup = computed(() => {
  return (route.meta?.group as string) || 'Workspace'
@@ -114,6 +53,36 @@ const userInitials = computed(() => {
  return name.slice(0, 2).toUpperCase()
 })
 
+/**
+ * Whether the platform uses the Command key for shortcuts.
+ */
+const isMac = computed(() =>
+ typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+)
+
+/**
+ * The advertised search shortcut.
+ */
+function handleGlobalShortcut(event: KeyboardEvent) {
+ if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+  event.preventDefault()
+  router.push('/search')
+ }
+}
+
+/**
+ * Close dropdowns when clicking outside their containers.
+ */
+function handleClickOutside(event: MouseEvent) {
+ const target = event.target as Node
+ if (showNotifDropdown.value && notifDropdownRef.value && !notifDropdownRef.value.contains(target)) {
+  showNotifDropdown.value = false
+ }
+ if (showUserDropdown.value && userDropdownRef.value && !userDropdownRef.value.contains(target)) {
+  showUserDropdown.value = false
+ }
+}
+
 const themeTooltip = computed(() => {
  if (themeStore.mode === 'system') return 'Theme: System (matches OS) — click to change'
  if (themeStore.mode === 'dark') return 'Theme: Dark — click to change'
@@ -122,11 +91,17 @@ const themeTooltip = computed(() => {
 
 onMounted(() => {
  themeStore.init()
+ window.addEventListener('keydown', handleGlobalShortcut)
+ document.addEventListener('click', handleClickOutside)
  if (authStore.isAuthenticated) {
  notifStore.fetchNotifications()
  metaStore.loadAll()
- authStore.fetchNavigation()
  }
+})
+
+onUnmounted(() => {
+ window.removeEventListener('keydown', handleGlobalShortcut)
+ document.removeEventListener('click', handleClickOutside)
 })
 
 // Auto-close mobile drawer and dropdowns on route changes
@@ -146,22 +121,26 @@ async function handleLogout() {
 </script>
 
 <template>
- <div class="h-screen w-screen overflow-hidden flex flex-col bg-canvas-soft text-ink font-sans antialiased">
+  <a
+    href="#main-content"
+    class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none"
+  >Skip to main content</a>
+  <div class="h-screen w-screen overflow-hidden flex flex-col bg-canvas-soft text-ink font-sans antialiased">
  <!-- Notion Paper Top Bar: 56px height, pure white surface, hairline border -->
  <header class="h-14 shrink-0 bg-surface border-b border-hairline px-4 sm:px-6 flex items-center justify-between gap-4 z-30 sticky top-0">
- <!-- Left: Mobile Menu & Brand -->
+ <!-- Left: Mobile/Drawer Menu & Brand -->
  <div class="flex items-center gap-3">
  <button
  type="button"
- class="lg:hidden p-1.5 rounded-[5px] text-ink-muted hover:text-ink hover:bg-canvas-soft transition-colors"
+ class="xl:hidden p-1.5 rounded-[5px] text-ink-muted hover:text-ink hover:bg-canvas-soft transition-colors"
  @click="mobileMenuOpen = !mobileMenuOpen"
  aria-label="Toggle navigation menu"
  >
  <Menu class="w-5 h-5" />
  </button>
 
- <router-link to="/dashboard" class="flex items-center gap-2.5 group">
- <span class="w-8 h-8 rounded-[6px] bg-primary text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-xs">
+ <router-link to="/dashboard" class="xl:hidden flex items-center gap-2.5 group">
+ <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-xs">
  WU
  </span>
  <div class="flex flex-col">
@@ -175,7 +154,7 @@ async function handleLogout() {
  </router-link>
  </div>
 
- <!-- Right: Global Search, Workspace Scope, Theme, Notifications, Avatar -->
+ <!-- Right: Global Search, Theme, Notifications, Avatar -->
  <div class="flex items-center gap-2 sm:gap-3">
  <!-- Authorized Global Search (Notion-styled search box) -->
  <router-link
@@ -185,16 +164,8 @@ async function handleLogout() {
  >
  <Search class="w-3.5 h-3.5" />
  <span class="hidden md:inline text-[11px]">Search records...</span>
- <kbd class="hidden md:inline text-[10px] bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">⌘K</kbd>
+ <kbd class="hidden md:inline text-[10px] bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">{{ isMac ? '⌘K' : 'Ctrl K' }}</kbd>
  </router-link>
-
- <!-- Scope Badge / Filter -->
- <div class="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-canvas-soft text-ink-secondary border border-hairline">
- <Building2 class="w-3.5 h-3.5 text-primary" />
- <span class="font-medium">{{ authStore.primaryUnit?.unit_name || 'My work' }}</span>
- <span class="text-ink-faint">·</span>
- <span class="text-ink-muted">{{ authStore.primaryUnit?.position_title || 'Active Session' }}</span>
- </div>
 
  <!-- Tri-Mode Theme Toggle (Light / Dark / System) -->
  <button
@@ -210,7 +181,7 @@ async function handleLogout() {
  </button>
 
  <!-- Notification Bell Dropdown -->
- <div class="relative">
+ <div ref="notifDropdownRef" class="relative">
  <button
  type="button"
  class="relative p-2 rounded-[6px] text-ink-muted hover:text-ink hover:bg-canvas-soft transition-colors"
@@ -264,7 +235,7 @@ async function handleLogout() {
  </div>
 
  <!-- User Profile Dropdown -->
- <div class="relative">
+ <div ref="userDropdownRef" class="relative">
  <button
  type="button"
  class="flex items-center gap-2 p-1 pl-1.5 rounded-[6px] hover:bg-canvas-soft transition"
@@ -283,6 +254,8 @@ async function handleLogout() {
  <div class="px-4 py-2.5">
  <div class="font-semibold text-ink truncate">{{ authStore.user?.name }}</div>
  <div class="text-[11px] text-ink-muted truncate">{{ authStore.user?.email }}</div>
+  <div class="text-[11px] text-ink-muted truncate mt-0.5" v-if="authStore.primaryUnit?.position_title">{{ authStore.primaryUnit?.position_title }}</div>
+ <div class="text-[11px] text-ink-muted truncate mt-0.5" v-if="authStore.activeUnit?.name || authStore.primaryUnit?.unit_name">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
  </div>
 
  <div class="py-1">
@@ -338,40 +311,14 @@ async function handleLogout() {
  />
 
  <!-- Main Worksurface: Warm Paper Canvas (#f6f5f4) Dedicated Viewport -->
- <main class="flex-1 flex flex-col min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 scrollbar-thin bg-canvas-soft">
- <!-- Breadcrumb & Context Header Bar -->
- <div class="flex items-center justify-between gap-3 pb-4 mb-5 border-b border-hairline text-xs text-ink-muted flex-wrap">
- <div class="flex items-center gap-2 font-medium">
- <span class="uppercase tracking-wider text-[11px] font-semibold text-ink-muted">{{ currentModuleGroup }}</span>
- <span aria-hidden="true" class="text-ink-faint">/</span>
- <span class="text-ink font-semibold text-[13px]">{{ currentPageTitle }}</span>
- </div>
+ <main id="main-content" tabindex="-1" class="flex-1 flex flex-col min-w-0 h-full overflow-y-auto p-4 sm:p-6 lg:p-6 scrollbar-thin bg-canvas-soft focus:outline-none">
+        <!-- Routed page with subtle transition -->
+        <Transition name="page" mode="out-in">
+          <div class="flex-1 min-h-0" :key="$route.path">
+            <slot />
+          </div>
+        </Transition>
 
- <!-- Institutional View Switcher -->
- <div class="flex items-center gap-2">
- <span class="hidden sm:inline text-[11px] text-ink-muted font-medium">Institutional view:</span>
- <select
- v-model="currentScreenPath"
- class="text-xs bg-surface border border-hairline text-ink-secondary rounded-[4px] px-2.5 py-1 focus:ring-1 focus:ring-primary focus:outline-hidden max-w-[240px] cursor-pointer shadow-xs"
- aria-label="Choose an institutional view to display"
- >
- <option v-for="opt in visibleScreenOptions" :key="opt.path" :value="opt.path">
- {{ opt.label }}
- </option>
- </select>
- </div>
- </div>
-
- <!-- View Viewport Slot -->
- <div class="flex-1">
- <router-view />
- </div>
-
- <!-- Notion Minimal Footer -->
- <footer class="mt-12 pt-4 border-t border-hairline text-[11px] text-ink-faint flex flex-col sm:flex-row items-center justify-between gap-2">
- <span>Wollo University Administrative and Document Management System</span>
- <span>Exact revision control · Scoped access boundaries · Production baseline</span>
- </footer>
  </main>
  </div>
 
@@ -379,3 +326,5 @@ async function handleLogout() {
  <ToastContainer />
  </div>
 </template>
+
+

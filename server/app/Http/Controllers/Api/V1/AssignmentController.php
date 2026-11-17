@@ -146,11 +146,11 @@ class AssignmentController extends Controller
 
         $actor = $request->user();
         if ($validated['action'] === 'reassigned') {
-            $isAuthorized = $actor->hasRole('super_admin')
+            $isAuthorized = $actor->hasPermission('system.configure')
                 || $assignment->assigned_by === $actor->id
                 || $assignment->assigned_user_id === $actor->id
                 || $actor->hasPermission('correspondence.assign', $assignment->assigned_unit_id)
-                || $actor->hasPermission('documents.manage', $assignment->assigned_unit_id);
+                || $actor->hasPermission('documents.update', $assignment->assigned_unit_id);
 
             if (! $isAuthorized) {
                 return response()->json([

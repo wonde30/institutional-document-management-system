@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -144,6 +145,11 @@ class Document extends Model
         return $this->hasMany(PhysicalOriginal::class, 'document_id');
     }
 
+    public function legalHolds(): BelongsToMany
+    {
+        return $this->belongsToMany(LegalHold::class, 'legal_hold_documents', 'document_id', 'hold_id');
+    }
+
     public function assignmentResponses(): HasMany
     {
         return $this->hasMany(AssignmentResponse::class, 'response_document_id');
@@ -174,12 +180,18 @@ class Document extends Model
         }
 
         // 2. Correspondence dispatch evidence file
-        $dispatch = CorrespondenceDispatch::with(['documentVersion.document.confidentiality'])
+        $dispatch = CorrespondenceDispatch::with([
+            'documentVersion.document.confidentiality',
+            'participant.correspondence.document.confidentiality'
+        ])
             ->where('evidence_file_id', $fileId)
             ->first();
 
         if ($dispatch?->documentVersion?->document) {
             return $dispatch->documentVersion->document;
+        }
+        if ($dispatch?->participant?->correspondence?->document) {
+            return $dispatch->participant->correspondence->document;
         }
 
         // 3. Digital signature signed or source file
@@ -200,6 +212,18 @@ class Document extends Model
             return self::resolveForFile((int) $derivative->source_file_id);
         }
 
+        // 5. Stamp application source or result file
+        $stampApp = StampApplication::with(['documentVersion.document.confidentiality'])
+            ->where(function ($q) use ($fileId) {
+                $q->where('result_file_id', $fileId)
+                  ->orWhere('source_file_id', $fileId);
+            })
+            ->first();
+
+        if ($stampApp?->documentVersion?->document) {
+            return $stampApp->documentVersion->document;
+        }
+
         return null;
     }
 
@@ -212,8 +236,8 @@ class Document extends Model
             return false;
         }
 
-        // 1. Super admin always has authoritative access
-        if ($user->hasRole('super_admin')) {
+        // 1. Super admin / system configure capability always has authoritative access
+        if ($user->hasPermission('system.configure')) {
             return true;
         }
 
@@ -232,11 +256,10 @@ class Document extends Model
                 return true;
             }
 
-            // High confidentiality documents require elevated clearance: leadership, controller, records officer, or sensitive view grant
-            $hasElevatedClearance = $user->hasRole('department_head')
-                || $user->hasRole('document_controller')
-                || $user->hasRole('records_officer')
-                || $user->hasPermission('staff.view_sensitive', $ownerUnitId);
+            // High confidentiality documents require elevated clearance
+            $hasElevatedClearance = $user->hasPermission('staff.view_sensitive', $ownerUnitId)
+                || $user->hasPermission('documents.delete', $ownerUnitId)
+                || $user->hasPermission('system.configure');
 
             if ($hasElevatedClearance) {
                 return true;
@@ -334,5 +357,99 @@ class Document extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Scope a query to only include documents accessible by the given user for a specific capability.
+     *
+     * Confinement rules:
+     * 1. Unauthenticated or inactive users access nothing.
+     * 2. System administrators carrying 'system.configure' have global authoritative access.
+     * 3. Permitted units are evaluated (ownership, movements, assignments, discretionary grants).
+     * 4. High-confidentiality records (confidential, restricted, secret, top_secret) are excluded
+     *    unless the user possesses 'staff.view_sensitive' in the owning unit (or globally), OR is the
+     *    creator/custodian, OR holds an active direct document_grant, OR has an active assignment.
+     */
+    public function scopeAccessibleBy(Builder $query, ?User $user, string $permission = 'documents.view'): Builder
+    {
+        if (! $user || $user->status !== 'active') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        // Global system administrator has authoritative access across all records
+        if ($user->hasPermission('system.configure')) {
+            return $query;
+        }
+
+        $permittedUnitIds = $user->getPermittedUnitIds($permission);
+        $userId = $user->id;
+
+        // If user holds no units for this permission and not global, check personal grants/assignments/creator only
+        if ($permittedUnitIds !== null && empty($permittedUnitIds)) {
+            return $query->where(function (Builder $q) use ($userId, $permission) {
+                $q->where('documents.created_by', $userId)
+                  ->orWhere('documents.custodian_id', $userId)
+                  ->orWhereHas('assignments', fn ($aq) => $aq->where('assigned_user_id', $userId))
+                  ->orWhereHas('grants', function ($gq) use ($userId, $permission) {
+                      $gq->where('user_id', $userId)
+                         ->whereHas('permission', fn ($pq) => $pq->where('code', $permission))
+                         ->where(fn ($sq) => $sq->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+                  });
+            });
+        }
+
+        $sensitiveUnitIds = $user->getPermittedUnitIds('staff.view_sensitive');
+        $hasGlobalSensitive = ($sensitiveUnitIds === null);
+        $sensitiveUnitIds = $sensitiveUnitIds ?? [];
+
+        $highConfIds = DB::table('confidentiality_levels')
+            ->whereIn('code', ['confidential', 'restricted', 'secret', 'top_secret'])
+            ->pluck('id')
+            ->all();
+
+        return $query->where(function (Builder $q) use (
+            $permittedUnitIds,
+            $userId,
+            $highConfIds,
+            $hasGlobalSensitive,
+            $sensitiveUnitIds
+        ) {
+            // 1. Departmental / Ownership confinement
+            $q->where(function (Builder $unitQ) use ($permittedUnitIds, $userId) {
+                if ($permittedUnitIds === null) {
+                    $unitQ->whereRaw('1 = 1');
+                } else {
+                    $unitQ->whereIn('documents.owner_unit_id', $permittedUnitIds)
+                          ->orWhereHas('movements', fn ($mq) => $mq->whereIn('to_unit_id', $permittedUnitIds))
+                          ->orWhereHas('assignments', fn ($aq) => $aq->whereIn('assigned_unit_id', $permittedUnitIds)->orWhere('assigned_user_id', $userId))
+                          ->orWhereHas('grants', fn ($gq) => $gq->where(fn ($sq) => $sq->where('user_id', $userId)->orWhereIn('unit_id', $permittedUnitIds))->where(fn ($sq) => $sq->whereNull('expires_at')->orWhere('expires_at', '>', now())));
+                }
+            });
+
+            // 2. Elevated Confidentiality boundary
+            if (! empty($highConfIds)) {
+                $q->where(function (Builder $confQ) use ($highConfIds, $hasGlobalSensitive, $sensitiveUnitIds, $userId) {
+                    $confQ->whereNotIn('documents.confidentiality_id', $highConfIds)
+                          ->orWhere(function (Builder $elevatedQ) use ($hasGlobalSensitive, $sensitiveUnitIds, $userId) {
+                              if ($hasGlobalSensitive) {
+                                  $elevatedQ->whereRaw('1 = 1');
+                              } else {
+                                  $elevatedQ->where(function (Builder $sq) use ($sensitiveUnitIds, $userId) {
+                                      if (! empty($sensitiveUnitIds)) {
+                                          $sq->whereIn('documents.owner_unit_id', $sensitiveUnitIds);
+                                      }
+                                      $sq->orWhere('documents.created_by', $userId)
+                                         ->orWhere('documents.custodian_id', $userId)
+                                         ->orWhereHas('assignments', fn ($aq) => $aq->where('assigned_user_id', $userId))
+                                         ->orWhereHas('grants', function ($gq) use ($userId) {
+                                             $gq->where('user_id', $userId)
+                                                ->where(fn ($sub) => $sub->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+                                         });
+                                  });
+                              }
+                          });
+                });
+            }
+        });
     }
 }

@@ -11,9 +11,11 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $userId = $user->id;
+        $permittedDocUnits = $user->getPermittedUnitIds('documents.view');
 
-        $notifications = UserNotification::with('event')
+        $notifications = UserNotification::with(['event.document.ownerUnit', 'event.actor'])
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -22,10 +24,71 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->count();
 
+        $items = collect($notifications->items())->map(function ($notif) use ($permittedDocUnits) {
+            $event = $notif->event;
+            $doc = $event?->document;
+            $docData = null;
+            $targetUrl = '/notifications';
+
+            if ($doc) {
+                $isPermitted = ($permittedDocUnits === null) || in_array($doc->owner_unit_id, $permittedDocUnits);
+
+                if ($isPermitted) {
+                    $docData = [
+                        'id' => $doc->id,
+                        'title' => $doc->title,
+                        'reference_number' => $doc->reference_number,
+                        'is_restricted' => false,
+                    ];
+                    $targetUrl = "/documents/{$doc->id}";
+                } else {
+                    $docData = [
+                        'id' => $doc->id,
+                        'title' => '[Restricted Institutional Record]',
+                        'reference_number' => $doc->reference_number,
+                        'is_restricted' => true,
+                    ];
+                }
+            }
+
+            if ($event) {
+                if (str_starts_with($event->type_code, 'correspondence.')) {
+                    $targetUrl = '/correspondence';
+                } elseif (str_starts_with($event->type_code, 'workflow.')) {
+                    $targetUrl = $docData && ! $docData['is_restricted'] ? "/documents/{$docData['id']}" : '/tasks';
+                } elseif (str_starts_with($event->type_code, 'archive.')) {
+                    $targetUrl = '/archive';
+                }
+            }
+
+            return [
+                'id' => $notif->id,
+                'event_id' => $notif->event_id,
+                'user_id' => $notif->user_id,
+                'read_at' => $notif->read_at,
+                'created_at' => $notif->created_at,
+                'target_url' => $targetUrl,
+                'event' => $event ? [
+                    'id' => $event->id,
+                    'type_code' => $event->type_code,
+                    'document_id' => $event->document_id,
+                    'actor_id' => $event->actor_id,
+                    'occurred_at' => $event->occurred_at,
+                    'document' => $docData,
+                    'actor' => $event->actor ? [
+                        'id' => $event->actor->id,
+                        'name' => $event->actor->name,
+                    ] : null,
+                ] : null,
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'data' => [
-                'items' => $notifications,
+                // The records are returned as a list; the paging counters are
+                // not part of this envelope.
+                'items' => $items,
                 'unread_count' => $unreadCount,
             ],
         ]);

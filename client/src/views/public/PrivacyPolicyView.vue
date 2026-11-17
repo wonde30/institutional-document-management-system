@@ -17,7 +17,7 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  <span>Institutional Governance</span>
  </div>
 
- <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-ink-secondary">
+ <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-ink">
  Privacy &amp; Data Protection Policy
  </h1>
 
@@ -143,7 +143,7 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  <div class="p-4 rounded-xl border border-hairline bg-surface text-xs space-y-1">
  <p class="font-bold text-ink-secondary">Information Technology Directorate — Systems Division</p>
  <p class="text-ink-muted">Wollo University, Main Campus, Administration Building, 3rd Floor</p>
- <p class="text-ink-muted">Email: <a href="mailto:ict.support@wu.edu.et" class="text-primary hover:underline">ict.support@wu.edu.et</a></p>
+ <p class="text-ink-muted">Contact the Data Protection Officer through your unit's administrative officer, or via the ICT Directorate.</p>
  <p class="text-ink-muted">P.O. Box 1145, Dessie, Ethiopia</p>
  </div>
  </section>

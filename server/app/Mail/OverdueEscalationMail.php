@@ -37,45 +37,23 @@ class OverdueEscalationMail extends Mailable implements ShouldQueue
     {
         $itemTypeName = $this->itemType === 'workflow_task' ? 'Workflow Task' : 'Administrative Assignment';
 
-        return new Content(
-            htmlString: <<<HTML
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background-color: #dc2626; color: white; padding: 15px 20px; border-radius: 6px 6px 0 0;">
-        <h2 style="margin: 0; font-size: 18px;">Wollo University DMS - Escalation Alert</h2>
-    </div>
-    <div style="border: 1px solid #e5e7eb; border-top: none; padding: 20px; border-radius: 0 0 6px 6px;">
-        <p>Dear <strong>{$this->recipient->name}</strong>,</p>
-        <p>An institutional action item has exceeded its established deadline and requires immediate attention.</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
-            <tr style="border-bottom: 1px solid #f3f4f6;">
-                <td style="padding: 8px 0; font-weight: bold; width: 140px;">Item Type:</td>
-                <td style="padding: 8px 0;">{$itemTypeName}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f3f4f6;">
-                <td style="padding: 8px 0; font-weight: bold;">Reference No:</td>
-                <td style="padding: 8px 0;">{$this->referenceNumber}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f3f4f6;">
-                <td style="padding: 8px 0; font-weight: bold;">Item Title:</td>
-                <td style="padding: 8px 0;">{$this->title}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f3f4f6;">
-                <td style="padding: 8px 0; font-weight: bold; color: #dc2626;">Original Deadline:</td>
-                <td style="padding: 8px 0; color: #dc2626; font-weight: bold;">{$this->dueDate}</td>
-            </tr>
-        </table>
+        $frontendUrl = rtrim((string) config('app.frontend_url', config('app.url', 'http://localhost:5173')), '/');
+        $actionUrl = $this->itemType === 'workflow_task' ? "{$frontendUrl}/tasks" : "{$frontendUrl}/dashboard";
 
-        <p style="margin-top: 25px; font-size: 13px; color: #6b7280;">
-            Immediate action is required to maintain compliance with university SLA policies.
-        </p>
-    </div>
-</body>
-</html>
-HTML
+        return new Content(
+            view: 'emails.overdue-escalation',
+            text: 'emails.overdue-escalation-text',
+            with: [
+                'recipient' => $this->recipient,
+                'itemType' => $this->itemType,
+                'itemTypeName' => $itemTypeName,
+                'referenceNumber' => $this->referenceNumber,
+                'title' => $this->title,
+                'dueDate' => $this->dueDate,
+                'escalationLevel' => $this->escalationLevel,
+                'actionUrl' => $actionUrl,
+                'subject' => "[WU-DMS] " . ($this->escalationLevel === 'escalated' ? '[ESCALATED] ' : '[OVERDUE] ') . "{$this->referenceNumber} Deadline Exceeded",
+            ]
         );
     }
 }

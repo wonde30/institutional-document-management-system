@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
@@ -10,7 +10,8 @@ describe('BaseButton.vue', () => {
       },
     })
     expect(wrapper.text()).toContain('Submit Document')
-    expect(wrapper.classes()).toContain('bg-blue-700')
+    // Primary variant uses design-system token bg-primary (not a raw Tailwind colour)
+    expect(wrapper.classes()).toContain('bg-primary')
   })
 
   it('renders danger variant styling', () => {
@@ -22,7 +23,23 @@ describe('BaseButton.vue', () => {
         default: 'Delete Record',
       },
     })
-    expect(wrapper.classes()).toContain('bg-rose-600')
+    // Danger variant references the CSS variable --wu-danger
+    expect(wrapper.classes().join(' ')).toContain('bg-[var(--wu-danger)]')
+  })
+
+  it('renders warning variant with accessible contrast (light amber surface)', () => {
+    const wrapper = mount(BaseButton, {
+      props: {
+        variant: 'warning',
+      },
+      slots: {
+        default: 'Warning Action',
+      },
+    })
+    // Warning uses an accessible amber tinted surface (not white-text-on-orange)
+    const classes = wrapper.classes().join(' ')
+    expect(classes).toContain('bg-[#fff4e6]')
+    expect(classes).toContain('text-[#793400]')
   })
 
   it('renders loading spinner and disables button when loading', () => {

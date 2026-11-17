@@ -295,6 +295,28 @@ const routes: RouteRecordRaw[] = [
     redirect: '/admin/permissions',
   },
   {
+    path: '/admin/configuration',
+    name: 'admin.configuration',
+    component: () => import('@/views/admin/InstitutionalConfigurationCenterView.vue'),
+    meta: { title: 'Configuration Center', requiresAuth: true, permission: 'system.configure', group: 'Administration' },
+  },
+  {
+    path: '/admin/workflows',
+    redirect: '/admin/configuration?tab=workflows',
+  },
+  {
+    path: '/admin/numbering',
+    redirect: '/admin/configuration?tab=numbering',
+  },
+  {
+    path: '/admin/routing-policies',
+    redirect: '/admin/configuration?tab=routing',
+  },
+  {
+    path: '/admin/retention',
+    redirect: '/admin/configuration?tab=retention',
+  },
+  {
     path: '/admin/reference-data',
     name: 'admin.reference_data',
     component: () => import('@/views/admin/ReferenceDataView.vue'),
@@ -365,14 +387,21 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
-  // Session bootstrap. The store owns the session state, and it is retried
-  // while that state remains unknown, so a transient transport failure cannot
-  // strand the application on a stale or empty session.
+  // Session bootstrap. On protected routes or when an established session was
+  // previously stored, query the server. For first-time guest visits to public
+  // routes, avoid spurious 401 calls to /api/v1/auth/me.
+  const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
+  const hasStoredSession = typeof window !== 'undefined' && !!localStorage.getItem('user')
+
   if (authStore.sessionState === 'unknown') {
-    try {
-      await authStore.fetchUser()
-    } catch {
-      // Unauthenticated or unreachable server; proceed to route evaluation.
+    if (requiresAuth || hasStoredSession) {
+      try {
+        await authStore.fetchUser()
+      } catch {
+        // Unauthenticated or unreachable server; proceed to route evaluation.
+      }
+    } else {
+      authStore.sessionState = 'unauthenticated'
     }
   }
 
@@ -385,7 +414,6 @@ router.beforeEach(async (to, _from, next) => {
   const pageTitle = (to.meta.title as string) || 'Document Repository'
   document.title = `${pageTitle} | ${useInstitution().displayName.value}`
 
-  const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
   const guestOnly = to.matched.some((r) => r.meta.guestOnly)
 
   if (requiresAuth && !authStore.isAuthenticated) {

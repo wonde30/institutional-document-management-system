@@ -7,7 +7,9 @@ namespace App\Services;
 use App\Models\AuditEvent;
 use App\Models\Document;
 use App\Models\DocumentVersion;
+use App\Models\NotificationEvent;
 use App\Models\User;
+use App\Models\UserNotification;
 use App\Models\WorkflowDecisionEvent;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowEvent;
@@ -38,8 +40,15 @@ class WorkflowEngineService
 
         return DB::transaction(function () use ($definitionId, $documentVersionId, $parentInstanceId, $actor, $now) {
             $version = WorkflowVersion::where('definition_id', $definitionId)
+                ->whereNotNull('published_at')
                 ->orderByDesc('version_number')
-                ->firstOrFail();
+                ->first();
+
+            if (! $version) {
+                $version = WorkflowVersion::where('definition_id', $definitionId)
+                    ->orderByDesc('version_number')
+                    ->firstOrFail();
+            }
 
             $initialState = WorkflowState::where('workflow_version_id', $version->id)
                 ->where('is_initial', 1)
@@ -67,15 +76,20 @@ class WorkflowEngineService
 
             // Spawn initial task for initial state
             $docVersion = DocumentVersion::with('document')->find($documentVersionId);
-            $assignedUnitId = $docVersion?->document?->owner_unit_id;
+            $ownerUnitId = $docVersion?->document?->owner_unit_id;
+            $assignedUnitId = $initialState->assigned_unit_id ?? $ownerUnitId;
+            $dueAt = $initialState->sla_hours
+                ? now()->addHours((int) $initialState->sla_hours)->format('Y-m-d H:i:s.u')
+                : now()->addDays(7)->format('Y-m-d H:i:s.u');
 
             $task = WorkflowTask::create([
                 'instance_id' => $instance->id,
                 'state_id' => $initialState->id,
                 'assigned_user_id' => $assignedUnitId ? null : $actor->id,
                 'assigned_unit_id' => $assignedUnitId,
+                'required_role_id' => $initialState->assigned_role_id,
                 'created_at' => $now,
-                'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
+                'due_at' => $dueAt,
             ]);
 
             AuditEvent::create([
@@ -91,6 +105,10 @@ class WorkflowEngineService
                     'initial_task_id' => $task->id,
                 ],
             ]);
+
+            try {
+                app(\App\Services\EmailNotificationService::class)->notifyWorkflowTask($task);
+            } catch (\Throwable $e) {}
 
             return $instance;
         });
@@ -148,6 +166,21 @@ class WorkflowEngineService
                 ],
             ]);
 
+            try {
+                $docId = $task->instance?->documentVersion?->document_id;
+                $notifEvent = NotificationEvent::create([
+                    'type_code' => 'workflow.task_delegated',
+                    'document_id' => $docId,
+                    'actor_id' => $actor->id,
+                    'occurred_at' => $now,
+                ]);
+                UserNotification::create([
+                    'event_id' => $notifEvent->id,
+                    'user_id' => $targetUserId,
+                    'created_at' => $now,
+                ]);
+            } catch (\Throwable $e) {}
+
             return $task;
         });
     }
@@ -179,6 +212,21 @@ class WorkflowEngineService
                     'reason' => $reason,
                 ],
             ]);
+
+            try {
+                $docId = $task->instance?->documentVersion?->document_id;
+                $notifEvent = NotificationEvent::create([
+                    'type_code' => 'workflow.task_reassigned',
+                    'document_id' => $docId,
+                    'actor_id' => $actor->id,
+                    'occurred_at' => $now,
+                ]);
+                UserNotification::create([
+                    'event_id' => $notifEvent->id,
+                    'user_id' => $targetUserId,
+                    'created_at' => $now,
+                ]);
+            } catch (\Throwable $e) {}
 
             return $task;
         });
@@ -244,7 +292,7 @@ class WorkflowEngineService
             $ver = $task->instance->documentVersion;
 
             if ($decision === 'approve' && $transition && $transition->prohibit_self_approval && $doc && $ver) {
-                if ($actor->id === $doc->created_by || $actor->id === $ver->created_by) {
+                if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
                     throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
                 }
             }
@@ -415,6 +463,21 @@ class WorkflowEngineService
                 'event_id' => $workflowEvent->id,
             ]);
 
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'workflow.task_decided',
+                'target_type' => 'workflow_task',
+                'target_id' => (string) $task->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'decision' => $finalOutcome,
+                    'reason' => $reason,
+                    'instance_id' => $task->instance_id,
+                    'state_id' => $task->state_id,
+                ],
+            ]);
+
             // Notify initiator or stakeholders of task decision
             try {
                 app(\App\Services\EmailNotificationService::class)->notifyWorkflowDecision($task->instance, $task, $finalOutcome);
@@ -514,14 +577,20 @@ class WorkflowEngineService
                         $fState = WorkflowState::find($forkStateId);
                         if ($fState && ! $fState->is_terminal) {
                             $branchKey = 'branch_' . ($fState->code ?? "b{$fIndex}_{$forkStateId}");
+                            $fUnitId = $fState->assigned_unit_id ?? ($task->assigned_unit_id ?? $task->instance->documentVersion->document->owner_unit_id);
+                            $fDueAt = $fState->sla_hours
+                                ? now()->addHours((int) $fState->sla_hours)->format('Y-m-d H:i:s.u')
+                                : now()->addDays(7)->format('Y-m-d H:i:s.u');
+
                             $newTask = WorkflowTask::create([
                                 'instance_id' => $task->instance_id,
                                 'state_id' => $fState->id,
                                 'branch_key' => $branchKey,
                                 'assigned_user_id' => null,
-                                'assigned_unit_id' => $task->assigned_unit_id ?? $task->instance->documentVersion->document->owner_unit_id,
+                                'assigned_unit_id' => $fUnitId,
+                                'required_role_id' => $fState->assigned_role_id,
                                 'created_at' => $now,
-                                'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
+                                'due_at' => $fDueAt,
                             ]);
 
                             try {
@@ -532,18 +601,40 @@ class WorkflowEngineService
                 } elseif ($transition->to_state_id) {
                     $toState = WorkflowState::find($transition->to_state_id);
                     if ($toState && ! $toState->is_terminal) {
+                        $targetUnitId = $toState->assigned_unit_id ?? ($task->assigned_unit_id ?? $task->instance->documentVersion->document->owner_unit_id);
+                        $targetDueAt = $toState->sla_hours
+                            ? now()->addHours((int) $toState->sla_hours)->format('Y-m-d H:i:s.u')
+                            : now()->addDays(7)->format('Y-m-d H:i:s.u');
+
                         $newTask = WorkflowTask::create([
                             'instance_id' => $task->instance_id,
                             'state_id' => $toState->id,
                             'assigned_user_id' => null,
-                            'assigned_unit_id' => $task->assigned_unit_id ?? $task->instance->documentVersion->document->owner_unit_id,
+                            'assigned_unit_id' => $targetUnitId,
+                            'required_role_id' => $toState->assigned_role_id,
                             'created_at' => $now,
-                            'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
+                            'due_at' => $targetDueAt,
                         ]);
 
                         try {
                             app(\App\Services\EmailNotificationService::class)->notifyWorkflowTask($newTask);
                         } catch (\Throwable $e) {}
+                    } elseif ($toState && $toState->is_terminal) {
+                        AuditEvent::create([
+                            'actor_id' => $actor->id,
+                            'action' => 'workflow.terminal_state_reached',
+                            'target_type' => 'workflow_instance',
+                            'target_id' => (string) $task->instance_id,
+                            'request_id' => (string) Str::uuid(),
+                            'occurred_at' => $now,
+                            'details_json' => [
+                                'state_id' => $toState->id,
+                                'state_code' => $toState->code,
+                                'state_name' => $toState->name,
+                                'final_outcome' => $finalOutcome,
+                                'document_version_id' => $task->instance->document_version_id,
+                            ],
+                        ]);
                     }
                 }
             }
