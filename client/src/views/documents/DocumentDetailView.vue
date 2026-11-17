@@ -989,7 +989,7 @@ onMounted(() => {
  <div class="space-y-1">
  <div class="flex items-center gap-2">
  <span
- class="px-2 py-0.5 rounded text-xs font-semibold  tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-semibold"
  :class="t.closed_at ? 'bg-surface-muted text-ink-muted border border-hairline' : 'bg-primary-subtle text-primary border border-primary/20'"
  >
  {{ t.state?.name || 'Pending Decision' }}
@@ -1530,7 +1530,7 @@ onMounted(() => {
  </div>
 
  <div v-if="orig.custody_events && orig.custody_events.length > 0" class="pt-2 border-t border-hairline-subtle space-y-2">
- <div class="text-xs font-semibold text-ink-muted  tracking-wider">
+ <div class="text-xs font-semibold text-ink-muted">
  Custody Chain Log
  </div>
  <div

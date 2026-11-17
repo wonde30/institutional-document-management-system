@@ -349,7 +349,7 @@ onMounted(() => {
                   {{ role.code }}
                 </span>
                 <span
-                  class="text-xs font-semibold px-1.5 py-0.5 rounded  tracking-wider"
+                  class="text-xs font-semibold px-1.5 py-0.5 rounded"
                   :class="role.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-surface-muted text-ink-muted'"
                 >
                   {{ role.active ? 'Active' : 'Inactive' }}
@@ -489,7 +489,7 @@ onMounted(() => {
               class="border border-hairline rounded-lg p-3 bg-canvas-soft"
             >
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-ink-secondary  tracking-wider">
+                <span class="text-xs font-bold text-ink-secondary">
                   {{ moduleName }}
                 </span>
                 <button

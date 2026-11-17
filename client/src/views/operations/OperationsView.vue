@@ -137,7 +137,7 @@ onMounted(() => {
  <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
  <div class="px-5 py-3 border-b border-hairline flex items-center justify-between">
  <div>
- <h2 class="text-xs font-bold text-ink-secondary  tracking-wider">
+ <h2 class="text-xs font-bold text-ink-secondary">
  Verified Backup Runs
  </h2>
  <p class="text-xs text-ink-muted">
@@ -154,7 +154,7 @@ onMounted(() => {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted">
  <tr>
  <th class="py-3 px-4">Job Reference</th>
  <th class="py-3 px-4">Started At</th>
@@ -205,7 +205,7 @@ onMounted(() => {
  <!-- Section: Disaster Recovery Restore Drills -->
  <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
  <div class="px-5 py-3 border-b border-hairline">
- <h2 class="text-xs font-bold text-ink-secondary  tracking-wider">
+ <h2 class="text-xs font-bold text-ink-secondary">
  Quarterly Restore Drill Ledger
  </h2>
  <p class="text-xs text-ink-muted">

@@ -222,25 +222,25 @@ onMounted(() => {
     <!-- Stats Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted tracking-wider">Total Capabilities</div>
+        <div class="text-xs  font-bold text-ink-muted">Total Capabilities</div>
         <div class="text-2xl font-bold text-ink-secondary mt-1">{{ stats.total }}</div>
         <div class="text-xs text-ink-muted mt-0.5">{{ availableModules.length }} functional domains</div>
       </div>
 
       <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted tracking-wider">Assignable</div>
+        <div class="text-xs  font-bold text-ink-muted">Assignable</div>
         <div class="text-2xl font-bold text-emerald-600 mt-1">{{ stats.assignable }}</div>
         <div class="text-xs text-ink-muted mt-0.5">roles & unit grants</div>
       </div>
 
       <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted tracking-wider">Protected / Admin</div>
+        <div class="text-xs  font-bold text-ink-muted">Protected / Admin</div>
         <div class="text-2xl font-bold text-primary mt-1">{{ stats.protectedCount }}</div>
         <div class="text-xs text-ink-muted mt-0.5">requires super_admin</div>
       </div>
 
       <div class="bg-surface p-4 rounded-xl border border-hairline">
-        <div class="text-xs  font-bold text-ink-muted tracking-wider">Deactivated</div>
+        <div class="text-xs  font-bold text-ink-muted">Deactivated</div>
         <div class="text-2xl font-bold text-ink-muted mt-1">{{ stats.deactivated }}</div>
         <div class="text-xs text-ink-muted mt-0.5">blocked from assignment</div>
       </div>
@@ -340,7 +340,7 @@ onMounted(() => {
               <component :is="moduleIcons[mod] || Shield" class="w-5 h-5" />
             </div>
             <div>
-              <h2 class="text-base font-bold text-ink-secondary  tracking-wider">
+              <h2 class="text-base font-bold text-ink-secondary">
                 {{ mod }} Domain
               </h2>
               <div class="text-xs text-ink-muted">

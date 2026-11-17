@@ -140,7 +140,7 @@ async function handleLogout() {
  </button>
 
  <router-link to="/dashboard" class="xl:hidden flex items-center gap-2.5 group">
- <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-xs">
+ <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center shadow-xs">
  WU
  </span>
  <div class="flex flex-col">

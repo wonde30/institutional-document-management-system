@@ -88,7 +88,7 @@ const paragraphs = computed(() => {
         <span class="font-bold">&#9888; Institutional Asset Notice:</span>
         <span>Approved Wollo University emblem is pending installation. Draft preview only &mdash; final issuance requires approved emblem.</span>
       </div>
-      <span class="text-[9.5px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold uppercase tracking-wider">Draft Preview</span>
+      <span class="text-[9.5px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold uppercase">Draft Preview</span>
     </div>
 
     <!-- 3-Column Institutional Header -->
@@ -114,7 +114,7 @@ const paragraphs = computed(() => {
           class="w-16 h-16 rounded-full border border-dashed border-amber-300 bg-amber-50/50 flex flex-col justify-center items-center text-center p-1"
           title="Official emblem pending institutional asset installation"
         >
-          <span class="text-[6.5px] font-bold text-amber-700 tracking-wider leading-tight uppercase font-sans">
+          <span class="text-[6.5px] font-bold text-amber-700 leading-tight uppercase font-sans">
             Emblem<br>Pending
           </span>
         </div>

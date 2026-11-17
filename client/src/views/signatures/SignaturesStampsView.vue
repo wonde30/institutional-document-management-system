@@ -385,7 +385,7 @@ async function submitApplyStamp() {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted">
  <tr>
  <th class="py-3 px-4">Request ID</th>
  <th class="py-3 px-4">Document Reference & Title</th>
@@ -489,7 +489,7 @@ async function submitApplyStamp() {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted">
  <tr>
  <th class="py-3 px-4">Seal ID</th>
  <th class="py-3 px-4">Stamp Name</th>

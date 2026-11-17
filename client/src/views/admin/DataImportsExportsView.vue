@@ -586,7 +586,7 @@ onMounted(loadAll)
 
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left min-w-[560px]">
-            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
               <tr>
                 <th class="p-3.5">File</th>
                 <th class="p-3.5">Dataset</th>
@@ -723,7 +723,7 @@ onMounted(loadAll)
 
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left min-w-[560px]">
-            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
               <tr>
                 <th class="p-3.5">Dataset</th>
                 <th class="p-3.5">Records</th>

@@ -277,7 +277,7 @@ onMounted(() => {
     <div v-else class="bg-surface border border-hairline rounded-xl overflow-hidden">
       <!-- Categories -->
       <table v-if="activeTab === 'categories'" class="w-full text-xs text-left">
-        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
           <tr>
             <th class="p-3.5">Code</th>
             <th class="p-3.5">Category Name</th>
@@ -324,7 +324,7 @@ onMounted(() => {
 
       <!-- Confidentiality -->
       <table v-else-if="activeTab === 'confidentiality'" class="w-full text-xs text-left">
-        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
           <tr>
             <th class="p-3.5">Rank</th>
             <th class="p-3.5">Code</th>
@@ -373,7 +373,7 @@ onMounted(() => {
 
       <!-- Correspondence Types -->
       <table v-else-if="activeTab === 'types'" class="w-full text-xs text-left">
-        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
           <tr>
             <th class="p-3.5">Code</th>
             <th class="p-3.5">Type Name</th>
@@ -420,7 +420,7 @@ onMounted(() => {
 
       <!-- Priorities -->
       <table v-else-if="activeTab === 'priorities'" class="w-full text-xs text-left">
-        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
           <tr>
             <th class="p-3.5">Code</th>
             <th class="p-3.5">Priority Label</th>
@@ -467,7 +467,7 @@ onMounted(() => {
 
       <!-- Dispatch Methods -->
       <table v-else-if="activeTab === 'dispatch'" class="w-full text-xs text-left">
-        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
+        <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold">
           <tr>
             <th class="p-3.5">Code</th>
             <th class="p-3.5">Method Name</th>

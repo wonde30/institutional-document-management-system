@@ -631,7 +631,7 @@ watchEffect(() => {
 
               <!-- Quick Add Common Offices -->
               <div>
-                <label class="block text-xs font-semibold text-ink-faint mb-1.5  tracking-wider">
+                <label class="block text-xs font-semibold text-ink-faint mb-1.5">
                   Quick-Add Common Offices:
                 </label>
                 <div class="flex flex-wrap gap-1.5">

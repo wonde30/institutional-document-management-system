@@ -1395,22 +1395,22 @@ onMounted(() => {
  <!-- Summary KPI Row -->
  <div v-if="lineageData" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-xs  font-semibold text-ink-muted tracking-wider">Effective Capabilities</div>
+ <div class="text-xs  font-semibold text-ink-muted">Effective Capabilities</div>
  <div class="text-lg font-bold text-emerald-600 mt-0.5">{{ lineageData.effective_count }}</div>
  <div class="text-xs text-ink-muted">in {{ lineageData.target_unit_name || 'Global Scope' }}</div>
  </div>
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-xs  font-semibold text-ink-muted tracking-wider">Assigned Roles</div>
+ <div class="text-xs  font-semibold text-ink-muted">Assigned Roles</div>
  <div class="text-lg font-bold text-ink-secondary mt-0.5">{{ selectedUser?.roles?.length || 0 }}</div>
  <div class="text-xs text-ink-muted">catalog roles assigned</div>
  </div>
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-xs  font-semibold text-ink-muted tracking-wider">Direct Overrides</div>
+ <div class="text-xs  font-semibold text-ink-muted">Direct Overrides</div>
  <div class="text-lg font-bold text-amber-600 mt-0.5">{{ selectedUser?.direct_permissions?.length || 0 }}</div>
  <div class="text-xs text-ink-muted">single-user grants</div>
  </div>
  <div class="p-3 bg-surface border border-hairline rounded-lg">
- <div class="text-xs  font-semibold text-ink-muted tracking-wider">Scopes Held</div>
+ <div class="text-xs  font-semibold text-ink-muted">Scopes Held</div>
  <div class="text-lg font-bold text-primary mt-0.5">{{ lineageData.scopes_held?.length || 0 }}</div>
  <div class="text-xs text-ink-muted">distinct scopes</div>
  </div>

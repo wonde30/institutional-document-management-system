@@ -365,7 +365,7 @@ onMounted(() => {
  <template #cell-decision="{ item }">
  <div v-if="item.decision" class="space-y-0.5 text-xs">
  <span
- class="px-2 py-0.5 rounded text-xs font-bold  tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-bold"
  :class="item.decision.decision === 'approve' ? 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border border-[#1aae39]/20' : item.decision.decision === 'reject' ? 'bg-[#fde8e8] dark:bg-[#371717] text-[#e03e3e] dark:text-[#f87171] border border-[#f87171]/20' : 'bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20'"
  >
  {{ item.decision.decision }}

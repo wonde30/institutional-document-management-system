@@ -276,7 +276,7 @@ async function submitProposal() {
  <!-- Proposals Table -->
  <div v-else-if="activeTab === 'proposals'" class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted">
  <tr>
  <th class="py-3 px-4">Proposal Reference</th>
  <th class="py-3 px-4">Title & Concept</th>
@@ -337,7 +337,7 @@ async function submitProposal() {
  <!-- Approved Projects Table -->
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted">
  <tr>
  <th class="py-3 px-4">Project Code</th>
  <th class="py-3 px-4">Approved Title</th>
