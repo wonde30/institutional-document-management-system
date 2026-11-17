@@ -108,18 +108,10 @@ watch(() => authStore.activeUnitId, () => {
     <LoadingSkeleton v-if="isLoading" :count="4" class="my-4" />
 
     <template v-else>
-      <!-- Core Operational KPI Grid: Compact, readable, informative -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Core KPI Grid: 4 cards, no icons, text-3xl values, 13px labels -->
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <div class="p-4 rounded-lg bg-surface border border-hairline">
-          <div class="flex items-baseline gap-2">
-            <div class="text-3xl font-semibold tabular-nums text-ink">{{ tasks.length }}</div>
-            <span
-              v-if="(metrics?.overview?.overdue_tasks ?? 0) > 0"
-              class="bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171] text-[11px] font-medium px-1.5 py-0.5 rounded"
-            >
-              {{ metrics?.overview?.overdue_tasks }} Overdue
-            </span>
-          </div>
+          <div class="text-3xl font-semibold tabular-nums text-ink">{{ tasks.length }}</div>
           <div class="text-[13px] text-ink-muted mt-1">Open tasks</div>
         </div>
 
@@ -139,26 +131,46 @@ watch(() => authStore.activeUnitId, () => {
         </div>
       </div>
 
-      <!-- Office overview card -->
+      <!-- Office overview: ONE card with 4 columns + dividers, amber warning only when > 0 -->
       <div class="rounded-lg bg-surface border border-hairline">
         <div class="px-4 py-2.5 border-b border-hairline">
           <h2 class="text-sm font-semibold text-ink">Office overview</h2>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-hairline">
           <router-link to="/tasks" class="p-4 hover:bg-surface-hover transition group">
-            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.my_office_pending_tasks ?? 0 }}</div>
+            <div class="flex items-center gap-2 mb-1">
+              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.my_office_pending_tasks ?? 0 }}</div>
+              <svg v-if="(metrics?.overview?.my_office_pending_tasks ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
             <div class="text-[13px] text-ink-muted mt-0.5">Office pending tasks</div>
           </router-link>
           <router-link to="/correspondence" class="p-4 hover:bg-surface-hover transition group">
-            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.unreceived_dispatches ?? 0 }}</div>
+            <div class="flex items-center gap-2 mb-1">
+              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.unreceived_dispatches ?? 0 }}</div>
+              <svg v-if="(metrics?.overview?.unreceived_dispatches ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
             <div class="text-[13px] text-ink-muted mt-0.5">Unreceived dispatches</div>
           </router-link>
           <router-link to="/archive" class="p-4 hover:bg-surface-hover transition group">
-            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.records_awaiting_retention_review ?? 0 }}</div>
+            <div class="flex items-center gap-2 mb-1">
+              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.records_awaiting_retention_review ?? 0 }}</div>
+              <svg v-if="(metrics?.overview?.records_awaiting_retention_review ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
             <div class="text-[13px] text-ink-muted mt-0.5">Retention reviews due</div>
           </router-link>
           <router-link to="/archive" class="p-4 hover:bg-surface-hover transition group">
-            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.pending_disposition_requests ?? 0 }}</div>
+            <div class="flex items-center gap-2 mb-1">
+              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.pending_disposition_requests ?? 0 }}</div>
+              <svg v-if="(metrics?.overview?.pending_disposition_requests ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
             <div class="text-[13px] text-ink-muted mt-0.5">Pending disposals</div>
           </router-link>
         </div>
@@ -213,10 +225,10 @@ watch(() => authStore.activeUnitId, () => {
                 </button>
               </div>
 
-              <!-- Empty state -->
-              <div v-if="tasks.length === 0" class="py-8 text-center">
+              <!-- Empty state: 24px muted icon, text-sm font-medium, py-10 -->
+              <div v-if="tasks.length === 0" class="py-10 text-center">
                 <CheckCircle2 class="w-6 h-6 text-ink-faint mx-auto mb-2" aria-hidden="true" />
-                <p class="text-sm text-ink-muted">No pending tasks.</p>
+                <p class="text-sm font-medium text-ink-muted">No pending tasks</p>
               </div>
             </div>
           </section>
@@ -316,37 +328,37 @@ watch(() => authStore.activeUnitId, () => {
 
         <!-- Right: Quick actions & Dispatches -->
         <div class="lg:col-span-5 space-y-4">
-          <!-- Quick actions: capability guarded -->
+          <!-- Quick actions: list rows, no borders, 16px muted icons -->
           <section class="bg-surface rounded-lg border border-hairline p-4">
-            <h2 class="text-sm font-semibold text-ink mb-2.5 pb-2 border-b border-hairline">Quick actions</h2>
-            <div class="divide-y divide-hairline-subtle">
+            <h2 class="text-sm font-semibold text-ink mb-3">Quick actions</h2>
+            <div class="space-y-1">
               <button
                 v-if="authStore.hasPermission('correspondence.register')"
                 type="button"
-                class="w-full text-xs font-medium px-2 py-2.5 text-ink-secondary hover:text-ink hover:bg-canvas-soft rounded transition flex items-center gap-2.5 text-left cursor-pointer"
+                class="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition cursor-pointer"
                 @click="router.push('/letters/incoming')"
               >
-                <MailPlus class="w-4 h-4 text-primary shrink-0" />
+                <MailPlus class="w-4 h-4 text-ink-muted" aria-hidden="true" />
                 <span>Log an incoming letter</span>
               </button>
 
               <button
                 v-if="authStore.hasPermission('correspondence.register')"
                 type="button"
-                class="w-full text-xs font-medium px-2 py-2.5 text-ink-secondary hover:text-ink hover:bg-canvas-soft rounded transition flex items-center gap-2.5 text-left cursor-pointer"
+                class="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition cursor-pointer"
                 @click="router.push('/letters/outgoing')"
               >
-                <Send class="w-4 h-4 text-primary shrink-0" />
+                <Send class="w-4 h-4 text-ink-muted" aria-hidden="true" />
                 <span>Prepare an outgoing letter</span>
               </button>
 
               <button
                 v-if="authStore.hasPermission('research.create')"
                 type="button"
-                class="w-full text-xs font-medium px-2 py-2.5 text-ink-secondary hover:text-ink hover:bg-canvas-soft rounded transition flex items-center gap-2.5 text-left cursor-pointer"
+                class="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition cursor-pointer"
                 @click="router.push('/research')"
               >
-                <BookOpen class="w-4 h-4 text-primary shrink-0" />
+                <BookOpen class="w-4 h-4 text-ink-muted" aria-hidden="true" />
                 <span>Post finalized research record</span>
               </button>
             </div>

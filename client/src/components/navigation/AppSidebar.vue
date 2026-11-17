@@ -241,15 +241,15 @@ function handleLinkClick() {
 
 <template>
  <div class="h-full shrink-0">
- <!-- Mobile Backdrop -->
+ <!-- Mobile/Drawer Backdrop -->
  <div
  v-if="mobileOpen"
- class="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 lg:hidden transition-opacity"
+ class="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 xl:hidden transition-opacity"
  @click="closeMobileDrawer"
  aria-hidden="true"
  />
 
- <!-- Main Sidebar Container: 240px → 64px collapsing, or drawer below 1280px -->
+ <!-- Main Sidebar Container: 240px → drawer below 1280px -->
  <aside
  class="bg-surface text-ink-secondary shrink-0 z-40 flex flex-col justify-between transition-transform duration-300 select-none border-r border-hairline h-full"
  :class="[
@@ -262,7 +262,7 @@ function handleLinkClick() {
  <!-- Top Section: University Branding & Mobile Close -->
  <div class="px-4 py-3.5 border-b border-hairline flex items-center justify-between gap-2">
  <router-link to="/dashboard" class="flex items-center gap-2.5 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-[5px]" @click="handleLinkClick">
- <span class="w-8 h-8 rounded-[6px] bg-primary text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-xs shrink-0">
+ <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-xs shrink-0">
  WU
  </span>
  <div class="flex flex-col min-w-0">
@@ -278,7 +278,7 @@ function handleLinkClick() {
  <!-- Mobile Drawer Close Button -->
  <button
  type="button"
- class="lg:hidden p-1.5 rounded-[5px] text-ink-muted hover:text-ink hover:bg-canvas-soft transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+ class="xl:hidden p-1.5 rounded-[5px] text-ink-muted hover:text-ink hover:bg-canvas-soft transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
  @click="closeMobileDrawer"
  aria-label="Close navigation menu"
  >

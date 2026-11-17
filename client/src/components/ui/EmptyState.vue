@@ -14,11 +14,11 @@ const props = withDefaults(
 </script>
 
 <template>
-  <div class="py-8 text-center">
+  <div class="py-10 text-center">
     <slot name="icon">
       <FolderSearch class="w-6 h-6 text-ink-faint mx-auto mb-2" aria-hidden="true" />
     </slot>
-    <p class="text-sm text-ink-muted">{{ title }}</p>
+    <p class="text-sm font-medium text-ink-muted">{{ title }}</p>
     <p v-if="description" class="text-xs text-ink-faint mt-1 max-w-md mx-auto">{{ description }}</p>
     <div v-if="$slots.actions" class="mt-4 flex justify-center gap-3">
       <slot name="actions"></slot>
