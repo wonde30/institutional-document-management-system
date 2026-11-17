@@ -107,7 +107,7 @@ const filteredGuides = computed(() => {
  <div
  v-for="guide in filteredGuides"
  :key="guide.module"
- class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-3"
+ class="p-5 rounded-xl bg-surface border border-hairline space-y-3"
  >
  <div class="flex items-center gap-2.5">
  <div class="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center shrink-0">

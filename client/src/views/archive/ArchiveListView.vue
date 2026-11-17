@@ -461,7 +461,7 @@ onMounted(() => {
 
     <!-- Tab 1: Archived Entries -->
     <div v-if="activeTab === 'entries'" class="space-y-4">
-      <div class="bg-surface rounded-lg border border-hairline p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div class="bg-surface rounded-lg border border-hairline p-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <button
             type="button"
@@ -634,7 +634,7 @@ onMounted(() => {
       <div
         v-for="c in collections"
         :key="c.id"
-        class="bg-surface rounded-lg border border-hairline p-5 shadow-xs"
+        class="bg-surface rounded-lg border border-hairline p-5"
       >
         <div class="flex items-start justify-between gap-2 mb-2">
           <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20 uppercase">
@@ -655,7 +655,7 @@ onMounted(() => {
     </div>
 
     <!-- Tab 3: Legal Holds Ledger -->
-    <div v-else-if="activeTab === 'holds'" class="bg-surface rounded-lg border border-hairline p-5 shadow-xs space-y-4">
+    <div v-else-if="activeTab === 'holds'" class="bg-surface rounded-lg border border-hairline p-5 space-y-4">
       <div v-if="legalHolds.length === 0" class="py-12 text-center text-ink-muted text-sm">
         No active legal holds in effect. All retention policies operate under standard schedules.
       </div>
@@ -858,7 +858,7 @@ onMounted(() => {
           v-if="eligibilityInfo.active_holds.length > 0"
           class="p-4 rounded-lg bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-500 text-rose-900 dark:text-rose-200 space-y-2"
         >
-          <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-rose-700 dark:text-rose-300">
+          <div class="flex items-center gap-2 font-bold text-xs   text-rose-700 dark:text-rose-300">
             <FileWarning class="w-5 h-5 text-rose-600 shrink-0" />
             <span>DISPOSITION STRICTLY BLOCKED: ACTIVE LEGAL HOLD</span>
           </div>

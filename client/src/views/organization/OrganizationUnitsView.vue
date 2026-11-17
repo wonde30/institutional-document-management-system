@@ -186,7 +186,7 @@ onMounted(() => {
 
  <!-- Stats Overview -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
- <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-xl border border-hairline flex items-center gap-4">
  <div class="p-3 bg-primary-subtle text-primary rounded-lg">
  <Building2 class="w-6 h-6" />
  </div>
@@ -196,7 +196,7 @@ onMounted(() => {
  </div>
  </div>
 
- <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-xl border border-hairline flex items-center gap-4">
  <div class="p-3 bg-primary-subtle text-primary rounded-lg">
  <GitFork class="w-6 h-6" />
  </div>
@@ -206,7 +206,7 @@ onMounted(() => {
  </div>
  </div>
 
- <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-xl border border-hairline flex items-center gap-4">
  <div class="p-3 bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] rounded-lg">
  <CheckCircle2 class="w-6 h-6" />
  </div>
@@ -220,7 +220,7 @@ onMounted(() => {
  </div>
 
  <!-- View Modes & Controls -->
- <div class="bg-surface rounded-xl border border-hairline shadow-xs p-4">
+ <div class="bg-surface rounded-xl border border-hairline p-4">
  <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4 pb-4 border-b border-hairline">
  <div class="flex items-center gap-2 bg-canvas-soft p-1 rounded-lg">
  <button
@@ -424,7 +424,7 @@ onMounted(() => {
  <!-- Tabular Directory Tab -->
  <div v-else-if="activeTab === 'table'" class="overflow-x-auto">
  <table class="w-full text-left text-xs">
- <thead class="bg-canvas-soft text-ink-muted uppercase tracking-wider font-semibold border-b border-hairline">
+ <thead class="bg-canvas-soft text-ink-muted   font-semibold border-b border-hairline">
  <tr>
  <th class="px-4 py-3">Code</th>
  <th class="px-4 py-3">Unit Name</th>

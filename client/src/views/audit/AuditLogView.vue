@@ -110,8 +110,8 @@ onMounted(() => {
  </div>
 
  <!-- Filter Bar -->
- <div class="bg-surface rounded-xl border border-hairline p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
- <div class="flex items-center gap-2 text-xs font-bold text-ink-secondary uppercase tracking-wider">
+ <div class="bg-surface rounded-xl border border-hairline p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+ <div class="flex items-center gap-2 text-xs font-bold text-ink-secondary  tracking-wider">
  <Filter class="w-4 h-4 text-primary" />
  Filter Security Events
  </div>

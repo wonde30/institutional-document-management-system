@@ -872,7 +872,7 @@ onMounted(() => {
  </div>
 
  <!-- Error State -->
- <div v-else-if="errorMessage" class="p-8 rounded-lg bg-surface border border-hairline text-center space-y-4 max-w-md mx-auto shadow-xs">
+ <div v-else-if="errorMessage" class="p-8 rounded-lg bg-surface border border-hairline text-center space-y-4 max-w-md mx-auto">
  <div v-if="errorCode === 403" class="w-12 h-12 rounded-full bg-[#fff4e6] dark:bg-[#3b220c] text-[#dd5b00] dark:text-[#f59e0b] flex items-center justify-center mx-auto">
  <Lock class="w-6 h-6" />
  </div>
@@ -902,11 +902,11 @@ onMounted(() => {
  <!-- Main Details (Left 2 cols) -->
  <div class="lg:col-span-2 space-y-6">
  <!-- Official Institutional Letter Presentation Card (When Letter Template Present) -->
- <div v-if="isTemplateLetter" class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+ <div v-if="isTemplateLetter" class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline-subtle pb-3">
  <div class="flex items-center gap-2">
  <FileSignature class="w-4 h-4 text-primary" />
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+ <h2 class="text-xs font-semibold   text-ink-muted">
  Official Wollo University Letter Presentation
  </h2>
  <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -945,11 +945,11 @@ onMounted(() => {
  </div>
 
  <!-- Institutional Workflow & Review Status -->
- <div v-if="activeWorkflowInstances.length > 0" class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+ <div v-if="activeWorkflowInstances.length > 0" class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
  <div class="flex items-center gap-2">
  <Workflow class="w-4 h-4 text-primary" />
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+ <h2 class="text-xs font-semibold   text-ink-muted">
  Institutional Workflow & Routing
  </h2>
  </div>
@@ -989,7 +989,7 @@ onMounted(() => {
  <div class="space-y-1">
  <div class="flex items-center gap-2">
  <span
- class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-semibold  tracking-wider"
  :class="t.closed_at ? 'bg-surface-muted text-ink-muted border border-hairline' : 'bg-primary-subtle text-primary border border-primary/20'"
  >
  {{ t.state?.name || 'Pending Decision' }}
@@ -1042,8 +1042,8 @@ onMounted(() => {
  </div>
 
  <!-- Metadata Summary -->
- <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2">
+ <div class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
+ <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2">
  Descriptive Summary
  </h2>
  <p class="text-sm text-ink-secondary leading-relaxed">
@@ -1069,9 +1069,9 @@ onMounted(() => {
  </div>
 
  <!-- Document Versions History -->
- <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+ <div class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+ <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
  <History class="w-4 h-4 text-primary" />
  <span>Version History ({{ document.versions?.length || 0 }})</span>
  </h2>
@@ -1175,9 +1175,9 @@ onMounted(() => {
  </div>
 
  <!-- Related Documents & Cross-References -->
- <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+ <div class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+ <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
  <Link2 class="w-4 h-4 text-primary" />
  <span>Cross-Referenced &amp; Related Documents</span>
  </h2>
@@ -1195,10 +1195,10 @@ onMounted(() => {
  <div v-if="(document.outgoing_relations && document.outgoing_relations.length > 0) || (document.incoming_relations && document.incoming_relations.length > 0)" class="space-y-3">
  <!-- Outgoing Relations -->
  <div v-if="document.outgoing_relations && document.outgoing_relations.length > 0" class="space-y-2">
- <div class="text-xs font-bold uppercase tracking-wider text-ink-muted">Referenced by this document</div>
+ <div class="text-xs font-bold   text-ink-muted">Referenced by this document</div>
  <div v-for="rel in document.outgoing_relations" :key="rel.target_id" class="flex items-center justify-between p-3 rounded-xl bg-surface-hover border border-hairline text-xs">
  <div class="flex items-center gap-2.5">
- <span class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-primary-subtle text-primary">
+ <span class="px-2 py-0.5 rounded text-xs font-bold  bg-primary-subtle text-primary">
  {{ rel.relation_type?.name || 'References' }}
  </span>
  <span class="font-mono text-xs font-semibold text-primary">{{ rel.target_document?.reference_number }}</span>
@@ -1217,10 +1217,10 @@ onMounted(() => {
 
  <!-- Incoming Relations -->
  <div v-if="document.incoming_relations && document.incoming_relations.length > 0" class="space-y-2">
- <div class="text-xs font-bold uppercase tracking-wider text-ink-muted">Referenced by other documents</div>
+ <div class="text-xs font-bold   text-ink-muted">Referenced by other documents</div>
  <div v-for="rel in document.incoming_relations" :key="rel.source_id" class="flex items-center justify-between p-3 rounded-xl bg-surface-hover border border-hairline text-xs">
  <div class="flex items-center gap-2.5">
- <span class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-zinc-200 dark:bg-zinc-800 text-ink-secondary">
+ <span class="px-2 py-0.5 rounded text-xs font-bold  bg-zinc-200 dark:bg-zinc-800 text-ink-secondary">
  {{ rel.relation_type?.name || 'Referenced By' }}
  </span>
  <span class="font-mono text-xs font-semibold text-primary">{{ rel.source_document?.reference_number }}</span>
@@ -1239,11 +1239,11 @@ onMounted(() => {
  </div>
 
       <!-- OCR Document Text Extraction Panel -->
-      <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+      <div class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
         <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
           <div class="flex items-center gap-2">
             <ScanLine class="w-4 h-4 text-primary" />
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+            <h2 class="text-xs font-semibold   text-ink-muted">
               OCR Document Extraction (Amharic & English)
             </h2>
           </div>
@@ -1333,11 +1333,11 @@ onMounted(() => {
       </div>
 
       <!-- Digital Signatures & Trust Tier Panel -->
-      <div v-if="signatures.length > 0" class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+      <div v-if="signatures.length > 0" class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
         <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
           <div class="flex items-center gap-2">
             <Key class="w-4 h-4 text-[#1aae39] dark:text-[#34d399]" />
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+            <h2 class="text-xs font-semibold   text-ink-muted">
               Cryptographic Digital Signatures & Trust Tiers
             </h2>
           </div>
@@ -1391,10 +1391,10 @@ onMounted(() => {
  <!-- Institutional Movements & Chain-of-Custody (if correspondence or direct movements exist) -->
  <div
  v-if="(document.correspondence?.movements && document.correspondence.movements.length > 0) || (document.movements && document.movements.length > 0)"
- class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4"
+ class="bg-surface border border-hairline rounded-xl p-6 space-y-4"
  >
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+ <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
  <Send class="w-4 h-4 text-primary" />
  <span>Institutional Chain-of-Custody & Movement History</span>
  </h2>
@@ -1452,10 +1452,10 @@ onMounted(() => {
  <!-- Operational Directives & Collaboration -->
  <div
  v-if="document.assignments && document.assignments.length > 0"
- class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4"
+ class="bg-surface border border-hairline rounded-xl p-6 space-y-4"
  >
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+ <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
  <User class="w-4 h-4 text-primary" />
  <span>Operational Directives & Assignments ({{ document.assignments.length }})</span>
  </h2>
@@ -1497,10 +1497,10 @@ onMounted(() => {
  <!-- Physical Originals & Archival Preservation (Scenario B) -->
  <div
  v-if="document.physical_originals && document.physical_originals.length > 0"
- class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4"
+ class="bg-surface border border-hairline rounded-xl p-6 space-y-4"
  >
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+ <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
  <ShieldCheck class="w-4 h-4 text-primary" />
  <span>Physical Originals & Archival Storage ({{ document.physical_originals.length }})</span>
  </h2>
@@ -1530,7 +1530,7 @@ onMounted(() => {
  </div>
 
  <div v-if="orig.custody_events && orig.custody_events.length > 0" class="pt-2 border-t border-hairline-subtle space-y-2">
- <div class="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <div class="text-xs font-semibold text-ink-muted  tracking-wider">
  Custody Chain Log
  </div>
  <div
@@ -1559,12 +1559,12 @@ onMounted(() => {
  <!-- Institutional Archive Record (if transferred to archive) -->
  <div
  v-if="document.archive_entry || document.lifecycle === 'retired'"
- class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4"
+ class="bg-surface border border-hairline rounded-xl p-6 space-y-4"
  >
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
  <div class="flex items-center gap-2">
  <Archive class="w-4 h-4 text-amber-600" />
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+ <h2 class="text-xs font-semibold   text-ink-muted">
  Archival Record & Custody Transfer
  </h2>
  </div>
@@ -1582,7 +1582,7 @@ onMounted(() => {
  <div class="space-y-0.5">
  <div class="font-bold text-ink flex items-center gap-2">
  <span>Reference: {{ document.archive_entry?.archive_reference || document.reference_number }}</span>
- <span class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+ <span class="px-2 py-0.5 rounded text-xs font-bold   bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
  {{ document.lifecycle }}
  </span>
  </div>
@@ -1598,9 +1598,9 @@ onMounted(() => {
  </div>
 
  <!-- Unified Institutional Lifecycle Timeline -->
- <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
+ <div class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
  <div class="flex items-center justify-between border-b border-hairline-subtle pb-3">
- <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+ <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
  <Clock class="w-4 h-4 text-primary" />
  <span>Unified Institutional Lifecycle Timeline ({{ timelineEvents.length }})</span>
  </h2>
@@ -1682,8 +1682,8 @@ onMounted(() => {
  <!-- Sidebar Attributes (Right 1 col) -->
  <div class="space-y-6">
  <!-- Institutional Ownership Card -->
- <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
- <h3 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2 border-b border-hairline-subtle pb-2">
+ <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+ <h3 class="text-xs font-semibold   text-ink-muted flex items-center gap-2 border-b border-hairline-subtle pb-2">
  <Building2 class="w-4 h-4 text-primary" />
  <span>Institutional Ownership</span>
  </h3>
@@ -1730,7 +1730,7 @@ onMounted(() => {
  >
  <form @submit.prevent="submitNewVersion" class="space-y-4">
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  File (PDF, DOCX) *
  </label>
  <input
@@ -1742,7 +1742,7 @@ onMounted(() => {
  </div>
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Change Summary / Version Note *
  </label>
  <BaseTextarea
@@ -1804,7 +1804,7 @@ onMounted(() => {
  </p>
 
  <div v-if="document?.physical_originals && document.physical_originals.length > 0">
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Target Physical Original
  </label>
  <select
@@ -1822,7 +1822,7 @@ onMounted(() => {
  </div>
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Scanned Binary Document (PDF, TIFF, PNG) *
  </label>
  <input
@@ -1835,7 +1835,7 @@ onMounted(() => {
  </div>
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Digitization & Quality Verification Notes
  </label>
  <BaseTextarea
@@ -1923,7 +1923,7 @@ onMounted(() => {
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Category *
           </label>
           <select
@@ -1938,7 +1938,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Security Classification *
           </label>
           <select
@@ -1962,7 +1962,7 @@ onMounted(() => {
         />
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Custodian Officer
           </label>
           <select
@@ -1978,7 +1978,7 @@ onMounted(() => {
       </div>
 
       <div>
-        <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <label class="block text-xs font-semibold   text-ink-secondary mb-1">
           Lifecycle State
         </label>
         <select
@@ -2013,7 +2013,7 @@ onMounted(() => {
       </p>
 
       <div>
-        <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <label class="block text-xs font-semibold   text-ink-secondary mb-1">
           Workflow Definition *
         </label>
         <select
@@ -2028,7 +2028,7 @@ onMounted(() => {
       </div>
 
       <div>
-        <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <label class="block text-xs font-semibold   text-ink-secondary mb-1">
           Target Document Revision *
         </label>
         <select
@@ -2065,7 +2065,7 @@ onMounted(() => {
       </p>
 
       <div>
-        <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <label class="block text-xs font-semibold   text-ink-secondary mb-1">
           Administrative Justification / Reason {{ decisionType === 'reject' ? '*' : '(Optional)' }}
         </label>
         <BaseTextarea
@@ -2132,7 +2132,7 @@ onMounted(() => {
               {{ comparisonResult.comparison.content_identical ? 'Content Identical (Zero Binary Drift)' : 'Material Revision Detected' }}
             </span>
           </div>
-          <span class="px-2 py-0.5 rounded text-xs font-mono font-semibold uppercase tracking-wider bg-white/60 dark:bg-black/30">
+          <span class="px-2 py-0.5 rounded text-xs font-mono font-semibold   bg-white/60 dark:bg-black/30">
             Delta: {{ comparisonResult.comparison.version_delta > 0 ? '+' : '' }}{{ comparisonResult.comparison.version_delta }} version(s)
           </span>
         </div>
@@ -2152,7 +2152,7 @@ onMounted(() => {
               Committed by: {{ comparisonResult.version_a.creator?.name || 'Staff' }}
             </div>
             <div class="border-t border-hairline pt-2 space-y-1">
-              <span class="text-xs font-bold uppercase text-ink-muted">Files ({{ comparisonResult.version_a.files.length }})</span>
+              <span class="text-xs font-bold  text-ink-muted">Files ({{ comparisonResult.version_a.files.length }})</span>
               <div v-for="f in comparisonResult.version_a.files" :key="f.id" class="text-xs font-mono truncate">
                 {{ f.filename }} ({{ formatFileSize(f.byte_size) }})
               </div>
@@ -2172,7 +2172,7 @@ onMounted(() => {
               Committed by: {{ comparisonResult.version_b.creator?.name || 'Staff' }}
             </div>
             <div class="border-t border-hairline pt-2 space-y-1">
-              <span class="text-xs font-bold uppercase text-ink-muted">Files ({{ comparisonResult.version_b.files.length }})</span>
+              <span class="text-xs font-bold  text-ink-muted">Files ({{ comparisonResult.version_b.files.length }})</span>
               <div v-for="f in comparisonResult.version_b.files" :key="f.id" class="text-xs font-mono truncate">
                 {{ f.filename }} ({{ formatFileSize(f.byte_size) }})
               </div>
@@ -2195,7 +2195,7 @@ onMounted(() => {
   >
     <form @submit.prevent="submitAddRelation" class="space-y-4 text-xs">
       <div>
-        <label class="block font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <label class="block font-semibold   text-ink-secondary mb-1">
           Target Document ID / Record # *
         </label>
         <BaseInput
@@ -2207,7 +2207,7 @@ onMounted(() => {
       </div>
 
       <div>
-        <label class="block font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <label class="block font-semibold   text-ink-secondary mb-1">
           Relationship Type *
         </label>
         <BaseSelect

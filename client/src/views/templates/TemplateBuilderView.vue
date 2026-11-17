@@ -436,7 +436,7 @@ onMounted(() => {
     >
       <form @submit.prevent="submitCreateTemplate" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Template Name *
           </label>
           <BaseInput
@@ -447,7 +447,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Template Unique Code *
           </label>
           <BaseInput
@@ -458,7 +458,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Document Category *
           </label>
           <BaseSelect
@@ -500,7 +500,7 @@ onMounted(() => {
     >
       <form @submit.prevent="submitNewVersion" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             HTML Template Content (with dynamic placeholders) *
           </label>
           <BaseTextarea
@@ -516,7 +516,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             JSON Schema Definition *
           </label>
           <BaseTextarea
@@ -564,7 +564,7 @@ onMounted(() => {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+            <label class="block text-xs font-semibold   text-ink-secondary mb-1">
               Accountable Unit *
             </label>
             <BaseSelect
@@ -575,7 +575,7 @@ onMounted(() => {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+            <label class="block text-xs font-semibold   text-ink-secondary mb-1">
               Security Classification *
             </label>
             <BaseSelect
@@ -587,7 +587,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Recipient / Destination *
           </label>
           <BaseInput
@@ -598,7 +598,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Subject / Directive Title *
           </label>
           <BaseInput
@@ -609,7 +609,7 @@ onMounted(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <label class="block text-xs font-semibold   text-ink-secondary mb-1">
             Letter Body / Content *
           </label>
           <BaseTextarea

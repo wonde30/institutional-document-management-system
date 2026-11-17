@@ -88,7 +88,7 @@ onMounted(() => {
 
  <!-- Metrics Cards -->
  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Storage Driver</span>
  <HardDrive class="w-4 h-4 text-primary" />
@@ -99,7 +99,7 @@ onMounted(() => {
  <div class="text-xs text-ink-muted mt-0.5">Encrypted at rest · Strict SHA-256</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Backup Snapshots</span>
  <Database class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -110,7 +110,7 @@ onMounted(() => {
  <div class="text-xs text-ink-muted mt-0.5">Verified daily manifest</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Restore Drills</span>
  <ShieldCheck class="w-4 h-4 text-primary" />
@@ -121,7 +121,7 @@ onMounted(() => {
  <div class="text-xs text-ink-muted mt-0.5">Successful simulated restores</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">File Integrity Checks</span>
  <FileCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -134,10 +134,10 @@ onMounted(() => {
  </div>
 
  <!-- Section: Backup Runs & Verified Manifests -->
- <div class="bg-surface border border-hairline rounded-xl overflow-hidden shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
  <div class="px-5 py-3 border-b border-hairline flex items-center justify-between">
  <div>
- <h2 class="text-xs font-bold text-ink-secondary uppercase tracking-wider">
+ <h2 class="text-xs font-bold text-ink-secondary  tracking-wider">
  Verified Backup Runs
  </h2>
  <p class="text-xs text-ink-muted">
@@ -154,7 +154,7 @@ onMounted(() => {
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
  <tr>
  <th class="py-3 px-4">Job Reference</th>
  <th class="py-3 px-4">Started At</th>
@@ -203,9 +203,9 @@ onMounted(() => {
  </div>
 
  <!-- Section: Disaster Recovery Restore Drills -->
- <div class="bg-surface border border-hairline rounded-xl overflow-hidden shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
  <div class="px-5 py-3 border-b border-hairline">
- <h2 class="text-xs font-bold text-ink-secondary uppercase tracking-wider">
+ <h2 class="text-xs font-bold text-ink-secondary  tracking-wider">
  Quarterly Restore Drill Ledger
  </h2>
  <p class="text-xs text-ink-muted">

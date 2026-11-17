@@ -50,7 +50,7 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  </h2>
  <div class="p-4 rounded-xl border border-hairline bg-surface space-y-3">
  <div>
- <h3 class="font-bold text-xs uppercase tracking-wider text-primary">
+ <h3 class="font-bold text-xs   text-primary">
  A. User Account &amp; Identity Data
  </h3>
  <p class="text-ink-muted mt-1 text-xs">
@@ -59,7 +59,7 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  </div>
 
  <div>
- <h3 class="font-bold text-xs uppercase tracking-wider text-primary">
+ <h3 class="font-bold text-xs   text-primary">
  B. Official Records &amp; Document Metadata
  </h3>
  <p class="text-ink-muted mt-1 text-xs">
@@ -68,7 +68,7 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  </div>
 
  <div>
- <h3 class="font-bold text-xs uppercase tracking-wider text-primary">
+ <h3 class="font-bold text-xs   text-primary">
  C. Security Audit &amp; Technical Telemetry
  </h3>
  <p class="text-ink-muted mt-1 text-xs">

@@ -220,7 +220,7 @@ onMounted(() => {
  </div>
 
  <!-- Panel & Toolbar -->
- <section class="bg-surface rounded-lg border border-hairline overflow-hidden shadow-xs">
+ <section class="bg-surface rounded-lg border border-hairline overflow-hidden">
  <div class="p-3 sm:p-4 border-b border-hairline flex flex-col sm:flex-row items-center justify-between gap-3">
  <div class="relative w-full sm:w-80">
  <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -439,7 +439,7 @@ onMounted(() => {
  </div>
  <div class="grid grid-cols-2 gap-3 pt-1">
  <div class="p-2.5 rounded-md bg-surface border border-hairline">
- <span class="block text-xs uppercase font-bold text-ink-muted">1. University Evaluation</span>
+ <span class="block text-xs  font-bold text-ink-muted">1. University Evaluation</span>
  <span class="font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 block">Approved Externally</span>
  <span class="text-xs text-ink-muted block mt-0.5">
  Ref: {{ selectedResearch.external_selection_reference || '—' }}
@@ -447,7 +447,7 @@ onMounted(() => {
  </div>
 
  <div class="p-2.5 rounded-md bg-surface border border-hairline">
- <span class="block text-xs uppercase font-bold text-ink-muted">2. Repository State</span>
+ <span class="block text-xs  font-bold text-ink-muted">2. Repository State</span>
  <span class="font-semibold capitalize text-primary mt-0.5 block">
  {{ isPublished(selectedResearch) ? 'Published' : 'Ready to publish' }}
  </span>

@@ -287,7 +287,7 @@ async function submitApplyStamp() {
 
  <!-- Metric Cards -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
- <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Signing Requests</span>
  <PenLine class="w-4 h-4 text-primary" />
@@ -298,7 +298,7 @@ async function submitApplyStamp() {
  <div class="text-xs text-ink-muted mt-0.5">Pending & completed requests</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Registered Office Stamps</span>
  <Stamp class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -309,7 +309,7 @@ async function submitApplyStamp() {
  <div class="text-xs text-ink-muted mt-0.5">Authorized departmental seals</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Provider Trust Status</span>
  <ShieldCheck class="w-4 h-4 text-primary" />
@@ -378,14 +378,14 @@ async function submitApplyStamp() {
  <!-- Tab 1: Signing Requests -->
  <div
  v-if="activeTab === 'signatures'"
- class="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs"
+ class="bg-surface border border-hairline rounded-lg overflow-hidden"
  >
  <div v-if="loading" class="p-6">
  <LoadingSkeleton type="table" :rows="5" />
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
  <tr>
  <th class="py-3 px-4">Request ID</th>
  <th class="py-3 px-4">Document Reference & Title</th>
@@ -482,14 +482,14 @@ async function submitApplyStamp() {
  <!-- Tab 2: Office Stamps -->
  <div
  v-else-if="activeTab === 'stamps'"
- class="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs"
+ class="bg-surface border border-hairline rounded-lg overflow-hidden"
  >
  <div v-if="loading" class="p-6">
  <LoadingSkeleton type="table" :rows="4" />
  </div>
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
  <tr>
  <th class="py-3 px-4">Seal ID</th>
  <th class="py-3 px-4">Stamp Name</th>
@@ -553,7 +553,7 @@ async function submitApplyStamp() {
  <!-- Tab 3: Trust Configuration & Identities -->
  <div
  v-else
- class="bg-surface border border-hairline rounded-lg p-6 shadow-xs space-y-6"
+ class="bg-surface border border-hairline rounded-lg p-6 space-y-6"
  >
  <div class="flex items-center gap-3">
  <div class="w-10 h-10 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
@@ -601,7 +601,7 @@ async function submitApplyStamp() {
 
  <!-- User Signing Identities Registry -->
  <div class="pt-4 border-t border-hairline">
- <h3 class="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-3">
+ <h3 class="text-xs font-semibold text-ink-secondary   mb-3">
  Provisioned User Signing Identities ({{ identities.length }})
  </h3>
 
@@ -792,7 +792,7 @@ async function submitApplyStamp() {
  <div class="flex items-center justify-between p-2.5 rounded-md bg-canvas-soft border border-hairline">
  <span class="font-medium text-ink-muted">Overall Cryptographic Status:</span>
  <span
- class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold uppercase tracking-wider text-xs"
+ class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold   text-xs"
  :class="selectedVerification.outcome === 'valid' ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]' : 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373]'"
  >
  {{ selectedVerification.outcome }}

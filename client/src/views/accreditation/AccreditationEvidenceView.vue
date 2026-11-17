@@ -349,37 +349,37 @@ onMounted(() => {
 
  <!-- Real-Time Completeness Analytics Panel -->
  <div v-if="summary" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
- <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
+ <div class="p-3 bg-surface rounded-lg border border-hairline">
  <div class="text-xs font-medium text-ink-muted">Total Standards</div>
  <div class="text-lg font-semibold text-ink-secondary mt-1">{{ summary.metrics.total_standards }}</div>
  <div class="text-xs text-ink-muted mt-0.5">HERQA 10 Framework</div>
  </div>
 
- <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
+ <div class="p-3 bg-surface rounded-lg border border-hairline">
  <div class="text-xs font-medium text-ink-muted">Covered Standards</div>
  <div class="text-lg font-semibold text-primary mt-1">{{ summary.metrics.covered_standards }} / {{ summary.metrics.total_standards }}</div>
  <div class="text-xs text-ink-muted mt-0.5">{{ summary.metrics.submission_rate_percent }}% Submitted</div>
  </div>
 
- <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
+ <div class="p-3 bg-surface rounded-lg border border-hairline">
  <div class="text-xs font-medium text-ink-muted">Accepted Evidence</div>
  <div class="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mt-1">{{ summary.metrics.accepted_standards }}</div>
  <div class="text-xs text-ink-muted mt-0.5">{{ summary.metrics.acceptance_rate_percent }}% Acceptance Rate</div>
  </div>
 
- <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
+ <div class="p-3 bg-surface rounded-lg border border-hairline">
  <div class="text-xs font-medium text-ink-muted">Pending Review</div>
  <div class="text-lg font-semibold text-amber-600 dark:text-amber-400 mt-1">{{ summary.metrics.pending_review }}</div>
  <div class="text-xs text-ink-muted mt-0.5">Awaiting Quality Assurance Review</div>
  </div>
 
- <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
+ <div class="p-3 bg-surface rounded-lg border border-hairline">
  <div class="text-xs font-medium text-ink-muted">Needs Revision</div>
  <div class="text-lg font-semibold text-orange-600 dark:text-orange-400 mt-1">{{ summary.metrics.needs_revision }}</div>
  <div class="text-xs text-ink-muted mt-0.5">Feedback Provided</div>
  </div>
 
- <div class="p-3 bg-surface rounded-lg border border-hairline shadow-xs">
+ <div class="p-3 bg-surface rounded-lg border border-hairline">
  <div class="text-xs font-medium text-ink-muted">Total Dossiers</div>
  <div class="text-lg font-semibold text-ink-secondary mt-1">{{ summary.metrics.total_evidence_records }}</div>
  <div class="text-xs text-ink-muted mt-0.5">Database Mappings</div>
@@ -387,7 +387,7 @@ onMounted(() => {
  </div>
 
  <!-- Panel & Toolbar -->
- <section class="bg-surface rounded-lg border border-hairline overflow-hidden shadow-xs">
+ <section class="bg-surface rounded-lg border border-hairline overflow-hidden">
  <div class="p-3 sm:p-4 border-b border-hairline flex flex-col sm:flex-row items-center justify-between gap-3">
  <div class="relative w-full sm:w-80">
  <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />

@@ -714,16 +714,16 @@ onMounted(async () => {
  <template #cell-sender_recipient="{ item }">
  <div class="space-y-0.5 text-xs">
  <div class="font-medium text-ink truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getSenderName(item)">
- <span class="text-xs uppercase font-bold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
+ <span class="text-xs  font-bold text-ink-muted mr-1">From:</span>{{ getSenderName(item) }}
  </div>
  <div class="text-xs text-ink-muted truncate max-w-[180px] sm:max-w-[240px] lg:max-w-xs" :title="getRecipientName(item)">
- <span class="text-xs uppercase font-bold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
+ <span class="text-xs  font-bold text-ink-muted mr-1">To:</span>{{ getRecipientName(item) }}
  </div>
  </div>
  </template>
 
  <template #cell-type="{ item }">
- <span class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
+ <span class="px-2 py-0.5 rounded text-xs font-semibold   bg-canvas-soft text-ink-muted">
  {{ item.type?.name }}
  </span>
  </template>
@@ -734,7 +734,7 @@ onMounted(async () => {
 
  <template #cell-status="{ item }">
  <span
- class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border inline-block"
+ class="px-2 py-0.5 rounded text-xs font-semibold   border inline-block"
  :class="getRoutingStatus(item).class"
  >
  {{ getRoutingStatus(item).text }}
@@ -853,7 +853,7 @@ onMounted(async () => {
  >
  <form @submit.prevent="submitCreateCorrespondence" class="space-y-4">
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Subject / Title *
  </label>
  <BaseInput v-model="newCorr.title" placeholder="e.g. Budget transfer notice from Ministry of Education" required />
@@ -893,7 +893,7 @@ onMounted(async () => {
 
  <div class="grid grid-cols-2 gap-3">
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Originating Sender
  </label>
  <div class="flex items-center gap-2 mb-1.5 text-xs">
@@ -919,7 +919,7 @@ onMounted(async () => {
  </div>
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Destination Recipient
  </label>
  <div class="flex items-center gap-2 mb-1.5 text-xs">
@@ -954,7 +954,7 @@ onMounted(async () => {
  />
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Letter Date *
  </label>
  <BaseInput v-model="newCorr.correspondence_date" type="date" required />
@@ -962,14 +962,14 @@ onMounted(async () => {
  </div>
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  External Reference Number
  </label>
  <BaseInput v-model="newCorr.external_reference" placeholder="e.g. MOE/FIN/2026/099" />
  </div>
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Digital File / Scanned Copy (PDF, DOCX)
  </label>
  <input
@@ -1012,7 +1012,7 @@ onMounted(async () => {
  />
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Handling Directive / Instruction
  </label>
  <BaseTextarea v-model="movementForm.instruction" rows="2" placeholder="e.g. For necessary departmental review and response..." />
@@ -1047,7 +1047,7 @@ onMounted(async () => {
  />
 
  <div>
- <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+ <label class="block text-xs font-semibold   text-ink-secondary mb-1">
  Assignment Directive *
  </label>
  <BaseTextarea v-model="assignmentForm.instruction" rows="3" placeholder="Specific action required by the officer..." required />
@@ -1215,7 +1215,7 @@ onMounted(async () => {
  {{ inspectingCorr.document?.reference_number }}
  </div>
  <span
- class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border"
+ class="px-2 py-0.5 rounded text-xs font-semibold   border"
  :class="getRoutingStatus(inspectingCorr).class"
  >
  {{ getRoutingStatus(inspectingCorr).text }}
@@ -1231,26 +1231,26 @@ onMounted(async () => {
 
  <div class="grid grid-cols-2 gap-3 text-xs border-y border-hairline py-3">
  <div>
- <span class="text-ink-muted block text-xs uppercase font-bold">Originating Sender</span>
+ <span class="text-ink-muted block text-xs  font-bold">Originating Sender</span>
  <span class="font-medium text-ink">{{ getSenderName(inspectingCorr) }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-xs uppercase font-bold">First Receiving Office</span>
+ <span class="text-ink-muted block text-xs  font-bold">First Receiving Office</span>
  <span class="font-medium text-ink">{{ getRecipientName(inspectingCorr) }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-xs uppercase font-bold">Type & Priority</span>
+ <span class="text-ink-muted block text-xs  font-bold">Type & Priority</span>
  <span class="font-medium text-ink">{{ inspectingCorr.type?.name }} &bull; {{ inspectingCorr.priority?.name }}</span>
  </div>
  <div>
- <span class="text-ink-muted block text-xs uppercase font-bold">External Reference</span>
+ <span class="text-ink-muted block text-xs  font-bold">External Reference</span>
  <span class="font-mono text-ink">{{ inspectingCorr.external_reference || 'None (Internal)' }}</span>
  </div>
  </div>
 
  <!-- Movements History -->
  <div>
- <div class="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">
+ <div class="text-xs font-semibold   text-ink-muted mb-2">
  Routing & Movements History ({{ inspectingCorr.movements?.length || 0 }})
  </div>
  <div v-if="inspectingCorr.movements && inspectingCorr.movements.length > 0" class="space-y-2">
@@ -1283,7 +1283,7 @@ onMounted(async () => {
 
  <!-- Directives & Assignments -->
  <div v-if="inspectingCorr.assignments && inspectingCorr.assignments.length > 0">
- <div class="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">
+ <div class="text-xs font-semibold   text-ink-muted mb-2">
  Operational Directives & Assignments ({{ inspectingCorr.assignments.length }})
  </div>
  <div class="space-y-2">
@@ -1308,7 +1308,7 @@ onMounted(async () => {
 
  <!-- Outgoing Dispatches -->
  <div v-if="inspectingCorr.dispatches && inspectingCorr.dispatches.length > 0">
- <div class="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">
+ <div class="text-xs font-semibold   text-ink-muted mb-2">
  Official Dispatches & Transmittals ({{ inspectingCorr.dispatches.length }})
  </div>
  <div class="space-y-2">
@@ -1385,7 +1385,7 @@ onMounted(async () => {
      </div>
 
      <div>
-       <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+       <label class="block text-xs font-semibold   text-ink-secondary mb-1">
          Formal Closure Remarks &amp; Resolution Note
        </label>
        <BaseTextarea

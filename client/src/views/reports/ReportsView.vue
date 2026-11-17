@@ -147,8 +147,8 @@ onMounted(() => {
  </div>
 
  <!-- Date Filter Bar -->
- <div class="bg-surface rounded-lg border border-hairline p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
- <div class="flex items-center gap-2 text-xs font-semibold text-ink-secondary uppercase tracking-wider">
+ <div class="bg-surface rounded-lg border border-hairline p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+ <div class="flex items-center gap-2 text-xs font-semibold text-ink-secondary  tracking-wider">
  <Filter class="w-4 h-4 text-primary" />
  Reporting Period
  </div>
@@ -190,7 +190,7 @@ onMounted(() => {
  <div v-else-if="summary" class="space-y-6">
  <!-- Totals Overview Cards -->
  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
- <div class="bg-surface p-4 rounded-lg border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-lg border border-hairline flex items-center gap-4">
  <div class="p-3 bg-primary-subtle text-primary rounded-md">
  <FileText class="w-6 h-6" />
  </div>
@@ -200,7 +200,7 @@ onMounted(() => {
  </div>
  </div>
 
- <div class="bg-surface p-4 rounded-lg border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-lg border border-hairline flex items-center gap-4">
  <div class="p-3 bg-primary-subtle text-primary rounded-md">
  <Mail class="w-6 h-6" />
  </div>
@@ -210,7 +210,7 @@ onMounted(() => {
  </div>
  </div>
 
- <div class="bg-surface p-4 rounded-lg border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-lg border border-hairline flex items-center gap-4">
  <div class="p-3 bg-[#e8f7ec] dark:bg-[#183321] text-[#1aae39] dark:text-[#42cf63] rounded-md">
  <Send class="w-6 h-6" />
  </div>
@@ -220,7 +220,7 @@ onMounted(() => {
  </div>
  </div>
 
- <div class="bg-surface p-4 rounded-lg border border-hairline shadow-xs flex items-center gap-4">
+ <div class="bg-surface p-4 rounded-lg border border-hairline flex items-center gap-4">
  <div class="p-3 bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] rounded-md">
  <Archive class="w-6 h-6" />
  </div>
@@ -234,7 +234,7 @@ onMounted(() => {
  <!-- Analytical Breakdowns Grid -->
  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
  <!-- Breakdown: Document Categories -->
- <div class="bg-surface rounded-lg border border-hairline p-5 shadow-xs space-y-4">
+ <div class="bg-surface rounded-lg border border-hairline p-5 space-y-4">
  <div class="flex items-center justify-between pb-3 border-b border-hairline">
  <h3 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
  <Layers class="w-4 h-4 text-primary" />
@@ -270,7 +270,7 @@ onMounted(() => {
  </div>
 
  <!-- Breakdown: Confidentiality Levels -->
- <div class="bg-surface rounded-lg border border-hairline p-5 shadow-xs space-y-4">
+ <div class="bg-surface rounded-lg border border-hairline p-5 space-y-4">
  <div class="flex items-center justify-between pb-3 border-b border-hairline">
  <h3 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
  <Shield class="w-4 h-4 text-primary" />
@@ -306,7 +306,7 @@ onMounted(() => {
  </div>
 
  <!-- Breakdown: Correspondence Types -->
- <div class="bg-surface rounded-lg border border-hairline p-5 shadow-xs space-y-4">
+ <div class="bg-surface rounded-lg border border-hairline p-5 space-y-4">
  <div class="flex items-center justify-between pb-3 border-b border-hairline">
  <h3 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
  <Mail class="w-4 h-4 text-emerald-500" />
@@ -342,7 +342,7 @@ onMounted(() => {
  </div>
 
  <!-- Breakdown: Movement Destinations -->
- <div class="bg-surface rounded-lg border border-hairline p-5 shadow-xs space-y-4">
+ <div class="bg-surface rounded-lg border border-hairline p-5 space-y-4">
  <div class="flex items-center justify-between pb-3 border-b border-hairline">
  <h3 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
  <Building2 class="w-4 h-4 text-amber-500" />

@@ -68,7 +68,7 @@ async function handleLogin() {
  <h1 class="text-2xl font-bold text-ink tracking-tight">
  Wollo University
  </h1>
- <p class="text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">
+ <p class="text-xs font-semibold text-ink-muted   mt-0.5">
  Integrated Document Repository & Archive
  </p>
  </div>
@@ -144,7 +144,7 @@ async function handleLogin() {
  <BaseButton
  type="submit"
  variant="primary"
- class="w-full justify-center py-2.5 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors shadow-xs"
+ class="w-full justify-center py-2.5 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors"
  :loading="isLoading"
  >
  Sign In to Workspace

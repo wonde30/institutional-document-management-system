@@ -387,7 +387,7 @@ onMounted(loadAll)
 
       <!-- ============================ IMPORT ============================ -->
       <div v-if="activeTab === 'imports'" class="space-y-6">
-        <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+        <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
           <h2 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
             <Upload class="w-4 h-4 text-primary" />
             New Batch Import
@@ -464,7 +464,7 @@ onMounted(loadAll)
         </div>
 
         <!-- Validation preview -->
-        <div v-if="inspection" class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+        <div v-if="inspection" class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
           <div class="flex items-start justify-between gap-3">
             <h2 class="text-sm font-semibold text-ink-secondary">Validation preview</h2>
             <span class="text-xs font-medium px-1.5 py-0.5 rounded">
@@ -498,7 +498,7 @@ onMounted(loadAll)
             </h3>
             <div class="max-h-64 overflow-auto border border-hairline rounded-lg">
               <table class="w-full text-xs text-left min-w-[480px]">
-                <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider sticky top-0">
+                <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold   sticky top-0">
                   <tr>
                     <th class="p-2.5 w-16">Row</th>
                     <th class="p-2.5 w-40">Column</th>
@@ -543,7 +543,7 @@ onMounted(loadAll)
         <!-- Execution result -->
         <div
           v-if="executionResult"
-          class="p-5 rounded-xl border shadow-xs space-y-3"
+          class="p-5 rounded-xl border space-y-3"
           :class="executionResult.status === 'completed'
             ? 'bg-[#e8f7ec] dark:bg-[#14301d] border-[#1aae39]/25'
             : 'bg-[#fdf3e3] dark:bg-[#2e2312] border-[#e0a03a]/30'"
@@ -572,7 +572,7 @@ onMounted(loadAll)
         </div>
 
         <!-- Import history -->
-        <div class="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
+        <div class="bg-surface border border-hairline rounded-lg overflow-hidden">
           <div class="p-4 border-b border-hairline flex items-center justify-between">
             <h2 class="text-sm font-semibold text-ink-secondary">Import runs</h2>
             <span class="text-xs text-ink-muted">{{ importHistory.length }} operation(s)</span>
@@ -586,7 +586,7 @@ onMounted(loadAll)
 
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left min-w-[560px]">
-            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider">
+            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
               <tr>
                 <th class="p-3.5">File</th>
                 <th class="p-3.5">Dataset</th>
@@ -654,7 +654,7 @@ onMounted(loadAll)
 
       <!-- ============================ EXPORT ============================ -->
       <div v-else class="space-y-6">
-        <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+        <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
           <h2 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
             <Download class="w-4 h-4 text-primary" />
             Generate an export
@@ -709,7 +709,7 @@ onMounted(loadAll)
         </div>
 
         <!-- Export history -->
-        <div class="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
+        <div class="bg-surface border border-hairline rounded-lg overflow-hidden">
           <div class="p-4 border-b border-hairline flex items-center justify-between">
             <h2 class="text-sm font-semibold text-ink-secondary">Export runs</h2>
             <span class="text-xs text-ink-muted">{{ exportHistory.length }} operation(s)</span>
@@ -723,7 +723,7 @@ onMounted(loadAll)
 
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left min-w-[560px]">
-            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold uppercase tracking-wider">
+            <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold  tracking-wider">
               <tr>
                 <th class="p-3.5">Dataset</th>
                 <th class="p-3.5">Records</th>

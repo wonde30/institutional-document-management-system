@@ -998,7 +998,7 @@ async function deleteRetentionPolicy(id: number) {
         <!-- Right: Active Version Stage Machine Designer -->
         <div v-if="selectedWorkflow" class="lg:col-span-8 space-y-6">
           <!-- Definition Details & Version Header -->
-          <div class="bg-surface border border-hairline rounded-lg p-5 shadow-xs space-y-4">
+          <div class="bg-surface border border-hairline rounded-lg p-5 space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 class="text-lg font-serif font-bold text-ink">{{ selectedWorkflow.name }}</h2>
@@ -1094,7 +1094,7 @@ async function deleteRetentionPolicy(id: number) {
           </div>
 
           <!-- Stages & Transitions Designer Table -->
-          <div class="bg-surface border border-hairline rounded-lg p-5 shadow-xs space-y-4">
+          <div class="bg-surface border border-hairline rounded-lg p-5 space-y-4">
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-semibold text-sm text-ink">Stages & Routing Graph</h3>
@@ -1221,7 +1221,7 @@ async function deleteRetentionPolicy(id: number) {
         <div
           v-for="policy in numberingPolicies"
           :key="policy.id"
-          class="bg-surface border border-hairline rounded-lg p-5 shadow-xs space-y-3"
+          class="bg-surface border border-hairline rounded-lg p-5 space-y-3"
         >
           <div class="flex items-start justify-between">
             <div>
@@ -1300,7 +1300,7 @@ async function deleteRetentionPolicy(id: number) {
       </div>
 
       <!-- Route Matcher Simulator -->
-      <div class="bg-surface border border-hairline rounded-lg p-5 shadow-xs space-y-4">
+      <div class="bg-surface border border-hairline rounded-lg p-5 space-y-4">
         <div class="flex items-center gap-2 text-sm font-semibold text-ink">
           <Compass class="w-4 h-4 text-primary" />
           <span>Interactive Route Matcher Simulation</span>
@@ -1353,9 +1353,9 @@ async function deleteRetentionPolicy(id: number) {
       </div>
 
       <!-- Routing Rules List -->
-      <div class="bg-surface border border-hairline rounded-lg overflow-x-auto shadow-xs">
+      <div class="bg-surface border border-hairline rounded-lg overflow-x-auto">
         <table class="w-full text-left text-xs min-w-[640px]">
-          <thead class="bg-surface-subtle border-b border-hairline text-ink-secondary uppercase tracking-wider font-semibold">
+          <thead class="bg-surface-subtle border-b border-hairline text-ink-secondary   font-semibold">
             <tr>
               <th class="p-3">Policy Code / Name</th>
               <th class="p-3">Origin Unit</th>
@@ -1411,7 +1411,7 @@ async function deleteRetentionPolicy(id: number) {
         <div
           v-for="policy in retentionPolicies"
           :key="policy.id"
-          class="bg-surface border border-hairline rounded-lg p-5 shadow-xs space-y-4"
+          class="bg-surface border border-hairline rounded-lg p-5 space-y-4"
         >
           <div class="flex items-start justify-between">
             <div>

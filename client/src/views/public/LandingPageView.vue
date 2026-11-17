@@ -79,19 +79,19 @@ function handleCtaClick() {
             <div class="mt-8 pt-6 border-t border-hairline grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">118</span>
-                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Normalized Tables</span>
+                <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Normalized Tables</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">3NF</span>
-                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Relational Baseline</span>
+                <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Relational Baseline</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">100%</span>
-                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Audited Lifecycle</span>
+                <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Audited Lifecycle</span>
               </div>
               <div class="p-3 rounded-lg border border-hairline bg-surface shadow-2xs">
                 <span class="block text-2xl font-bold font-mono text-primary">Multi-Unit</span>
-                <span class="block text-xs font-semibold text-ink-muted uppercase tracking-wider mt-0.5">Scoped RBAC</span>
+                <span class="block text-xs font-semibold text-ink-muted   mt-0.5">Scoped RBAC</span>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ function handleCtaClick() {
       <section id="context" class="py-12 sm:py-16 bg-canvas-soft">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold   text-primary">
               Institutional Context
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -160,7 +160,7 @@ function handleCtaClick() {
       <section id="modules" class="py-12 sm:py-16 bg-surface border-t border-b border-hairline">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold   text-primary">
               Functional Architecture
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -290,7 +290,7 @@ function handleCtaClick() {
             <!-- Accreditation Standards Preview Panel -->
             <div class="lg:col-span-6 bg-surface rounded-lg border border-hairline p-5 shadow-2xs space-y-3">
               <div class="flex items-center justify-between pb-2.5 border-b border-hairline">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-ink">
+                <h4 class="text-xs font-bold   text-ink">
                   HERQA Standard Mappings (Active Cycle)
                 </h4>
                 <span class="text-xs font-mono text-primary bg-primary-subtle px-2 py-0.5 rounded font-semibold">
@@ -340,7 +340,7 @@ function handleCtaClick() {
       <section id="governance" class="py-12 sm:py-16 bg-surface border-t border-hairline">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold   text-primary">
               Information Security
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
@@ -389,7 +389,7 @@ function handleCtaClick() {
       <section id="stakeholders" class="py-12 sm:py-16 bg-canvas-soft">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-primary">
+            <h2 class="text-xs font-bold   text-primary">
               Participating Offices
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">

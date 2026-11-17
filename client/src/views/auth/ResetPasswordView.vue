@@ -60,9 +60,9 @@ async function handleReset() {
 <template>
  <div class="min-h-screen bg-canvas-soft flex items-center justify-center p-4 select-none">
  <div class="w-full max-w-md">
- <div class="bg-surface border border-hairline rounded-xl shadow-xs p-8 sm:p-10 space-y-6">
+ <div class="bg-surface border border-hairline rounded-xl p-8 sm:p-10 space-y-6">
  <div class="text-center space-y-2">
- <div class="inline-flex w-12 h-12 rounded-xl bg-primary text-white items-center justify-center font-bold text-lg shadow-xs">
+ <div class="inline-flex w-12 h-12 rounded-xl bg-primary text-white items-center justify-center font-bold text-lg">
  WU
  </div>
  <div>
@@ -134,7 +134,7 @@ async function handleReset() {
  <BaseButton
  type="submit"
  variant="primary"
- class="w-full justify-center py-2.5 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors shadow-xs"
+ class="w-full justify-center py-2.5 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors"
  :loading="isLoading"
  >
  Update Institutional Password

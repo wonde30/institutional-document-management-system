@@ -266,7 +266,7 @@ onMounted(() => {
  v-for="item in results"
  :key="item.domain + '-' + item.id"
  @click="router.push(item.route)"
- class="p-4 rounded-xl bg-surface border border-hairline hover:border-primary dark:hover:border-[#62aef0] transition shadow-xs cursor-pointer space-y-2 group"
+ class="p-4 rounded-xl bg-surface border border-hairline hover:border-primary dark:hover:border-[#62aef0] transition cursor-pointer space-y-2 group"
  >
  <div class="flex items-start justify-between gap-3">
  <div class="space-y-1">
@@ -274,7 +274,7 @@ onMounted(() => {
  <span class="font-mono text-xs font-semibold text-primary">
  {{ item.reference || '—' }}
  </span>
- <span class="px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-canvas-soft text-ink-muted">
+ <span class="px-2 py-0.5 rounded-full text-xs font-semibold   bg-canvas-soft text-ink-muted">
  {{ item.domain }}
  </span>
  </div>

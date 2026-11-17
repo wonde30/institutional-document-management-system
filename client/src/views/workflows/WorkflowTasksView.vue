@@ -347,10 +347,10 @@ onMounted(() => {
 
  <template #cell-state="{ item }">
  <div class="flex items-center gap-1.5 flex-wrap">
- <span class="px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider bg-primary-subtle text-primary border border-primary/20">
+ <span class="px-2.5 py-0.5 rounded text-xs font-semibold   bg-primary-subtle text-primary border border-primary/20">
  {{ item.state?.name || `State #${item.state_id}` }}
  </span>
- <span v-if="item.branch_key" class="px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+ <span v-if="item.branch_key" class="px-2 py-0.5 rounded text-xs font-medium   bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
  {{ item.branch_key.replace('_', ' ') }}
  </span>
  </div>
@@ -365,7 +365,7 @@ onMounted(() => {
  <template #cell-decision="{ item }">
  <div v-if="item.decision" class="space-y-0.5 text-xs">
  <span
- class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-bold  tracking-wider"
  :class="item.decision.decision === 'approve' ? 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border border-[#1aae39]/20' : item.decision.decision === 'reject' ? 'bg-[#fde8e8] dark:bg-[#371717] text-[#e03e3e] dark:text-[#f87171] border border-[#f87171]/20' : 'bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20'"
  >
  {{ item.decision.decision }}
@@ -397,7 +397,7 @@ onMounted(() => {
  </div>
  <span
  v-if="isOverdue(value, item.closed_at)"
- class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+ class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold   bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
  >
  Overdue
  </span>

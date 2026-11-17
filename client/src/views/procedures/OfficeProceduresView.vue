@@ -172,7 +172,7 @@ async function submitProcedure() {
 
  <!-- Metric Cards -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Confirmed Active Procedures</span>
  <GitBranch class="w-4 h-4 text-primary" />
@@ -183,7 +183,7 @@ async function submitProcedure() {
  <div class="text-xs text-ink-muted mt-0.5">Enforced routing configurations</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Designated Registry Enforced</span>
  <Building2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -194,7 +194,7 @@ async function submitProcedure() {
  <div class="text-xs text-ink-muted mt-0.5">Central registry receipt gate</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Direct Issue Authorities</span>
  <FileCheck class="w-4 h-4 text-primary" />
@@ -230,14 +230,14 @@ async function submitProcedure() {
  </div>
 
  <!-- Procedures Table -->
- <div class="bg-surface border border-hairline rounded-xl overflow-hidden shadow-xs">
+ <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
  <div v-if="loading" class="p-8 text-center text-xs text-ink-muted">
  Loading office procedures ledger...
  </div>
 
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
  <tr>
  <th class="py-3 px-4">Procedure Version</th>
  <th class="py-3 px-4">Office & Type</th>

@@ -179,7 +179,7 @@ async function submitProposal() {
 
  <!-- Metrics Cards -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
- <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Project Proposals</span>
  <FolderKanban class="w-4 h-4 text-primary" />
@@ -190,7 +190,7 @@ async function submitProposal() {
  <div class="text-xs text-ink-muted mt-0.5">Concept notes & grant submissions</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Active Operational Projects</span>
  <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -201,7 +201,7 @@ async function submitProposal() {
  <div class="text-xs text-ink-muted mt-0.5">Approved and running initiatives</div>
  </div>
 
- <div class="bg-surface border border-hairline rounded-lg p-4 shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg p-4">
  <div class="flex items-center justify-between">
  <span class="text-xs font-semibold text-ink-muted">Approval Procedure State</span>
  <Clock class="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -267,7 +267,7 @@ async function submitProposal() {
  </div>
 
  <!-- Content Table -->
- <div class="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs">
+ <div class="bg-surface border border-hairline rounded-lg overflow-hidden">
  <!-- Loading Skeleton -->
  <div v-if="loading" class="p-6">
  <LoadingSkeleton type="table" :rows="5" />
@@ -276,7 +276,7 @@ async function submitProposal() {
  <!-- Proposals Table -->
  <div v-else-if="activeTab === 'proposals'" class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
  <tr>
  <th class="py-3 px-4">Proposal Reference</th>
  <th class="py-3 px-4">Title & Concept</th>
@@ -337,7 +337,7 @@ async function submitProposal() {
  <!-- Approved Projects Table -->
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs text-ink-secondary">
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted uppercase tracking-wider">
+ <thead class="bg-canvas-soft border-b border-hairline text-xs font-semibold text-ink-muted  tracking-wider">
  <tr>
  <th class="py-3 px-4">Project Code</th>
  <th class="py-3 px-4">Approved Title</th>

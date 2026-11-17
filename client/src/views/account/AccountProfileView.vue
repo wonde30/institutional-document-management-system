@@ -150,7 +150,7 @@ function handleSavePreferences() {
  <!-- Tab 1: Profile Facts -->
  <div v-if="activeTab === 'profile'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
  <div class="md:col-span-2 space-y-4">
- <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+ <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
  <h2 class="text-sm font-semibold text-ink flex items-center gap-2">
  <User class="w-4 h-4 text-primary" />
  Official Identity Record
@@ -191,7 +191,7 @@ function handleSavePreferences() {
  </div>
 
  <!-- Memberships Card -->
- <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-3">
+ <div class="p-5 rounded-xl bg-surface border border-hairline space-y-3">
  <h2 class="text-sm font-semibold text-ink flex items-center gap-2">
  <Building2 class="w-4 h-4 text-primary" />
  Authorized Office Memberships & Roles
@@ -255,7 +255,7 @@ function handleSavePreferences() {
 
  <!-- Tab 2: Security & Password -->
  <div v-else-if="activeTab === 'security'" class="max-w-xl space-y-5">
- <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+ <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
  <h2 class="text-sm font-semibold text-ink flex items-center gap-2">
  <KeyRound class="w-4 h-4 text-primary" />
  Change Password
@@ -315,7 +315,7 @@ function handleSavePreferences() {
 
  <!-- Tab 3: Workspace Preferences -->
  <div v-else-if="activeTab === 'preferences'" class="max-w-xl space-y-5">
- <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+ <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
  <h2 class="text-sm font-semibold text-ink flex items-center gap-2">
  <SlidersHorizontal class="w-4 h-4 text-primary" />
  Display & Localization Preferences

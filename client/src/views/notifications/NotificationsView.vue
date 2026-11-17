@@ -143,7 +143,7 @@ async function handleNavigate(notif: any) {
  </div>
 
  <!-- Notifications List -->
- <div class="bg-surface border border-hairline rounded-xl overflow-hidden shadow-xs divide-y divide-hairline">
+ <div class="bg-surface border border-hairline rounded-xl overflow-hidden divide-y divide-hairline">
  <div
  v-for="notif in displayedNotifications"
  :key="notif.id"

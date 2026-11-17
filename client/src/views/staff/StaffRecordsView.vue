@@ -264,7 +264,7 @@ onMounted(() => {
  </div>
 
  <!-- Physical Originals Table -->
- <section class="bg-surface rounded-lg border border-hairline overflow-hidden shadow-xs">
+ <section class="bg-surface rounded-lg border border-hairline overflow-hidden">
  <div class="p-3 sm:p-4 border-b border-hairline flex flex-col sm:flex-row items-center justify-between gap-3">
  <div class="relative w-full sm:w-80">
  <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -321,7 +321,7 @@ onMounted(() => {
  </td>
  <td class="py-3 px-4">
  <span
- class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider"
+ class="px-2 py-0.5 rounded text-xs font-semibold  tracking-wider"
  :class="{
  'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]': item.retention_requirement === 'required',
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]': item.retention_requirement === 'not_required',

@@ -505,8 +505,8 @@ watchEffect(() => {
         <div class="lg:col-span-7 space-y-6">
           <form @submit.prevent="handleGenerateOfficialLetter" class="space-y-6">
             <!-- 1. Administrative Context & Date -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <Building2 class="w-4 h-4 text-primary" />
                 <span>Issuing Administrative Context</span>
               </h2>
@@ -528,13 +528,13 @@ watchEffect(() => {
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Gregorian Date *
                   </label>
                   <BaseInput v-model="letterDate" type="date" required />
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Ethiopian Calendar (ቀን)
                   </label>
                   <div class="h-9 px-3 py-1.5 rounded-xl bg-surface-hover border border-hairline text-ink font-mono text-xs flex items-center justify-between">
@@ -546,15 +546,15 @@ watchEffect(() => {
             </div>
 
             <!-- 2. Recipient Information Block -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <FileText class="w-4 h-4 text-primary" />
                 <span>Recipient Details (ለ...)</span>
               </h2>
 
               <div class="space-y-3">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Addressed Recipient / Lead Title *
                   </label>
                   <BaseInput
@@ -566,7 +566,7 @@ watchEffect(() => {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                    <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                       Recipient Office / Sub-Unit (Optional)
                     </label>
                     <BaseInput
@@ -575,7 +575,7 @@ watchEffect(() => {
                     />
                   </div>
                   <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                    <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                       Campus / Location *
                     </label>
                     <BaseInput
@@ -589,14 +589,14 @@ watchEffect(() => {
             </div>
 
             <!-- 3. Subject & Letter Content -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <FileText class="w-4 h-4 text-primary" />
                 <span>Letter Subject & Content</span>
               </h2>
 
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                   Subject / ጉዳዩ * (Centered, bold, underlined on letter)
                 </label>
                 <BaseInput
@@ -607,7 +607,7 @@ watchEffect(() => {
               </div>
 
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                   Letter Body * (Paragraphs formatted in Nyala institutional type)
                 </label>
                 <BaseTextarea
@@ -620,9 +620,9 @@ watchEffect(() => {
             </div>
 
             <!-- 4. Copy-Distribution (CC / ግልባጭ፤) -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
               <div class="flex items-center justify-between border-b border-hairline-subtle pb-2">
-                <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+                <h2 class="text-xs font-semibold   text-ink-muted flex items-center gap-2">
                   <FileText class="w-4 h-4 text-primary" />
                   <span>Copy-Distribution / ግልባጭ፤ ({{ ccList.length }})</span>
                 </h2>
@@ -631,7 +631,7 @@ watchEffect(() => {
 
               <!-- Quick Add Common Offices -->
               <div>
-                <label class="block text-xs font-semibold text-ink-faint mb-1.5 uppercase tracking-wider">
+                <label class="block text-xs font-semibold text-ink-faint mb-1.5  tracking-wider">
                   Quick-Add Common Offices:
                 </label>
                 <div class="flex flex-wrap gap-1.5">
@@ -682,27 +682,27 @@ watchEffect(() => {
             </div>
 
             <!-- 5. Signatory & Institutional Stamp Options -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <Stamp class="w-4 h-4 text-primary" />
                 <span>Authorized Signatory & Seal</span>
               </h2>
 
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Signatory Full Name *
                   </label>
                   <BaseInput v-model="signatoryName" required />
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Title (Amharic) *
                   </label>
                   <BaseInput v-model="signatoryTitleAm" required />
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Title (English) *
                   </label>
                   <BaseInput v-model="signatoryTitleEn" required />
@@ -752,7 +752,7 @@ watchEffect(() => {
         <!-- Right: Live A4 Visual Preview (5 cols on lg) -->
         <div class="lg:col-span-5 sticky top-20 space-y-3">
           <div class="flex items-center justify-between px-1">
-            <span class="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
+            <span class="text-xs font-semibold text-ink   flex items-center gap-1.5">
               <Eye class="w-3.5 h-3.5 text-primary" />
               <span>Real-Time A4 Document Preview</span>
             </span>
@@ -804,8 +804,8 @@ watchEffect(() => {
         <div class="lg:col-span-7 space-y-6">
           <form @submit.prevent="handleGenerateFromTemplate" class="space-y-6">
             <!-- 1. Template Selection & Details -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <FileText class="w-4 h-4 text-primary" />
                 <span>Select Institutional Template</span>
               </h2>
@@ -834,8 +834,8 @@ watchEffect(() => {
             </div>
 
             <!-- 2. Administrative Context -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <Building2 class="w-4 h-4 text-primary" />
                 <span>Accountability & Security Classification</span>
               </h2>
@@ -863,7 +863,7 @@ watchEffect(() => {
                   required
                 />
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                  <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                     Document Date *
                   </label>
                   <BaseInput v-model="templateDate" type="date" required />
@@ -872,14 +872,14 @@ watchEffect(() => {
             </div>
 
             <!-- 3. Template Fields -->
-            <div class="bg-surface border border-hairline rounded-xl p-5 shadow-xs space-y-4">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
+            <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
+              <h2 class="text-xs font-semibold   text-ink-muted border-b border-hairline-subtle pb-2 flex items-center gap-2">
                 <Sparkles class="w-4 h-4 text-primary" />
                 <span>Document Content & Field Mapping</span>
               </h2>
 
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                   Addressed Recipient / Department (recipient) *
                 </label>
                 <BaseInput
@@ -890,7 +890,7 @@ watchEffect(() => {
               </div>
 
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                   Document Subject / Title (subject) *
                 </label>
                 <BaseInput
@@ -901,7 +901,7 @@ watchEffect(() => {
               </div>
 
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                   Document Body / Institutional Text (body) *
                 </label>
                 <BaseTextarea
@@ -943,7 +943,7 @@ watchEffect(() => {
         <!-- Right: Live Template HTML Preview (5 cols on lg) -->
         <div class="lg:col-span-5 sticky top-20 space-y-3">
           <div class="flex items-center justify-between px-1">
-            <span class="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
+            <span class="text-xs font-semibold text-ink   flex items-center gap-1.5">
               <Eye class="w-3.5 h-3.5 text-primary" />
               <span>Live Generated Document Layout</span>
             </span>
@@ -969,15 +969,15 @@ watchEffect(() => {
     <div v-else class="max-w-4xl mx-auto space-y-6">
       <form @submit.prevent="handleUploadSubmit" class="space-y-6">
         <!-- Section 1: Metadata Card -->
-        <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-5">
-          <h2 class="text-sm font-semibold text-ink uppercase tracking-wider border-b border-hairline-subtle pb-3 flex items-center gap-2">
+        <div class="bg-surface border border-hairline rounded-xl p-6 space-y-5">
+          <h2 class="text-sm font-semibold text-ink   border-b border-hairline-subtle pb-3 flex items-center gap-2">
             <FileText class="w-4 h-4 text-primary" />
             <span>Record Identification & Classification</span>
           </h2>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+              <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                 Document Title *
               </label>
               <BaseInput
@@ -988,7 +988,7 @@ watchEffect(() => {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+              <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                 Descriptive Summary
               </label>
               <BaseTextarea
@@ -1023,7 +1023,7 @@ watchEffect(() => {
               />
 
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <label class="block text-xs font-semibold   text-ink-secondary mb-1">
                   Document Date *
                 </label>
                 <BaseInput
@@ -1037,8 +1037,8 @@ watchEffect(() => {
         </div>
 
         <!-- Section 2: File Upload Card -->
-        <div class="bg-surface border border-hairline rounded-xl p-6 shadow-xs space-y-4">
-          <h2 class="text-sm font-semibold text-ink uppercase tracking-wider border-b border-hairline-subtle pb-3 flex items-center gap-2">
+        <div class="bg-surface border border-hairline rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-ink   border-b border-hairline-subtle pb-3 flex items-center gap-2">
             <UploadCloud class="w-4 h-4 text-primary" />
             <span>Primary Digital Asset (Version 1)</span>
           </h2>
@@ -1072,7 +1072,7 @@ watchEffect(() => {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+            <label class="block text-xs font-semibold   text-ink-secondary mb-1">
               Initial Version Note
             </label>
             <BaseInput

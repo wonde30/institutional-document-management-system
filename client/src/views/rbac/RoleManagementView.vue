@@ -292,7 +292,7 @@ onMounted(() => {
     </div>
 
     <!-- Search & Filter Bar -->
-    <div class="bg-surface rounded-lg border border-hairline p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="bg-surface rounded-lg border border-hairline p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2.5 flex-1">
         <div class="relative w-full sm:w-72">
           <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -338,7 +338,7 @@ onMounted(() => {
       <div
         v-for="role in filteredRoles"
         :key="role.id"
-        class="bg-surface rounded-lg border border-hairline p-5 shadow-xs hover:border-primary/40 transition-colors flex flex-col justify-between"
+        class="bg-surface rounded-lg border border-hairline p-5 hover:border-primary/40 transition-colors flex flex-col justify-between"
         :class="{ 'opacity-70 bg-surface-muted/40': !role.active }"
       >
         <div>
@@ -349,7 +349,7 @@ onMounted(() => {
                   {{ role.code }}
                 </span>
                 <span
-                  class="text-xs font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                  class="text-xs font-semibold px-1.5 py-0.5 rounded  tracking-wider"
                   :class="role.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-surface-muted text-ink-muted'"
                 >
                   {{ role.active ? 'Active' : 'Inactive' }}
@@ -466,7 +466,7 @@ onMounted(() => {
         <!-- Permissions Matrix Checklist with Search -->
         <div class="border-t border-hairline pt-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <h4 class="text-xs font-bold text-ink-secondary uppercase tracking-wider flex items-center gap-1.5">
+            <h4 class="text-xs font-bold text-ink-secondary   flex items-center gap-1.5">
               <Layers class="w-4 h-4 text-primary" />
               Permissions Matrix ({{ roleForm.permission_ids.length }} assigned)
             </h4>
@@ -489,7 +489,7 @@ onMounted(() => {
               class="border border-hairline rounded-lg p-3 bg-canvas-soft"
             >
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-ink-secondary uppercase tracking-wider">
+                <span class="text-xs font-bold text-ink-secondary  tracking-wider">
                   {{ moduleName }}
                 </span>
                 <button
@@ -576,7 +576,7 @@ onMounted(() => {
 
         <div v-else class="border border-hairline rounded-lg overflow-x-auto">
           <table class="w-full text-left text-xs min-w-[500px]">
-            <thead class="bg-surface-muted text-ink-muted uppercase tracking-wider text-xs font-semibold border-b border-hairline">
+            <thead class="bg-surface-muted text-ink-muted   text-xs font-semibold border-b border-hairline">
               <tr>
                 <th class="px-3 py-2">Staff Member</th>
                 <th class="px-3 py-2">Assigned Scope</th>
@@ -618,7 +618,7 @@ onMounted(() => {
                 </td>
                 <td class="px-3 py-2.5 text-right">
                   <span
-                    class="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider inline-flex items-center gap-1"
+                    class="px-2 py-0.5 rounded text-xs font-semibold   inline-flex items-center gap-1"
                     :class="user.status === 'active' && !user.is_expired ? 'bg-[#e8f7ec] text-[#1aae39]' : 'bg-surface-muted text-ink-muted'"
                   >
                     {{ user.status === 'active' && !user.is_expired ? 'Active' : 'Inactive' }}

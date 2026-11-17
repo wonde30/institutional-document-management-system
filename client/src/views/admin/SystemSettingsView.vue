@@ -266,7 +266,7 @@ onMounted(loadSettings)
       </div>
 
       <!-- Settings of the active category -->
-      <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+      <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
         <div class="flex items-start justify-between gap-3">
           <h2 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
             <Settings class="w-4 h-4 text-primary" />
@@ -385,7 +385,7 @@ onMounted(loadSettings)
       </div>
 
       <!-- Deployment boundary -->
-      <div class="p-5 rounded-xl bg-surface border border-hairline shadow-xs space-y-4">
+      <div class="p-5 rounded-xl bg-surface border border-hairline space-y-4">
         <h2 class="text-sm font-semibold text-ink-secondary flex items-center gap-2">
           <Lock class="w-4 h-4 text-primary" />
           Deployment Boundary

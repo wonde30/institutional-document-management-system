@@ -221,33 +221,33 @@ onMounted(() => {
 
     <!-- Stats Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Total Capabilities</div>
+      <div class="bg-surface p-4 rounded-xl border border-hairline">
+        <div class="text-xs  font-bold text-ink-muted tracking-wider">Total Capabilities</div>
         <div class="text-2xl font-bold text-ink-secondary mt-1">{{ stats.total }}</div>
         <div class="text-xs text-ink-muted mt-0.5">{{ availableModules.length }} functional domains</div>
       </div>
 
-      <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Assignable</div>
+      <div class="bg-surface p-4 rounded-xl border border-hairline">
+        <div class="text-xs  font-bold text-ink-muted tracking-wider">Assignable</div>
         <div class="text-2xl font-bold text-emerald-600 mt-1">{{ stats.assignable }}</div>
         <div class="text-xs text-ink-muted mt-0.5">roles & unit grants</div>
       </div>
 
-      <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Protected / Admin</div>
+      <div class="bg-surface p-4 rounded-xl border border-hairline">
+        <div class="text-xs  font-bold text-ink-muted tracking-wider">Protected / Admin</div>
         <div class="text-2xl font-bold text-primary mt-1">{{ stats.protectedCount }}</div>
         <div class="text-xs text-ink-muted mt-0.5">requires super_admin</div>
       </div>
 
-      <div class="bg-surface p-4 rounded-xl border border-hairline shadow-xs">
-        <div class="text-xs uppercase font-bold text-ink-muted tracking-wider">Deactivated</div>
+      <div class="bg-surface p-4 rounded-xl border border-hairline">
+        <div class="text-xs  font-bold text-ink-muted tracking-wider">Deactivated</div>
         <div class="text-2xl font-bold text-ink-muted mt-1">{{ stats.deactivated }}</div>
         <div class="text-xs text-ink-muted mt-0.5">blocked from assignment</div>
       </div>
     </div>
 
     <!-- Filter Toolbar -->
-    <div class="bg-surface rounded-xl border border-hairline p-4 shadow-xs space-y-3">
+    <div class="bg-surface rounded-xl border border-hairline p-4 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="relative w-full sm:w-80">
           <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -315,7 +315,7 @@ onMounted(() => {
           v-for="mod in availableModules"
           :key="mod"
           type="button"
-          class="px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap uppercase tracking-wider transition cursor-pointer"
+          class="px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap   transition cursor-pointer"
           :class="selectedModule === mod ? 'bg-primary text-white shadow-xs' : 'bg-surface-muted text-ink-muted hover:bg-surface-hover'"
           @click="selectedModule = mod"
         >
@@ -332,7 +332,7 @@ onMounted(() => {
       <div
         v-for="(perms, mod) in filteredGroups"
         :key="mod"
-        class="bg-surface rounded-xl border border-hairline p-5 shadow-xs space-y-4"
+        class="bg-surface rounded-xl border border-hairline p-5 space-y-4"
       >
         <div class="flex items-center justify-between pb-3 border-b border-hairline">
           <div class="flex items-center gap-2.5">
@@ -340,7 +340,7 @@ onMounted(() => {
               <component :is="moduleIcons[mod] || Shield" class="w-5 h-5" />
             </div>
             <div>
-              <h2 class="text-base font-bold text-ink-secondary uppercase tracking-wider">
+              <h2 class="text-base font-bold text-ink-secondary  tracking-wider">
                 {{ mod }} Domain
               </h2>
               <div class="text-xs text-ink-muted">
@@ -386,13 +386,13 @@ onMounted(() => {
             <div class="pt-3 mt-3 border-t border-hairline space-y-2">
               <div class="flex flex-wrap items-center gap-1.5">
                 <!-- Action Type Badge -->
-                <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline">
+                <span class="text-[9px]  font-bold px-1.5 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline">
                   {{ perm.action_type || 'action' }}
                 </span>
 
                 <!-- Risk Badge -->
                 <span
-                  class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded"
+                  class="text-[9px]  font-bold px-1.5 py-0.5 rounded"
                   :class="{
                     'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300': perm.risk_classification === 'critical',
                     'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300': perm.risk_classification === 'high',
