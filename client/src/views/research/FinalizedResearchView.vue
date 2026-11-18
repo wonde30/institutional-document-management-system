@@ -215,7 +215,7 @@ onMounted(() => {
  <div class="p-3.5 rounded-lg bg-canvas-soft border border-hairline text-xs text-ink-secondary flex items-start gap-2.5">
  <Info class="w-4 h-4 text-primary shrink-0 mt-0.5" />
  <p class="leading-relaxed">
- <strong>Institutional Boundary:</strong> Proposal submission, reviewer scoring, screening, and research approvals occur strictly outside this module. Authorized departments record finalized monographs and manage repository publication under department-scoped authority (<code class="font-mono text-xs">research.publish</code>).
+ <strong>Institutional Boundary:</strong> Proposal submission, reviewer scoring, screening, and research approvals occur strictly outside this module. Authorized departments record finalized monographs and manage repository publication under department-scoped authority (<code class="text-xs">research.publish</code>).
  </p>
  </div>
 

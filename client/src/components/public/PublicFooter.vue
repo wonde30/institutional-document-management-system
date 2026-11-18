@@ -94,7 +94,7 @@ import { Building2, ShieldCheck, FileText, ExternalLink } from 'lucide-vue-next'
         <p>
           &copy; {{ new Date().getFullYear() }} Wollo University. All administrative and operational rights reserved.
         </p>
-        <p class="font-mono text-xs text-slate-400">
+        <p class="text-xs text-slate-400">
           WU-DMS Architecture &bull; 118 Normalized Tables &bull; Strict Scoped RBAC
         </p>
       </div>

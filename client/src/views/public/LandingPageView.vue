@@ -109,7 +109,7 @@ function handleCtaClick() {
               Transforming Administrative Workflows
             </h3>
             <p class="text-xs sm:text-sm text-ink-muted mt-2 leading-relaxed">
-              As an applied university, Wollo University requires robust digital systems to eliminate paper-based bottlenecks, fragmented office channels, and delayed decision-making.
+              As an applied university, Wollo University requires dependable digital systems to eliminate paper-based bottlenecks, fragmented office channels, and delayed decision-making.
             </p>
           </div>
 
@@ -164,7 +164,7 @@ function handleCtaClick() {
               Functional Architecture
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
-              Comprehensive System Modules
+              Complete System Modules
             </h3>
             <p class="text-xs sm:text-sm text-ink-muted mt-2">
               Directly aligned with the official project proposal requirements matrix.

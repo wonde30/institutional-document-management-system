@@ -68,7 +68,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
     <!-- Item count summary -->
     <div class="hidden sm:block text-xs text-ink-muted">
       Showing
-      <strong class="font-semibold text-ink">{{ fromItem }}</strong>–<strong class="font-semibold text-ink">{{ toItem }}</strong>
+      <strong class="font-semibold text-ink">{{ fromItem }}</strong>â€“<strong class="font-semibold text-ink">{{ toItem }}</strong>
       of
       <strong class="font-semibold text-ink">{{ totalItems }}</strong>
     </div>
@@ -82,7 +82,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
         aria-label="Previous page"
         @click="emit('page-change', current - 1)"
       >
-        ‹ Prev
+        â€¹ Prev
       </button>
 
       <template v-for="page in pageNumbers" :key="String(page) + '-' + (page === '...' ? Math.random() : '')">
@@ -90,13 +90,13 @@ const pageNumbers = computed<(number | '...')[]>(() => {
           v-if="page === '...'"
           class="px-1.5 py-1.5 text-xs text-ink-faint select-none"
           aria-hidden="true"
-        >…</span>
+        >â€¦</span>
         <button
           v-else
           type="button"
           class="inline-flex items-center justify-center w-8 h-8 text-xs font-medium rounded-md border transition-colors cursor-pointer"
           :class="page === current
-            ? 'bg-primary border-primary text-white font-semibold'
+ ? 'bg-primary border-primary text-white font-semibold '
             : 'bg-surface border-hairline text-ink-secondary hover:bg-canvas-soft'"
           :aria-label="`Page ${page}`"
           :aria-current="page === current ? 'page' : undefined"
@@ -113,7 +113,7 @@ const pageNumbers = computed<(number | '...')[]>(() => {
         aria-label="Next page"
         @click="emit('page-change', current + 1)"
       >
-        Next ›
+        Next â€º
       </button>
     </div>
   </nav>

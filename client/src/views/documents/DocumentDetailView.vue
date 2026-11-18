@@ -25,7 +25,7 @@ import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import OfficialLetterA4Preview from '@/components/letters/OfficialLetterA4Preview.vue'
-import { formatDate, formatFileSize, downloadBlob } from '@/utils/formatters'
+import { formatDate, formatFileSize, downloadBlob, formatStatus } from '@/utils/formatters'
 import {
   Download,
   Upload,
@@ -1521,7 +1521,7 @@ onMounted(() => {
  {{ orig.physical_reference || `ORIG-${orig.id}` }}
  </span>
  <span class="text-xs text-ink font-medium">
- Retention: {{ orig.retention_requirement.toUpperCase() }}
+ Retention: {{ formatStatus(orig.retention_requirement) }}
  </span>
  </div>
  <span class="text-xs text-ink-faint">
@@ -2056,7 +2056,7 @@ onMounted(() => {
   <!-- Quick Task Decision Modal -->
   <ModalDialog
     :is-open="showTaskDecisionModal"
-    :title="`Execute Decision: ${decisionType.toUpperCase()}`"
+    :title="`Execute Decision: ${formatStatus(decisionType)}`"
     @close="showTaskDecisionModal = false"
   >
     <form @submit.prevent="submitTaskDecision" class="space-y-4">
@@ -2085,7 +2085,7 @@ onMounted(() => {
           type="submit"
           :loading="isSubmittingDecision"
         >
-          Confirm {{ decisionType.toUpperCase() }}
+          Confirm {{ formatStatus(decisionType) }}
         </BaseButton>
       </div>
     </form>

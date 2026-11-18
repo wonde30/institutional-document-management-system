@@ -74,7 +74,7 @@ watch(() => authStore.activeUnitId, () => {
     <!-- Page Header: title + subtitle + actions -->
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
       <div class="max-w-2xl">
-        <h1 class="text-2xl font-semibold tracking-tight text-ink text-balance">Workspace</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-ink text-balance">Workspace</h1>
         <p class="text-sm text-ink-muted mt-1">Administrative workload, pending decisions, and correspondence</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
@@ -108,10 +108,18 @@ watch(() => authStore.activeUnitId, () => {
     <LoadingSkeleton v-if="isLoading" :count="4" class="my-4" />
 
     <template v-else>
-      <!-- Core KPI Grid: 4 cards, no icons, text-3xl values, 13px labels -->
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Core Operational KPI Grid: Compact, readable, informative -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="p-4 rounded-lg bg-surface border border-hairline">
-          <div class="text-3xl font-semibold tabular-nums text-ink">{{ tasks.length }}</div>
+          <div class="flex items-baseline gap-2">
+            <div class="text-3xl font-semibold tabular-nums text-ink">{{ tasks.length }}</div>
+            <span
+              v-if="(metrics?.overview?.overdue_tasks ?? 0) > 0"
+              class="bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171] text-[11px] font-medium px-1.5 py-0.5 rounded"
+            >
+              {{ metrics?.overview?.overdue_tasks }} Overdue
+            </span>
+          </div>
           <div class="text-[13px] text-ink-muted mt-1">Open tasks</div>
         </div>
 
@@ -131,46 +139,26 @@ watch(() => authStore.activeUnitId, () => {
         </div>
       </div>
 
-      <!-- Office overview: ONE card with 4 columns + dividers, amber warning only when > 0 -->
+      <!-- Office overview card -->
       <div class="rounded-lg bg-surface border border-hairline">
         <div class="px-4 py-2.5 border-b border-hairline">
           <h2 class="text-sm font-semibold text-ink">Office overview</h2>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-hairline">
           <router-link to="/tasks" class="p-4 hover:bg-surface-hover transition group">
-            <div class="flex items-center gap-2 mb-1">
-              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.my_office_pending_tasks ?? 0 }}</div>
-              <svg v-if="(metrics?.overview?.my_office_pending_tasks ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
+            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.my_office_pending_tasks ?? 0 }}</div>
             <div class="text-[13px] text-ink-muted mt-0.5">Office pending tasks</div>
           </router-link>
           <router-link to="/correspondence" class="p-4 hover:bg-surface-hover transition group">
-            <div class="flex items-center gap-2 mb-1">
-              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.unreceived_dispatches ?? 0 }}</div>
-              <svg v-if="(metrics?.overview?.unreceived_dispatches ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
+            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.unreceived_dispatches ?? 0 }}</div>
             <div class="text-[13px] text-ink-muted mt-0.5">Unreceived dispatches</div>
           </router-link>
           <router-link to="/archive" class="p-4 hover:bg-surface-hover transition group">
-            <div class="flex items-center gap-2 mb-1">
-              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.records_awaiting_retention_review ?? 0 }}</div>
-              <svg v-if="(metrics?.overview?.records_awaiting_retention_review ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
+            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.records_awaiting_retention_review ?? 0 }}</div>
             <div class="text-[13px] text-ink-muted mt-0.5">Retention reviews due</div>
           </router-link>
           <router-link to="/archive" class="p-4 hover:bg-surface-hover transition group">
-            <div class="flex items-center gap-2 mb-1">
-              <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.pending_disposition_requests ?? 0 }}</div>
-              <svg v-if="(metrics?.overview?.pending_disposition_requests ?? 0) > 0" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
+            <div class="text-xl font-semibold tabular-nums text-ink group-hover:text-primary">{{ metrics?.overview?.pending_disposition_requests ?? 0 }}</div>
             <div class="text-[13px] text-ink-muted mt-0.5">Pending disposals</div>
           </router-link>
         </div>
@@ -203,16 +191,16 @@ watch(() => authStore.activeUnitId, () => {
                 class="p-3.5 hover:bg-surface-hover transition"
               >
                 <div class="flex items-center justify-between gap-2 mb-1">
-                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]">
+                  <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#fff4e6] text-[#dd5b00] dark:bg-[#3b220c] dark:text-[#f59e0b]">
                     {{ t.state?.name || 'Open task' }}
                   </span>
-                  <span class="text-xs text-ink-faint font-mono">TASK #{{ t.id }}</span>
+                  <span class="text-[10px] text-ink-faint font-mono">TASK #{{ t.id }}</span>
                 </div>
 
                 <h3 class="text-xs font-semibold text-ink">
                   {{ (t.instance?.documentVersion || t.instance?.document_version)?.document?.title || 'Workflow task' }}
                 </h3>
-                <small class="block text-xs text-ink-muted mt-0.5 mb-2 font-mono">
+                <small class="block text-[11px] text-ink-muted mt-0.5 mb-2 font-mono">
                   {{ (t.instance?.documentVersion || t.instance?.document_version)?.document?.reference_number || 'No linked document reference' }}
                 </small>
 
@@ -225,10 +213,10 @@ watch(() => authStore.activeUnitId, () => {
                 </button>
               </div>
 
-              <!-- Empty state: 24px muted icon, text-sm font-medium, py-10 -->
-              <div v-if="tasks.length === 0" class="py-10 text-center">
+              <!-- Empty state -->
+              <div v-if="tasks.length === 0" class="py-8 text-center">
                 <CheckCircle2 class="w-6 h-6 text-ink-faint mx-auto mb-2" aria-hidden="true" />
-                <p class="text-sm font-medium text-ink-muted">No pending tasks</p>
+                <p class="text-sm text-ink-muted">No pending tasks.</p>
               </div>
             </div>
           </section>
@@ -251,9 +239,9 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ doc.title }}</div>
-                  <div class="text-xs text-ink-faint font-mono">{{ doc.reference_number }} · {{ doc.owner_unit?.name || 'Unit' }}</div>
+                  <div class="text-[10px] text-ink-faint font-mono">{{ doc.reference_number }} Â· {{ doc.owner_unit?.name || 'Unit' }}</div>
                 </div>
-                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   Action Pending
                 </span>
               </div>
@@ -279,15 +267,15 @@ watch(() => authStore.activeUnitId, () => {
                   <div class="font-medium text-ink truncate">
                     {{ (dec.task?.instance?.document_version || (dec.task?.instance as any)?.documentVersion)?.document?.title || `Task #${dec.task?.id}` }}
                   </div>
-                  <div class="text-xs text-ink-muted">
-                    Decided by <span class="font-semibold text-ink-secondary">{{ dec.decided_by?.name || 'Officer' }}</span> · {{ new Date(dec.decided_at).toLocaleDateString() }}
+                  <div class="text-[10px] text-ink-muted">
+                    Decided by <span class="font-semibold text-ink-secondary">{{ dec.decided_by?.name || 'Officer' }}</span> Â· {{ new Date(dec.decided_at).toLocaleDateString() }}
                   </div>
-                  <div v-if="dec.reason" class="text-xs text-ink-faint italic truncate mt-0.5 font-mono">
+                  <div v-if="dec.reason" class="text-[10px] text-ink-faint italic truncate mt-0.5 font-mono">
                     "{{ dec.reason }}"
                   </div>
                 </div>
                 <span
-                  class="px-2 py-0.5 rounded text-xs font-semibold shrink-0"
+                  class="px-2 py-0.5 rounded text-[11px] font-semibold shrink-0"
                   :class="dec.decision === 'approve' ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]' : dec.decision === 'reject' ? 'bg-[#fde8e8] text-[#e03e3e] dark:bg-[#371717] dark:text-[#f87171]' : 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]'"
                 >
                   {{ dec.decision }}
@@ -316,9 +304,9 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ doc.title }}</div>
-                  <div class="text-xs text-ink-faint font-mono">{{ doc.reference_number }}</div>
+                  <div class="text-[10px] text-ink-faint font-mono">{{ doc.reference_number }}</div>
                 </div>
-                <span class="px-2 py-0.5 rounded-md text-xs font-medium bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
+                <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
                   {{ doc.lifecycle }}
                 </span>
               </div>
@@ -328,36 +316,39 @@ watch(() => authStore.activeUnitId, () => {
 
         <!-- Right: Quick actions & Dispatches -->
         <div class="lg:col-span-5 space-y-4">
-          <!-- Quick actions: list rows, no borders, 16px muted icons, router-link -->
+          <!-- Quick actions: capability guarded -->
           <section class="bg-surface rounded-lg border border-hairline p-4">
-            <h2 class="text-sm font-semibold text-ink mb-3">Quick actions</h2>
-            <div class="space-y-1">
-              <router-link
+            <h2 class="text-sm font-semibold text-ink mb-2.5 pb-2 border-b border-hairline">Quick actions</h2>
+            <div class="divide-y divide-hairline-subtle">
+              <button
                 v-if="authStore.hasPermission('correspondence.register')"
-                to="/letters/incoming"
-                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition"
+                type="button"
+                class="w-full text-xs font-medium px-2 py-2.5 text-ink-secondary hover:text-ink hover:bg-canvas-soft rounded transition flex items-center gap-2.5 text-left cursor-pointer"
+                @click="router.push('/letters/incoming')"
               >
-                <MailPlus class="w-4 h-4 text-ink-muted" aria-hidden="true" />
+                <MailPlus class="w-4 h-4 text-primary shrink-0" />
                 <span>Log an incoming letter</span>
-              </router-link>
+              </button>
 
-              <router-link
+              <button
                 v-if="authStore.hasPermission('correspondence.register')"
-                to="/letters/outgoing"
-                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition"
+                type="button"
+                class="w-full text-xs font-medium px-2 py-2.5 text-ink-secondary hover:text-ink hover:bg-canvas-soft rounded transition flex items-center gap-2.5 text-left cursor-pointer"
+                @click="router.push('/letters/outgoing')"
               >
-                <Send class="w-4 h-4 text-ink-muted" aria-hidden="true" />
+                <Send class="w-4 h-4 text-primary shrink-0" />
                 <span>Prepare an outgoing letter</span>
-              </router-link>
+              </button>
 
-              <router-link
+              <button
                 v-if="authStore.hasPermission('research.create')"
-                to="/research"
-                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-secondary hover:bg-canvas-soft hover:text-ink transition"
+                type="button"
+                class="w-full text-xs font-medium px-2 py-2.5 text-ink-secondary hover:text-ink hover:bg-canvas-soft rounded transition flex items-center gap-2.5 text-left cursor-pointer"
+                @click="router.push('/research')"
               >
-                <BookOpen class="w-4 h-4 text-ink-muted" aria-hidden="true" />
+                <BookOpen class="w-4 h-4 text-primary shrink-0" />
                 <span>Post finalized research record</span>
-              </router-link>
+              </button>
             </div>
           </section>
 
@@ -382,9 +373,9 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ corr.document?.title || corr.external_reference || 'Outgoing Letter' }}</div>
-                  <div class="text-xs text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference }}</div>
+                  <div class="text-[11px] text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference }}</div>
                 </div>
-                <span class="px-2 py-0.5 rounded text-xs font-medium bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0] shrink-0">
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-[#e8f3fc] text-[#0075de] dark:bg-[#172c42] dark:text-[#62aef0] shrink-0">
                   Pending dispatch
                 </span>
               </router-link>
@@ -411,7 +402,7 @@ watch(() => authStore.activeUnitId, () => {
               >
                 <div class="min-w-0 flex-1">
                   <div class="font-medium text-ink truncate">{{ corr.document?.title || corr.external_reference || 'Correspondence record' }}</div>
-                  <div class="text-xs text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference || '' }}</div>
+                  <div class="text-[11px] text-ink-faint font-mono">{{ corr.document?.reference_number || corr.external_reference || '' }}</div>
                 </div>
                 <span class="text-xs text-ink-faint shrink-0 tabular-nums">{{ corr.correspondence_date }}</span>
               </router-link>

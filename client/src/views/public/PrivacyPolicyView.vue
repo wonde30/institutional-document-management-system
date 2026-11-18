@@ -54,7 +54,7 @@ import { ShieldCheck, Lock, FileText, Eye, CheckCircle2, Building2 } from 'lucid
  A. User Account &amp; Identity Data
  </h3>
  <p class="text-ink-muted mt-1 text-xs">
- Full name, institutional email address (<span class="font-mono">@wu.edu.et</span>), assigned organizational unit membership, job position, cryptographic signing key fingerprints, and dynamic role assignments.
+ Full name, institutional email address (@wu.edu.et), assigned organizational unit membership, job position, cryptographic signing key fingerprints, and dynamic role assignments.
  </p>
  </div>
 

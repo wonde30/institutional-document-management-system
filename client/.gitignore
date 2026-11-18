@@ -26,3 +26,6 @@ dist-ssr
 # Playwright Test Outputs
 test-results/
 playwright-report/
+
+# Visual capture artifacts
+artifacts/

@@ -105,10 +105,10 @@ function handleSort(col: TableColumn) {
 <template>
  <div class="w-full space-y-3">
  <!-- Table Container with responsive horizontal scroll (Notion-inspired hairline & flat level 0) -->
- <div class="overflow-x-auto rounded-lg border border-line bg-surface">
+ <div class="overflow-x-auto rounded-lg border border-hairline bg-surface shadow-xs">
  <table class="w-full text-left text-xs border-collapse">
- <!-- Table Header -->
- <thead class="bg-canvas-soft border-b border-hairline text-xs font-medium text-ink-muted select-none" role="rowgroup">
+ <!-- Notion Table Header: canvas-soft background + eyebrow typography -->
+ <thead class="bg-canvas-soft border-b border-hairline text-ink-muted font-semibold select-none" role="rowgroup">
  <tr>
  <!-- Select all checkbox -->
  <th v-if="selectable" scope="col" class="w-10 px-3.5 py-2.5 text-center">
@@ -126,7 +126,7 @@ function handleSort(col: TableColumn) {
  v-for="col in columns"
  :key="col.key"
  scope="col"
- class="px-3.5 py-2.5 text-xs font-medium text-ink-muted transition"
+ class="px-3.5 py-2.5 text-[11px] font-semibold transition"
  :class="[
  col.sortable ? 'cursor-pointer hover:text-ink' : '',
  col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
@@ -151,7 +151,7 @@ function handleSort(col: TableColumn) {
  </th>
 
  <!-- Trailing Actions header (only when not explicitly in columns) -->
- <th v-if="slots.actions && !hasActionsInColumns" scope="col" class="px-3.5 py-2.5 text-right w-24 text-xs font-medium text-ink-muted">
+ <th v-if="slots.actions && !hasActionsInColumns" scope="col" class="px-3.5 py-2.5 text-right w-24 text-[11px] font-semibold ">
  Actions
  </th>
  </tr>
@@ -182,7 +182,7 @@ function handleSort(col: TableColumn) {
  v-else
  v-for="(item, index) in safeItems"
  :key="item && typeof item === 'object' && item[idKey] !== undefined ? item[idKey] : index"
- class="min-h-[44px] hover:bg-canvas-soft transition group cursor-pointer"
+ class="hover:bg-surface-hover transition group cursor-pointer"
  :class="{ 'bg-primary-subtle/50': item && typeof item === 'object' && selectedIds.includes(item[idKey]) }"
  @click="emit('rowClick', item)"
  >
@@ -201,7 +201,7 @@ function handleSort(col: TableColumn) {
  <td
  v-for="col in columns"
  :key="col.key"
- class="px-3.5 py-2.5 text-xs leading-snug font-normal text-ink-secondary"
+ class="px-3.5 py-2.5 text-[13px] leading-snug font-normal text-ink-secondary"
  :class="[
  col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
  col.class || '',
@@ -212,7 +212,7 @@ function handleSort(col: TableColumn) {
  <slot v-else-if="slots['cell-' + col.key]" :name="'cell-' + col.key" :item="item" :value="item[col.key]" />
  <slot v-else-if="col.key === 'actions' && slots.actions" name="actions" :item="item" />
  <template v-else>
- {{ item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '�' }}
+ {{ item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '—' }}
  </template>
  </td>
 
