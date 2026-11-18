@@ -102,15 +102,20 @@ vi.mock('@/stores/metadata', () => ({
     documentCategories: [],
     correspondenceTypes: [],
     priorities: [],
+    categories: [], // For DocumentCreateView
+    confidentialityLevels: [], // For DocumentCreateView
     loadDocumentCategories: vi.fn(),
     loadCorrespondenceTypes: vi.fn(),
     loadPriorities: vi.fn(),
+    loadAll: vi.fn(), // For DocumentListView and DocumentCreateView
   })),
 }))
 
 vi.mock('@/stores/notifications', () => ({
   useNotificationStore: vi.fn(() => ({
     unreadCount: 0,
+    notifications: [], // For NotificationsView
+    fetchNotifications: vi.fn(), // For NotificationsView
   })),
 }))
 
@@ -229,43 +234,31 @@ describe('PageHeader Render Test', () => {
 
   testCases.forEach(({ name, component, expectedTitle }) => {
     it(`${name} renders PageHeader with correct subtitle text`, async () => {
-      let wrapper: any
-      try {
-        wrapper = mount(component, {
-          global: {
-            plugins: [router],
-            stubs: {
-              RouterLink: true,
-              Teleport: true,
-            },
+      const wrapper = mount(component, {
+        global: {
+          plugins: [router],
+          stubs: {
+            RouterLink: true,
+            Teleport: true,
           },
-        })
+        },
+      })
 
-        // Wait for async setup
-        await wrapper.vm.$nextTick()
+      // Wait for async setup
+      await wrapper.vm.$nextTick()
 
-        // Find the subtitle paragraph (PageHeader subtitle prop renders as <p class="text-sm text-ink-muted">)
-        const subtitle = wrapper.find('p.text-sm.text-ink-muted')
-        
-        // The key check is that PageHeader rendered and no "Failed to resolve component" warning was emitted
-        if (subtitle.exists()) {
-          expect(subtitle.text()).toBe(expectedTitle)
-        }
+      // Find the subtitle paragraph (PageHeader subtitle prop renders as <p class="text-sm text-ink-muted">)
+      const subtitle = wrapper.find('p.text-sm.text-ink-muted')
+      expect(subtitle.exists()).toBe(true)
+      expect(subtitle.text()).toBe(expectedTitle)
 
-        // Ensure no console.warn about "Failed to resolve component"
-        const failedResolveWarnings = consoleWarnSpy.mock.calls.filter((call: any[]) =>
-          call.some((arg: any) => typeof arg === 'string' && arg.includes('Failed to resolve component'))
-        )
-        expect(failedResolveWarnings).toHaveLength(0)
-      } catch (error: any) {
-        // If component throws during render due to missing data, just verify no unresolved component warnings
-        const failedResolveWarnings = consoleWarnSpy.mock.calls.filter((call: any[]) =>
-          call.some((arg: any) => typeof arg === 'string' && arg.includes('Failed to resolve component'))
-        )
-        expect(failedResolveWarnings).toHaveLength(0)
-      } finally {
-        if (wrapper) wrapper.unmount()
-      }
+      // Ensure no console.warn or console.error about "Failed to resolve component" or "Vue warn"
+      const resolveWarnings = consoleWarnSpy.mock.calls.filter((call: any[]) =>
+        call.some((arg: any) => typeof arg === 'string' && (arg.includes('Failed to resolve component') || arg.includes('Vue warn')))
+      )
+      expect(resolveWarnings).toHaveLength(0)
+
+      wrapper.unmount()
     })
   })
 })
