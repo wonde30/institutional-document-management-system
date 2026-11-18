@@ -1515,7 +1515,7 @@ onMounted(() => {
  <td class="px-3 py-2.5 align-top">
  <div class="text-xs font-medium text-ink-secondary flex items-center gap-1">
  <span
- class="uppercase text-xs font-semibold px-1 py-0.2 rounded"
+ class="uppercase text-xs font-semibold px-1.5 py-0.5 rounded"
  :class="{
  'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300': item.scope_kind === 'global',
  'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300': item.scope_kind === 'unit',

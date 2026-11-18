@@ -349,7 +349,7 @@ onMounted(() => {
                   {{ role.code }}
                 </span>
                 <span
-                  class="text-xs font-semibold px-1.5 py-0.5 rounded"
+                  class="text-xs font-semibold px-2 py-0.5 rounded"
                   :class="role.active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-surface-muted text-ink-muted'"
                 >
                   {{ role.active ? 'Active' : 'Inactive' }}
@@ -594,7 +594,7 @@ onMounted(() => {
                 <td class="px-3 py-2.5">
                   <div class="flex items-center gap-1 font-medium text-ink-secondary">
                     <span
-                      class="uppercase text-xs font-bold px-1 py-0.2 rounded"
+                      class="uppercase text-xs font-bold px-1.5 py-0.5 rounded"
                       :class="{
                         'bg-purple-100 text-purple-700': user.scope_kind === 'global',
                         'bg-blue-100 text-blue-700': user.scope_kind === 'unit',
