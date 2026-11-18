@@ -355,7 +355,7 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+        <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
           <Archive class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
           Digital Archive &amp; Long-Term Preservation
         </h1>
@@ -637,7 +637,7 @@ onMounted(() => {
         class="bg-surface rounded-lg border border-hairline p-5"
       >
         <div class="flex items-start justify-between gap-2 mb-2">
-          <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20 uppercase">
+          <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#fff4e6] dark:bg-[#382412] text-[#dd5b00] dark:text-[#ff9243] border border-[#dd5b00]/20">
             {{ c.code }}
           </span>
           <span v-if="c.parent" class="text-xs text-ink-muted">

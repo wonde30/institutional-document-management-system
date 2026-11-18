@@ -145,7 +145,7 @@ async function submitProposal() {
  <!-- Header Row -->
  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
  <FolderKanban class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
  <span>Projects & Innovation</span>
  </h1>

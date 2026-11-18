@@ -253,7 +253,7 @@ async function submitApplyStamp() {
  <!-- Header -->
  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold text-ink tracking-tight flex items-center gap-2.5">
+ <h1 class="text-2xl font-semibold text-ink tracking-tight flex items-center gap-2.5">
  <Stamp class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
  <span>Signatures & Stamps</span>
  </h1>
