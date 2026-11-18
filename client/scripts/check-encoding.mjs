@@ -8,7 +8,7 @@ import { join } from 'path'
 import { execSync } from 'child_process'
 
 const BASELINE = '7d086b3'
-const srcDir = 'client/src'
+const srcDir = 'src'
 
 function scanFiles(dir, results = []) {
   const entries = readdirSync(dir)
@@ -71,7 +71,8 @@ for (const file of files) {
       // Get baseline count
       let baselineCount = 0
       try {
-        const baselineContent = execSync(`git show ${BASELINE}:${file}`, { encoding: 'utf8' })
+        const gitPath = `client/${file}`
+        const baselineContent = execSync(`git show ${BASELINE}:${gitPath}`, { encoding: 'utf8' })
         const baselineMatches = baselineContent.match(/[\u1200-\u137F]/g)
         baselineCount = baselineMatches ? baselineMatches.length : 0
       } catch (e) {
@@ -150,8 +151,10 @@ if (ethiopicFiles.length === 0) {
 // Specific check for DocumentCreateView
 console.log('SPECIFIC FILE CHECK:')
 console.log('====================\n')
-const docCreateFile = 'client/src/views/documents/DocumentCreateView.vue'
-const docCreateEthiopic = ethiopicFiles.find(f => f.file === docCreateFile)
+const docCreateFile = 'src/views/documents/DocumentCreateView.vue'
+const docCreateEthiopic = ethiopicFiles.find(f => 
+  f.file === docCreateFile || f.file.replace(/\\/g, '/') === docCreateFile
+)
 if (docCreateEthiopic) {
   console.log(`${docCreateFile}:`)
   console.log(`  Ethiopic characters: ${docCreateEthiopic.currentCount}`)
