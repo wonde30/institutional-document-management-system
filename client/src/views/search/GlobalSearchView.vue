@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { documentsApi, correspondenceApi, institutionalApi, searchApi } from '@/api/client'
 import PageHeader from '@/components/PageHeader.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import {
@@ -19,6 +20,7 @@ const route = useRoute()
 const query = ref((route.query.q as string) || '')
 const selectedDomain = ref<'all' | 'documents' | 'correspondence' | 'research'>('all')
 const isLoading = ref(false)
+const error = ref<string | null>(null)
 
 interface SearchResult {
  id: number
@@ -59,6 +61,7 @@ function domainErrorMessage(err: unknown, domain: string): string {
 }
 
 async function executeSearch() {
+ error.value = null
  if (!query.value.trim()) {
   results.value = []
   domainErrors.value = {}
@@ -245,7 +248,17 @@ onMounted(() => {
  </div>
 
  <!-- Loading Skeleton -->
- <LoadingSkeleton v-if="isLoading" :count="4" class="max-w-3xl" />
+ <BaseAlert v-if="error" variant="error" class="mb-4">
+    {{ error }}
+    <template #actions>
+     <BaseButton size="sm" variant="outline" @click="loadData || performSearch">
+      <RefreshCw class="w-4 h-4 mr-1.5" />
+      Retry
+     </BaseButton>
+    </template>
+   </BaseAlert>
+
+   <LoadingSkeleton v-else-if="isLoading" :count="4" class="max-w-3xl" />
 
  <!-- Results List -->
  <div v-else class="max-w-3xl space-y-3">

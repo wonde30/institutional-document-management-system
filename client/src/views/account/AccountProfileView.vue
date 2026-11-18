@@ -6,6 +6,7 @@ import { authApi } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import {
@@ -18,6 +19,7 @@ import {
  KeyRound,
  CheckCircle2,
  AlertCircle,
+ RefreshCw,
 } from 'lucide-vue-next'
 
 const route = useRoute()
