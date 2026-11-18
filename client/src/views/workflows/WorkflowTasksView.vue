@@ -240,63 +240,55 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
- <CheckSquare class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Workflow Tasks & Decision Approvals</span>
- </h1>
- <p class="mt-0.5 text-sm text-ink-muted">
- Review, approve, or return institutional documents and correspondence directives undergoing routing policy decisions.
- </p>
- </div>
+  <PageHeader
+    title="Workflow Tasks & Decision Approvals"
+    subtitle="Review, approve, or return institutional documents and correspondence directives undergoing routing policy decisions."
+  >
+    <template #actions>
+      <div class="flex rounded-md bg-surface-muted border border-hairline p-1 text-xs font-medium" role="group" aria-label="Task status filters">
+        <button
+          type="button"
+          class="px-3 py-1 rounded transition-colors cursor-pointer"
+          :class="statusFilter === 'open' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+          @click="handleStatusChange('open')"
+        >
+          Active Tasks
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1 rounded transition-colors cursor-pointer"
+          :class="statusFilter === 'closed' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+          @click="handleStatusChange('closed')"
+        >
+          Decision History
+        </button>
+      </div>
 
- <div class="flex items-center gap-2.5">
- <div class="flex rounded-md bg-surface-muted border border-hairline p-1 text-xs font-medium" role="group" aria-label="Task status filters">
- <button
- type="button"
- class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="statusFilter === 'open' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
- @click="handleStatusChange('open')"
- >
- Active Tasks
- </button>
- <button
- type="button"
- class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="statusFilter === 'closed' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
- @click="handleStatusChange('closed')"
- >
- Decision History
- </button>
- </div>
+      <div class="flex rounded-md bg-surface-muted border border-hairline p-1 text-xs font-medium" role="group" aria-label="Task assignment scope">
+        <button
+          type="button"
+          class="px-3 py-1 rounded transition-colors cursor-pointer"
+          :class="scopeFilter === 'mine' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+          @click="handleTabChange('mine')"
+        >
+          Assigned to Me
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1 rounded transition-colors cursor-pointer"
+          :class="scopeFilter === 'office' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
+          @click="handleTabChange('office')"
+        >
+          My Office Tasks
+        </button>
+      </div>
 
- <div class="flex rounded-md bg-surface-muted border border-hairline p-1 text-xs font-medium" role="group" aria-label="Task assignment scope">
- <button
- type="button"
- class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="scopeFilter === 'mine' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
- @click="handleTabChange('mine')"
- >
- Assigned to Me
- </button>
- <button
- type="button"
- class="px-3 py-1 rounded transition-colors cursor-pointer"
- :class="scopeFilter === 'office' ? 'bg-surface text-primary font-semibold' : 'text-ink-muted hover:text-ink-secondary'"
- @click="handleTabChange('office')"
- >
- My Office Tasks
- </button>
- </div>
-
- <BaseButton variant="outline" size="sm" :loading="isLoading" @click="loadTasks(1)">
- <RefreshCw class="w-4 h-4 mr-1.5" />
- Refresh
- </BaseButton>
- </div>
- </div>
+      <BaseButton variant="outline" size="sm" :loading="isLoading" @click="loadTasks(1)">
+        <RefreshCw class="w-4 h-4 mr-1.5" />
+        Refresh
+      </BaseButton>
+    </template>
+  </PageHeader>
 
  <!-- Error Banner -->
  <div

@@ -53,11 +53,15 @@ for (const route of routes) {
     const content = readFileSync(route.viewPath, 'utf8')
     
     // Check 1: Uses <PageHeader>
-    const usesPageHeader = content.includes('<PageHeader') || content.includes('PageHeader')
+    const usesPageHeader = /<PageHeader/.test(content)
     
     // Check 2: Inline <h1> classes
-    const h1Match = content.match(/<h1([^>]*)class="([^"]+)"/)
-    const h1Classes = h1Match ? h1Match[2] : ''
+    const h1Match = content.match(/<h1([^>]*)class="([^"]+)"/g)
+    const h1Count = h1Match ? h1Match.length : 0
+    const h1Classes = h1Match && h1Match[0] ? h1Match[0].match(/class="([^"]+)"/)?.[1] || '' : ''
+    
+    // Check 2b: h1 has text-xl (target text-2xl)
+    const hasTextXlH1 = h1Classes.includes('text-xl')
     
     // Check 3: h1 has font-semibold
     const hasFontSemibold = h1Classes.includes('font-semibold')
@@ -69,8 +73,9 @@ for (const route of routes) {
     // Check 4b: text-xs subtitle (target text-sm)
     const hasXsSubtitle = /<p[^>]*class="[^"]*text-xs[^"]*text-ink-muted/.test(content)
     
-    // Check 2b: h1 has text-xl (target text-2xl)
-    const hasTextXlH1 = h1Classes.includes('text-xl')
+    // Check 4c: Inline subtitle leftover (when PageHeader is used)
+    const hasInlineSubtitle = usesPageHeader && (/<p[^>]*class="[^"]*text-(?:xs|sm)[^"]*text-ink-muted/.test(content) && !content.includes('subtitle='))
+    const inlineSubtitleLeftover = hasInlineSubtitle ? 'y' : 'n'
     
     // Check 5: Loading state
     const hasLoadingState = 
@@ -114,11 +119,13 @@ for (const route of routes) {
       view: route.viewPath.split('/').pop(),
       route: route.routes.length > 1 ? `${route.routes[0]} +${route.routes.length - 1} tabs` : route.route,
       usesPageHeader: usesPageHeader ? 'y' : 'n',
+      h1Count: h1Count,
       h1Classes: h1Classes.substring(0, 40),
       hasFontSemibold: hasFontSemibold ? 'y' : 'n',
       hasTextXlH1: hasTextXlH1 ? 'y' : 'n',
       subtitleClass: subtitleClass,
       hasXsSubtitle: hasXsSubtitle ? 'y' : 'n',
+      inlineSubtitleLeftover: inlineSubtitleLeftover,
       hasLoadingState: hasLoadingState ? 'y' : 'n',
       hasEmptyState: hasEmptyState ? 'y' : 'n',
       hasErrorRetry: hasErrorRetry ? 'y' : 'n',
@@ -131,11 +138,13 @@ for (const route of routes) {
       view: route.viewPath.split('/').pop(),
       route: route.routes.length > 1 ? `${route.routes[0]} +${route.routes.length - 1} tabs` : route.route,
       usesPageHeader: 'ERR',
+      h1Count: 0,
       h1Classes: 'FILE_NOT_FOUND',
       hasFontSemibold: 'n',
       hasTextXlH1: 'n',
       subtitleClass: '',
       hasXsSubtitle: 'n',
+      inlineSubtitleLeftover: 'n',
       hasLoadingState: 'n',
       hasEmptyState: 'n',
       hasErrorRetry: 'n',
@@ -146,7 +155,7 @@ for (const route of routes) {
 }
 
 // Generate table
-const header = 'view | route | PageHeader | h1 classes | font-semibold | h1 text-xl | subtitle | subtitle text-xs | loading | empty | error+retry | tables wrapped | banned count'
+const header = 'view | route | PageHeader | h1 count | h1 classes | font-semibold | h1 text-xl | subtitle | subtitle text-xs | inline subtitle leftover | loading | empty | error+retry | tables wrapped | banned count'
 const separator = '-'.repeat(header.length)
 
 let table = `${header}\n${separator}\n`
@@ -156,11 +165,13 @@ for (const r of results) {
     r.view.padEnd(35),
     r.route.padEnd(30),
     r.usesPageHeader.padEnd(10),
+    String(r.h1Count).padEnd(8),
     r.h1Classes.padEnd(40),
     r.hasFontSemibold.padEnd(13),
     r.hasTextXlH1.padEnd(10),
     r.subtitleClass.padEnd(30),
     r.hasXsSubtitle.padEnd(16),
+    r.inlineSubtitleLeftover.padEnd(24),
     r.hasLoadingState.padEnd(7),
     r.hasEmptyState.padEnd(5),
     r.hasErrorRetry.padEnd(11),
@@ -183,9 +194,12 @@ console.log(`\n✓ Matrix saved to ${matrixPath}`)
 
 // Summary
 const compliant = results.filter(r => 
+  r.usesPageHeader === 'y' &&
+  r.h1Count === 1 &&
   r.hasFontSemibold === 'y' && 
   r.hasTextXlH1 === 'n' &&
   r.hasXsSubtitle === 'n' &&
+  r.inlineSubtitleLeftover === 'n' &&
   r.hasLoadingState === 'y' && 
   r.hasEmptyState === 'y' && 
   r.hasErrorRetry === 'y' &&

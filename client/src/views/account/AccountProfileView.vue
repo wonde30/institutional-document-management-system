@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -95,18 +96,10 @@ function handleSavePreferences() {
 
 <template>
  <div class="space-y-6">
- <!-- Page Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
- <User class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Account & Security Profile</span>
- </h1>
- <p class="text-sm text-ink-muted mt-0.5">
- Manage your institutional identity, authentication credentials, and display preferences.
- </p>
- </div>
- </div>
+  <PageHeader
+    title="Account & Security Profile"
+    subtitle="Manage your institutional identity, authentication credentials, and display preferences."
+  />
 
  <!-- Navigation Tabs -->
  <div class="border-b border-hairline flex gap-6 text-xs font-semibold">

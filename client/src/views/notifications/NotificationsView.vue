@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notifications'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -90,30 +91,22 @@ async function handleNavigate(notif: any) {
 
 <template>
  <div class="space-y-6 max-w-4xl">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
- <Bell class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Notifications & Institutional Activity</span>
- </h1>
- <p class="text-sm text-ink-muted mt-0.5">
- Authorized event notifications, document dispatches, and pending workflow assignments.
- </p>
- </div>
-
- <div class="flex items-center gap-2">
- <BaseButton
- v-if="notifStore.unreadCount > 0"
- variant="outline"
- size="sm"
- @click="markAllRead"
- >
- <CheckCheck class="w-4 h-4 mr-1.5 text-primary" />
- <span>Mark All as Read</span>
- </BaseButton>
- </div>
- </div>
+  <PageHeader
+    title="Notifications & Institutional Activity"
+    subtitle="Authorized event notifications, document dispatches, and pending workflow assignments."
+  >
+    <template #actions>
+      <BaseButton
+        v-if="notifStore.unreadCount > 0"
+        variant="outline"
+        size="sm"
+        @click="markAllRead"
+      >
+        <CheckCheck class="w-4 h-4 mr-1.5 text-primary" />
+        <span>Mark All as Read</span>
+      </BaseButton>
+    </template>
+  </PageHeader>
 
  <!-- Filter Tabs -->
  <div class="flex items-center gap-4 border-b border-hairline">
