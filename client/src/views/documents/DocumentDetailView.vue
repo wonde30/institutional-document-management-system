@@ -784,25 +784,16 @@ onMounted(() => {
 <template>
  <div class="space-y-6 max-w-5xl mx-auto">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
- <div class="flex items-center gap-3">
+ <PageHeader 
+ :title="document?.title || 'Document Record'"
+ subtitle="Comprehensive document record with metadata, versions, attachments, and lifecycle history."
+ >
+ <template #actions>
  <BaseButton variant="ghost" size="sm" @click="router.push('/documents')">
  <ArrowLeft class="w-4 h-4" />
+ Back
  </BaseButton>
- <div>
- <div class="flex items-center gap-2">
- <span class="font-mono text-xs font-semibold text-primary bg-primary-subtle px-2.5 py-0.5 rounded-full border border-primary/20">
- {{ document?.reference_number || 'Loading...' }}
- </span>
- <StatusBadge v-if="document" :status="document.lifecycle" />
- </div>
- <h1 class="text-2xl font-semibold tracking-tight text-balance mt-1">
- {{ document?.title || 'Document Record' }}
- </h1>
- </div>
- </div>
-
- <div class="flex items-center gap-2 flex-wrap">
+ 
  <BaseButton
  v-if="document && primaryPdfFile"
  variant="primary"
@@ -863,7 +854,15 @@ onMounted(() => {
  <Archive class="w-4 h-4" />
  <span>Transfer to Digital Archive</span>
  </BaseButton>
- </div>
+ </template>
+ </PageHeader>
+ 
+ <!-- Status and Reference Row -->
+ <div v-if="document" class="flex items-center gap-2 -mt-3 mb-4">
+ <span class="font-mono text-xs font-semibold text-primary bg-primary-subtle px-2.5 py-0.5 rounded-full border border-primary/20">
+ {{ document.reference_number }}
+ </span>
+ <StatusBadge :status="document.lifecycle" />
  </div>
 
  <!-- Loading Skeleton -->

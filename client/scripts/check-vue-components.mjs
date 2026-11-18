@@ -130,15 +130,21 @@ function checkInvalidSlots(templateContent) {
     issues.push('<template #subtitle> - PageHeader uses subtitle prop, not slot');
   }
   
-  // Check for other undefined slots on PageHeader
-  const pageHeaderSlots = templateContent.match(/<PageHeader[^>]*>[\s\S]*?<template\s+#(\w+)>/g);
-  if (pageHeaderSlots) {
-    pageHeaderSlots.forEach((slot) => {
-      const slotName = slot.match(/<template\s+#(\w+)>/)?.[1];
-      if (slotName && !['breadcrumb', 'actions'].includes(slotName)) {
+  // Check for other undefined slots on PageHeader - look for PageHeader blocks
+  const pageHeaderRegex = /<PageHeader[^>]*>([\s\S]*?)<\/PageHeader>/g;
+  let match;
+  
+  while ((match = pageHeaderRegex.exec(templateContent)) !== null) {
+    const pageHeaderContent = match[1];
+    const slotRegex = /<template\s+#(\w+)>/g;
+    let slotMatch;
+    
+    while ((slotMatch = slotRegex.exec(pageHeaderContent)) !== null) {
+      const slotName = slotMatch[1];
+      if (!['breadcrumb', 'actions'].includes(slotName)) {
         issues.push(`<template #${slotName}> - PageHeader only supports breadcrumb and actions slots`);
       }
-    });
+    }
   }
   
   return issues;

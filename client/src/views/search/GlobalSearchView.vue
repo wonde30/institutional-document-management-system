@@ -169,17 +169,14 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Search Header -->
- <div class="max-w-3xl space-y-3 border-b border-hairline pb-4">
- <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
- <Search class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Repository & Registry Search Portal</span>
- </h1>
- <p class="text-sm text-ink-muted mt-0.5">
- Query official documents, incoming/outgoing letters, and finalized research within your authorized scope.
- </p>
+   <PageHeader 
+     title="Repository & Registry Search Portal"
+     subtitle="Query official documents, incoming/outgoing letters, and finalized research within your authorized scope."
+   />
 
- <form @submit.prevent="executeSearch" class="flex gap-2 pt-2">
+ <!-- Search Form -->
+ <div class="max-w-3xl space-y-3">
+   <form @submit.prevent="executeSearch" class="flex gap-2">
  <BaseInput
  v-model="query"
  type="search"

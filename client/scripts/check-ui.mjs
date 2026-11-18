@@ -104,7 +104,7 @@ for (const route of routes) {
       /text-\[(?:[1-9]|1[01])px\]/g, // text-[1-11px] - arbitrary sizes below 12px
       /rounded-2xl/g,
       /shadow-(?:sm|md)(?!:)/g,
-      /uppercase(?! tabular-nums| font-mono)/g,
+      /uppercase(?! tabular-nums| font-mono|[^"]*(?:font-mono|placeholder|input))/g, // whitelist uppercase for code/placeholder/input
       /tracking-(?:wide|wider|widest)/g,
       /border-l-4/g
     ]

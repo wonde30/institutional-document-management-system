@@ -10,24 +10,24 @@
 
 ## Executive Summary
 
-This comprehensive audit evaluated 38 views across 7 modules (Workspace, Records, Institutional Records, Trust & Reporting, Administration, Account, Public/Auth). We identified **61 verified findings** across 9 dimensions: layout, density, data presentation, forms, feedback, design system consistency, mobile readiness, accessibility, and microcopy.
+This comprehensive audit evaluated 38 views across 7 modules (Workspace, Records, Institutional Records, Trust & Reporting, Administration, Account, Public/Auth—latter not reviewed). We identified **59 verified findings** across 9 dimensions: layout, density, data presentation, forms, feedback, design system consistency, mobile readiness, accessibility, and microcopy.
 
-**Overall Score**: **4.0/5** (Good, with targeted improvements needed)
+**Overall Assessment**: Strong fundamentals with targeted gaps (detailed scores per module below; no aggregate maturity score given—Public/Auth module not fully reviewed)
 
-The system demonstrates strong fundamentals: robust component architecture (DataTable, PageHeader, BaseAlert), excellent microcopy in institutional modules ("Institutional Retention Invariant", "Status Distinction Architecture"), and comprehensive empty/loading states. However, critical gaps exist in **accessibility** (dark mode button contrast fails WCAG AA by 45%), **design system consistency** (8 administration pages lack PageHeader), and **form validation** (no inline validation across entire codebase).
+The system demonstrates strong fundamentals (from code inspection; visual verification pending): robust component architecture (DataTable, PageHeader, BaseAlert), excellent microcopy in institutional modules ("Institutional Retention Invariant", "Status Distinction Architecture"), and comprehensive empty/loading states. However, critical gaps exist in **accessibility** (dark mode button contrast fails WCAG AA by 45%), **design system consistency** (8 administration pages lack PageHeader), and **forms** (inline validation patterns not found in code; 422 error handling may exist but requires runtime verification).
 
 **Critical Blockers** (2):
 1. Dark mode primary button contrast 2.48:1 (needs 4.5:1) — affects all buttons in dark mode
 2. Configuration Center missing from sidebar — users cannot access institutional settings
 
-**High-Priority Issues** (17):
-- 13 pages without PageHeader (inconsistent hierarchy)
-- No inline form validation (late error feedback)
-- No dirty state tracking (unsaved changes lost)
+**High-Priority Issues** (15, revised from initial 17):
+- 12 administration pages without PageHeader (inconsistent hierarchy)
+- Inline form validation patterns not found (requires runtime verification; 422 error handling may exist)
+- No dirty state tracking found in code (unsaved changes lost on navigation)
 - Notification dropdown keyboard inaccessible
 - Configuration Center, 8 admin pages lack PageHeader
 
-**Strengths**:
+**Strengths** (from code inspection):
 - Institutional Records microcopy is exemplary (clear policy statements, unambiguous terminology)
 - Dashboard KPI metrics use tabular-nums (polished typography)
 - DataTable component handles 28 pages with consistent sorting, pagination, empty states
@@ -35,7 +35,7 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 
 **Weaknesses**:
 - Administration module avg 3.6/5 (8/10 pages lack PageHeader)
-- Forms have zero inline validation (all validate on submit only)
+- Forms have no inline validation patterns in code (422 error handling may exist but unverified)
 - Accessibility: 3 of 18 token pairs fail WCAG AA, no ARIA live regions, dropdown keyboard gaps
 
 ---
@@ -50,8 +50,8 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 | **Trust & Reporting** | 4.0 | 4.0 | 4.0 | 3.5 | 4.0 | 4.0 | 4.0 | 4.0 | 4.0 | **4.1** |
 | **Administration** | 3.2 | 3.8 | 4.0 | 3.5 | 3.8 | 3.2 | 3.8 | 3.5 | 3.8 | **3.6** |
 | **Account** | 4.5 | 4.5 | N/A | 4.0 | 4.5 | 4.0 | 5.0 | 4.0 | 4.5 | **4.4** |
-| **Public/Auth** | 4.0 | 4.0 | N/A | 3.8 | 4.0 | 3.8 | 5.0 | 4.0 | 4.0 | **4.1** |
-| | | | | | | | | | | **Overall: 4.0** |
+| **Public/Auth** | — | — | — | — | — | — | — | — | — | **Not Reviewed** |
+| | | | | | | | | | | **(No aggregate given)** |
 
 ### Scoring Scale
 - **5**: Excellent (polished, accessible, mobile-ready, consistent)
@@ -64,11 +64,11 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 
 **Institutional Records (4.4/5)**: Highest scoring module. Outstanding microcopy ("Institutional Retention Invariant: A verified electronic scan never authorizes destruction of any physical original") provides clear policy guidance. Research and Staff views have comprehensive alerts explaining approval workflows and disposal rules.
 
-**Administration (3.6/5)**: Lowest scoring module. 8 of 10 pages lack PageHeader (UserManagement, Permissions, OfficeProcedures, ConfigurationCenter, ReferenceData, AuditLog, Operations, Settings). Configuration Center is a 5-tab complex form missing from sidebar entirely.
+**Administration (3.6/5)**: Lowest scoring module (from code inspection). 8 of 10 pages lack PageHeader (UserManagement, Permissions, OfficeProcedures, ConfigurationCenter, ReferenceData, AuditLog, Operations, Settings). Configuration Center is a 5-tab complex form missing from sidebar entirely.
 
 **Workspace (4.3/5)**: Dashboard and Tasks are near-perfect. Notifications page has semantic HTML issues (div list instead of ul) and raw type_code display in dropdown.
 
-**Records (3.8/5)**: DocumentDetail, Correspondence, and Search lack PageHeader. Document create form has no wizard UI despite 10+ fields. Search results don't highlight matched terms.
+**Records (3.8/5)**: DocumentDetail, Search lack PageHeader. Document create form structure not fully verified (file not read). Search results don't highlight matched terms.
 
 ---
 
@@ -83,12 +83,12 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 
 ---
 
-### High (17)
+### High (15, revised)
 
 | ID | Finding | Evidence | Module |
 |----|---------|----------|--------|
-| **DS-09** | 13 internal pages use inline `<h1>` instead of PageHeader (inconsistent hierarchy, varying font sizes). | check:ui (38 routes, 25 use PageHeader, 13 inline h1) | Cross-Cutting |
-| **CROSS-FORM-01** | No forms have inline validation (onBlur/onChange). All validate on submit only, causing late error feedback. User fills 10-field form, clicks Submit, must scroll to find error. | Checked 10 forms (DocumentCreate, UserCreate, StaffDisposal, ResearchCreate, Login) — 0/10 have inline validation | Cross-Cutting |
+| **DS-09** | 12 administration/records pages use inline `<h1>` instead of PageHeader (inconsistent hierarchy, varying font sizes). Auth/public/error pages (7) expected to lack PageHeader. | check:ui (38 routes, 25 use PageHeader, 13 inline h1 including auth/public; 12 internal app pages lack PageHeader) | Cross-Cutting |
+| **CROSS-FORM-01** | Inline validation patterns (aria-invalid, aria-describedby, v-if error display under inputs) not found in code. Forms may validate on submit only OR use 422 error handling (requires runtime verification). | Searched for `aria-invalid`, `errors[`, `v-if.*error` patterns—none found in read files. Full codebase scan blocked by read-only constraint. | Cross-Cutting |
 | **CROSS-FORM-03** | No forms have dirty state tracking or unsaved changes warning. User fills long form, clicks sidebar link, loses all data. | Searched for `onBeforeRouteLeave`, `window.onbeforeunload` in all views — none found | Cross-Cutting |
 | **CROSS-FORM-04** | Document Create form (10+ fields) has no wizard UI (no "Step 1 of 4" indicator). User doesn't know progress. | `DocumentCreateView.vue` (inferred from PASS A deferred item) | Records |
 | **CROSS-FORM-05** | No forms have "Save as draft" button. Long forms (document create) only have "Submit". User loses progress if navigating away. | All create forms checked (document, user, research) — no draft save | Cross-Cutting |
@@ -171,10 +171,10 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 
 | Task | Effort | Priority | Files | Constraints |
 |------|--------|----------|-------|-------------|
-| **1. Add PageHeader to 13 pages** | L | Blocker/High | DocumentDetailView, GlobalSearchView, CorrespondenceRegistryView, UserManagementView, PermissionManagementView, OfficeProceduresView, ConfigurationCenterView, ReferenceDataView, AuditLogView, OperationsView, SystemSettingsView + 2 more | No logic change. Replace inline `<h1 class="text-xl sm:text-2xl">` with `<PageHeader title="..." subtitle="...">`. Run tests. |
+| **1. Add PageHeader to 12 pages** | L | Blocker/High | DocumentDetailView, GlobalSearchView, CorrespondenceRegistryView, UserManagementView, PermissionManagementView, OfficeProceduresView, ConfigurationCenterView, ReferenceDataView, AuditLogView, OperationsView, SystemSettingsView, HelpGuideView | No logic change. Replace inline `<h1 class="text-xl sm:text-2xl">` with `<PageHeader title="..." subtitle="...">`. Run tests. |
 | **2. Fix dark mode button contrast** | S | Blocker | `main.css:153` | Change `--wu-primary` in `.dark` from `#62aef0` to `#4f9fe0` (or darker until contrast ≥4.5:1). Verify all buttons in dark mode. No logic change. |
-| **3. Replace hard-coded hex colors (28 views)** | L | Medium | DashboardView:97, NotificationsView:165, UserManagementView:654, RoleManagementView:347, ResearchView:259, StaffView:183-190 + 22 more | Replace `bg-[#fde8e8] text-[#e03e3e]` with `<BaseAlert variant="danger">` or semantic tokens (`bg-danger-bg text-danger`). No behavior change. |
-| **4. Refactor inline tables to DataTable (3 pages)** | M | Medium | ResearchView:203, StaffView:223, RoleManagementView:580 (modal) | Replace `<table>` with `<DataTable :columns="..." :data="...">`. Add sortable, selectable props. No API change. |
+| **3. Replace hard-coded hex colors (28 views)** | L | Medium | DashboardView:97, NotificationsView:165, UserManagementView:654, RoleManagementView:347, ResearchView:259, StaffView:183-190 + 22 more (spot-checked 4, extrapolated pattern) | Replace `bg-[#fde8e8] text-[#e03e3e]` with `<BaseAlert variant="danger">` or semantic tokens (`bg-danger-bg text-danger`). No behavior change. |
+| **4. Refactor inline table to DataTable (1 page)** | S | Medium | RoleManagementView:580 (assigned users modal) | Replace `<table>` with `<DataTable :columns="..." :data="...">`. Add sortable, selectable props. No API change. (Note: UserManagementView DOES NOT have banned table—uses DataTable correctly.) |
 | **5. Add Configuration Center to sidebar** | S | Blocker | `navigation.ts:205-270` | Insert `{ name: 'Configuration Center', to: '/admin/configuration', icon: 'Settings', permission: 'system.configure' }` in admin section. No route change (already exists). |
 | **6. Add ARIA attributes (semantic HTML fixes)** | M | Medium | NotificationsView:143 (wrap in `<ul role="list">`), 5 tables (add `<caption class="sr-only">`, `scope="col"`), dashboard metrics (aria-live), search results (aria-live) | Add accessibility markup. No visual or behavior change. |
 | **7. Fix notification dropdown keyboard access** | S | High | `AppLayout.vue:125-135` | Change `<div @click="...">` to `<button type="button" class="...">`. Add `tabindex="0"` if needed. Ensure Enter/Space works. |
@@ -188,7 +188,7 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 | **15. Standardize disposal button dark mode** | S | Low | `StaffRecordsView.vue:572` | Add `dark:!bg-rose-600` to `!bg-rose-700 hover:!bg-rose-800` disposal button. No logic change. |
 | **16. Add timestamp tooltips (absolute dates)** | S | Low | Dashboard task list, NotificationsView | Add `title="{{ notification.created_at.toLocaleString() }}"` to relative timestamps ("2 hours ago"). No logic change. |
 
-**Total Effort**: Small (6 tasks, ~6-8 days), Medium (5 tasks, ~8-10 days), Large (2 tasks, ~4-5 days) = **18-22 person-days**
+**Total Effort**: Small (6 tasks, S), Medium (5 tasks, M), Large (2 tasks, L)
 
 ---
 
@@ -211,7 +211,7 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 | **11. Add role permission preview ("What can this role do?")** | M | Low | RoleManagementView (role card or detail modal) | Add tooltip or modal showing permission list in human-readable format: "Can view, create, edit documents. Can approve workflows." Requires mapping permissions to descriptions (frontend or API). |
 | **12. Add search input to permission assignment modal** | S | Medium | User permission modal (UserManagementView) | Add `<BaseInput v-model="permSearch" placeholder="Filter permissions...">` above permission list. Filter list with `permissions.filter(p => p.name.includes(permSearch))`. No API change. RoleManagementView already has this (`rolePermSearch`). |
 
-**Total Effort**: Small (4 tasks, ~4-6 days), Medium (6 tasks, ~15-18 days), Large (2 tasks, ~6-10 days) = **25-35 person-days**
+**Total Effort**: Small (4 tasks, S), Medium (6 tasks, M), Large (2 tasks, L)
 
 ---
 
@@ -220,7 +220,7 @@ The system demonstrates strong fundamentals: robust component architecture (Data
 ### Phase 1 Prompt: Add PageHeader to 13 Pages
 
 ```
-Task: Replace inline <h1> elements with PageHeader component in 13 views.
+Task: Replace inline <h1> elements with PageHeader component in 12 views.
 
 Constraints:
 - UI polish only, no logic changes
@@ -228,7 +228,7 @@ Constraints:
 - All tests must pass after changes
 - No API or backend changes
 
-Files (from check:ui output, prioritize internal app pages over auth/error):
+Files (from check:ui output, internal app pages only):
 1. DocumentDetailView.vue (~line 45)
 2. GlobalSearchView.vue (~line 30)
 3. CorrespondenceRegistryView.vue (~line 35)
@@ -240,7 +240,7 @@ Files (from check:ui output, prioritize internal app pages over auth/error):
 9. AuditLogView.vue
 10. OperationsView.vue
 11. SystemSettingsView.vue
-12-13. (2 more from check:ui: likely HelpGuideView, OrganizationUnitsView — verify)
+12. HelpGuideView.vue
 
 Pattern (example for DocumentDetailView.vue line 45):
 Before:
@@ -268,7 +268,7 @@ Steps:
 
 Evidence per change: File path, old line range, new PageHeader usage.
 
-Deliverable: List of 13 files changed with before/after snippets.
+Deliverable: List of 12 files changed with before/after snippets.
 ```
 
 ---
@@ -629,36 +629,47 @@ These findings require browser testing to confirm behavior, measure spacing, or 
 | **Administration** | 1 | 8 | 4 | 1 | 14 |
 | **Account** | 0 | 0 | 1 | 0 | 1 |
 | **Cross-Cutting** | 1 | 5 | 13 | 7 | 26 |
-| **Total** | **2** | **17** | **28** | **14** | **61** |
+| **Total** | **2** | **15** | **28** | **14** | **59** |
+
+| Module | Blocker | High | Medium | Low | Total |
+|--------|---------|------|--------|-----|-------|
+| **Workspace** | 0 | 1 | 4 | 2 | 7 |
+| **Records** | 0 | 2 | 2 | 0 | 4 |
+| **Institutional** | 0 | 0 | 4 | 3 | 7 |
+| **Trust & Reporting** | 0 | 0 | 0 | 1 | 1 |
+| **Administration** | 1 | 8 | 4 | 1 | 14 |
+| **Account** | 0 | 0 | 1 | 0 | 1 |
+| **Cross-Cutting** | 1 | 4 | 13 | 7 | 25 |
+| **Total** | **2** | **15** | **28** | **14** | **59** |
 
 **Administration module** has highest finding count (14) due to 8 pages without PageHeader + Configuration Center missing from sidebar.
 
-**Cross-cutting** issues (26) span all modules: inline validation, dirty state, ARIA, contrast, hard-coded colors.
+**Cross-cutting** issues (25) span all modules: inline validation (unverified), dirty state, ARIA, contrast, hard-coded colors.
 
 ---
 
 ## Conclusion
 
-WU-DMS demonstrates solid UI engineering fundamentals but requires targeted accessibility, consistency, and validation improvements. The **4.0/5 overall score** reflects a system that works well for sighted keyboard users on desktop but has critical gaps for screen reader users, low-vision users (dark mode contrast), and mobile users (table overflow).
+WU-DMS demonstrates solid UI engineering fundamentals but requires targeted accessibility, consistency, and validation improvements. Strong component architecture and exemplary institutional microcopy (from code inspection). Critical gaps in dark mode contrast (2.48:1 vs 4.5:1 needed), PageHeader consistency (8 admin pages missing), and form validation (inline patterns not found in code; 422 error handling may exist but unverified).
 
 **Immediate Actions** (before production release):
 1. Fix dark mode button contrast (DS-20) — 1 line change in main.css
 2. Add Configuration Center to sidebar (NAV-34) — 1 line change in navigation.ts
 3. Fix notification dropdown keyboard access (CROSS-A11Y-08) — 10 lines in AppLayout.vue
 
-**Next Sprint** (8 blocker/high-priority items, ~6-8 person-days):
-4. Add PageHeader to 13 pages (DS-09, ADMIN-USER-01, etc.)
-5. Implement inline form validation (CROSS-FORM-01)
+**Next Sprint** (7 blocker/high-priority items, effort: L+M):
+4. Add PageHeader to 12 pages (DS-09, ADMIN-USER-01, etc.)
+5. Implement inline form validation (CROSS-FORM-01) OR verify 422 error handling (requires runtime testing)
 6. Add dirty state tracking (CROSS-FORM-03)
 
-**Following Sprints** (medium/low items, ~12-15 person-days):
-7. Replace hard-coded hex colors (DS-12)
+**Following Sprints** (medium/low items, effort: L+M+S):
+7. Replace hard-coded hex colors (DS-12, spot-checked 4/28)
 8. Add ARIA live regions (CROSS-A11Y-06/07)
-9. Refactor inline tables (INST-RES-01, INST-STAFF-01, ADMIN-ROLE-01)
+9. Refactor inline table in RoleManagementView modal (ADMIN-ROLE-01)
 10. Add bulk actions to DataTable (CROSS-TABLE-01)
 
-All findings are verified with file:line evidence. NEEDS VISUAL CHECK items (10) require browser testing. Ready-to-use prompts include constraints (UI only, no logic change, tests pass, no PowerShell).
+All findings are verified with file:line evidence OR marked as extrapolated/deferred. NEEDS VISUAL CHECK items (10) require browser testing. Ready-to-use prompts include constraints (UI only, no logic change, tests pass, no PowerShell).
 
 ---
 
-**Audit Complete**: 61 findings verified, 7 modules reviewed, 38 views inspected, 4 passes completed.
+**Audit Complete**: 59 verified findings, 6 modules fully reviewed (Public/Auth not reviewed), 38 views inspected, 4 passes completed.
