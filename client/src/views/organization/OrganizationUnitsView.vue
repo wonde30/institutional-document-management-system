@@ -9,6 +9,8 @@ import BaseSelect from '@/components/ui/BaseSelect.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import {
  Building2,
  GitFork,
@@ -160,18 +162,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <Building2 class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Institutional Organization Structure</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.
- </p>
- </div>
+ 
+ <PageHeader title="Institutional Organization Structure">
 
- <div class="flex items-center gap-2.5">
+  <template #subtitle>Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.</template>
+
+  <template #actions>
+
  <BaseButton variant="outline" size="sm" :loading="isLoading" @click="loadData">
  <RefreshCw class="w-4 h-4 mr-1.5" />
  Refresh
@@ -181,8 +178,11 @@ onMounted(() => {
  <Plus class="w-4 h-4 mr-1.5" />
  Add Top-Level Unit
  </BaseButton>
- </div>
- </div>
+ 
+
+  </template>
+
+ </PageHeader>
 
  <!-- Stats Overview -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -494,7 +494,8 @@ onMounted(() => {
  <BaseInput
  v-model="form.code"
  placeholder="e.g. CNCS, CS-DEPARTMENT, REGISTRAR"
- :disabled="isEditing"
+ 
+ class="uppercase":disabled="isEditing"
  />
  </div>
 

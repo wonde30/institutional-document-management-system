@@ -9,6 +9,9 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import type {
  AccreditationCycle,
  AccreditationStandard,
@@ -34,6 +37,7 @@ const authStore = useAuthStore()
 const toast = useToast()
 
 const loading = ref(true)
+const error = ref<string | null>(null)
 const loadingSummary = ref(false)
 const isSubmitting = ref(false)
 
@@ -75,7 +79,8 @@ async function loadCycles() {
  }
  }
  } catch (err: any) {
- toast.error('Error', err.response?.data?.message || 'Failed to load accreditation cycles.')
+ toast.error(err.response?.data?.message || 'Failed to load cycles')
+   error.value = err.response?.data?.message || 'Failed to load data'
  }
 }
 
@@ -132,6 +137,7 @@ async function loadEvidence() {
 }
 
 async function refreshAll() {
+ error.value = null
  loading.value = true
  try {
  await loadCycles()
@@ -289,102 +295,51 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <ClipboardCheck class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Accreditation & Quality Assurance</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Map frozen document versions to official national HERQA quality standards with traceable audit reviews.
- </p>
- </div>
+ <PageHeader title="Accreditation Evidence Repository">
+   <template #subtitle>Quality assurance documentation and accreditation criterion evidence for institutional compliance.</template>
+   <template #actions>
+    <select
+     v-model="selectedCycleId"
+     class="text-xs rounded-md border border-hairline bg-surface text-ink-secondary px-3 py-1.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+    >
+     <option v-for="c in cycles" :key="c.id" :value="c.id">
+      {{ c.name }} ({{ c.starts_on }} - {{ c.ends_on || 'Present' }})
+     </option>
+    </select>
+    <BaseButton variant="outline" size="sm" :loading="loading" @click="refreshAll">
+     <RefreshCw class="w-4 h-4 mr-1.5" />
+     Refresh
+    </BaseButton>
+    <BaseButton
+     v-if="authStore.hasPermission('accreditation.export')"
+     variant="outline"
+     size="sm"
+     @click="handleExportDossier"
+    >
+     <Download class="w-4 h-4 mr-1.5" />
+     Export Dossier
+    </BaseButton>
+    <BaseButton
+     v-if="authStore.hasPermission('accreditation.submit_evidence')"
+     variant="primary"
+     size="sm"
+     @click="openAttachModal"
+    >
+     <Plus class="w-4 h-4 mr-1.5" />
+     Attach evidence
+    </BaseButton>
+   </template>
+  </PageHeader>
 
- <div class="flex flex-wrap items-center gap-2.5">
- <!-- Cycle Picker -->
- <select
- v-model="selectedCycleId"
- class="text-xs rounded-md border border-hairline bg-surface text-ink-secondary px-3 py-1.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
- >
- <option v-for="c in cycles" :key="c.id" :value="c.id">
- {{ c.name }} ({{ c.starts_on }} - {{ c.ends_on || 'Present' }})
- </option>
- </select>
-
- <BaseButton variant="outline" size="sm" :loading="loading" @click="refreshAll">
- <RefreshCw class="w-4 h-4 mr-1.5" />
- Refresh
- </BaseButton>
-
- <BaseButton
- v-if="authStore.hasPermission('accreditation.export')"
- variant="outline"
- size="sm"
- @click="handleExportDossier"
- >
- <Download class="w-4 h-4 mr-1.5" />
- Export Dossier
- </BaseButton>
-
- <BaseButton
- v-if="authStore.hasPermission('accreditation.submit_evidence')"
- variant="primary"
- size="sm"
- @click="openAttachModal"
- >
- <Plus class="w-4 h-4 mr-1.5" />
- Attach evidence
- </BaseButton>
- </div>
- </div>
-
- <!-- Institutional Quality Notice -->
- <div class="p-3.5 rounded-lg bg-canvas-soft border border-hairline text-xs text-ink-secondary flex items-start gap-2.5">
- <Info class="w-4 h-4 shrink-0 text-primary mt-0.5" />
- <p class="leading-relaxed">
- Accreditation evidence strictly binds to a specific frozen document version. Updating or altering a document generates a new version that requires renewed auditor verification against statutory HERQA benchmarks.
- </p>
- </div>
-
- <!-- Real-Time Completeness Analytics Panel -->
- <div v-if="summary" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
- <div class="p-3 bg-surface rounded-lg border border-hairline">
- <div class="text-xs font-medium text-ink-muted">Total Standards</div>
- <div class="text-lg font-semibold text-ink-secondary mt-1">{{ summary.metrics.total_standards }}</div>
- <div class="text-xs text-ink-muted mt-0.5">HERQA 10 Framework</div>
- </div>
-
- <div class="p-3 bg-surface rounded-lg border border-hairline">
- <div class="text-xs font-medium text-ink-muted">Covered Standards</div>
- <div class="text-lg font-semibold text-primary mt-1">{{ summary.metrics.covered_standards }} / {{ summary.metrics.total_standards }}</div>
- <div class="text-xs text-ink-muted mt-0.5">{{ summary.metrics.submission_rate_percent }}% Submitted</div>
- </div>
-
- <div class="p-3 bg-surface rounded-lg border border-hairline">
- <div class="text-xs font-medium text-ink-muted">Accepted Evidence</div>
- <div class="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mt-1">{{ summary.metrics.accepted_standards }}</div>
- <div class="text-xs text-ink-muted mt-0.5">{{ summary.metrics.acceptance_rate_percent }}% Acceptance Rate</div>
- </div>
-
- <div class="p-3 bg-surface rounded-lg border border-hairline">
- <div class="text-xs font-medium text-ink-muted">Pending Review</div>
- <div class="text-lg font-semibold text-amber-600 dark:text-amber-400 mt-1">{{ summary.metrics.pending_review }}</div>
- <div class="text-xs text-ink-muted mt-0.5">Awaiting Quality Assurance Review</div>
- </div>
-
- <div class="p-3 bg-surface rounded-lg border border-hairline">
- <div class="text-xs font-medium text-ink-muted">Needs Revision</div>
- <div class="text-lg font-semibold text-orange-600 dark:text-orange-400 mt-1">{{ summary.metrics.needs_revision }}</div>
- <div class="text-xs text-ink-muted mt-0.5">Feedback Provided</div>
- </div>
-
- <div class="p-3 bg-surface rounded-lg border border-hairline">
- <div class="text-xs font-medium text-ink-muted">Total Dossiers</div>
- <div class="text-lg font-semibold text-ink-secondary mt-1">{{ summary.metrics.total_evidence_records }}</div>
- <div class="text-xs text-ink-muted mt-0.5">Database Mappings</div>
- </div>
- </div>
+   <BaseAlert v-if="error" variant="error">
+    {{ error }}
+    <template #actions>
+     <BaseButton size="sm" variant="outline" @click="refreshAll">
+      <RefreshCw class="w-4 h-4 mr-1.5" />
+      Retry
+     </BaseButton>
+    </template>
+   </BaseAlert>
 
  <!-- Panel & Toolbar -->
  <section class="bg-surface rounded-lg border border-hairline overflow-hidden">

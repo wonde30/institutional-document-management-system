@@ -353,18 +353,13 @@ onMounted(() => {
 <template>
   <div class="space-y-5">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
-          <Archive class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-          Digital Archive &amp; Long-Term Preservation
-        </h1>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Statutory archival repository, retention schedules, legal holds, and historical record curation.
-        </p>
-      </div>
+    
+        <PageHeader title="Institutional Physical Archive Registry">
 
-      <div class="flex items-center gap-2.5">
+         <template #subtitle>Browse hard-copy file locations, boxes, shelves, and active/closed collection records.</template>
+
+         <template #actions>
+
         <BaseButton
           v-if="activeTab === 'holds'"
           variant="primary"
@@ -390,8 +385,11 @@ onMounted(() => {
           <RefreshCw class="w-4 h-4 mr-1.5" />
           Refresh
         </BaseButton>
-      </div>
-    </div>
+      
+
+         </template>
+
+        </PageHeader>
 
     <!-- Stat Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

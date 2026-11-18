@@ -4,6 +4,8 @@ import { institutionalApi, organizationUnitsApi } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import type { ProjectProposal, Project, ProjectType, OrganizationUnit } from '@/types'
 import {
@@ -25,6 +27,7 @@ const toast = useToast()
 
 // State
 const loading = ref(true)
+const error = ref<string | null>(null)
 const activeTab = ref<'proposals' | 'projects'>('proposals')
 const proposals = ref<ProjectProposal[]>([])
 const activeProjects = ref<Project[]>([])
@@ -115,6 +118,7 @@ function openCreateModal() {
 async function submitProposal() {
  if (!form.value.title || !form.value.office_id || !form.value.project_type_id) {
  toast.error('Validation Error', 'Please fill in all required fields.')
+   error.value = err.response?.data?.message || 'Failed to load projects'
  return
  }
 
@@ -142,40 +146,24 @@ async function submitProposal() {
 
 <template>
  <div class="space-y-6">
- <!-- Header Row -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <FolderKanban class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Projects & Innovation</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Registered project proposals, innovation grants, and active institutional initiatives.
- </p>
- </div>
-
- <div class="flex items-center gap-2">
- <button
- type="button"
- class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors"
- @click="openCreateModal"
- >
- <Plus class="w-4 h-4" />
- <span>Record Project Proposal</span>
- </button>
- </div>
- </div>
-
- <!-- Institutional Policy Notice (Mandatory from UI Blueprint) -->
- <div class="p-3.5 rounded-lg bg-canvas-soft border border-hairline text-xs text-ink-secondary">
- <div class="flex items-start gap-3">
- <ShieldAlert class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
- <div class="text-xs text-ink-secondary">
- <strong class="font-semibold block mb-0.5 text-ink-secondary">Institutional Approval Boundary Notice</strong>
- The project approval chain requires explicit departmental and committee confirmation. No project approval or funding authorization is assumed from finalized research publication rules. Unsupported committee/quorum workflows display “Procedure configuration required”; they do not simulate approval.
- </div>
- </div>
- </div>
+ <PageHeader title="Community Engagement & Innovation Projects">
+   <template #subtitle>University outreach projects, community partnerships, and innovation initiatives.</template>
+   <template #actions>
+    <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
+     <RefreshCw class="w-4 h-4 mr-1.5" />
+     Refresh
+    </BaseButton>
+    <BaseButton
+     v-if="authStore.hasPermission('projects.create') || authStore.hasPermission('documents.create')"
+     variant="primary"
+     size="sm"
+     @click="openCreateModal"
+    >
+     <Plus class="w-4 h-4 mr-1.5" />
+     Register Innovation Project
+    </BaseButton>
+   </template>
+  </PageHeader>
 
  <!-- Metrics Cards -->
  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

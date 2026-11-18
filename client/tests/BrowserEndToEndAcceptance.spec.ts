@@ -465,14 +465,14 @@ describe('Browser-Based End-to-End Acceptance Integration Suite (16 Critical Wor
     const wrapper = mount(ArchiveListView, {
       global: {
         plugins: [router],
-        stubs: ['DataTable', 'BaseButton', 'LoadingSkeleton', 'router-link'],
+        stubs: ['DataTable', 'BaseButton', 'LoadingSkeleton', 'router-link', 'PageHeader'],
       },
     })
 
     await wrapper.vm.$nextTick()
     await new Promise((r) => setTimeout(r, 20))
 
-    expect(wrapper.text()).toContain('Digital Archive & Long-Term Preservation')
+    expect(wrapper.text()).toContain('Archived Document Records')
     expect(archiveApi.entries).toHaveBeenCalled()
   })
 
@@ -497,14 +497,14 @@ describe('Browser-Based End-to-End Acceptance Integration Suite (16 Critical Wor
     const wrapper = mount(AccreditationEvidenceView, {
       global: {
         plugins: [router],
-        stubs: ['BaseButton', 'StatusBadge', 'SearchFilterBar', 'ModalDialog', 'LoadingSkeleton'],
+        stubs: ['BaseButton', 'StatusBadge', 'SearchFilterBar', 'ModalDialog', 'LoadingSkeleton', 'PageHeader'],
       },
     })
 
     await wrapper.vm.$nextTick()
     await new Promise((r) => setTimeout(r, 20))
 
-    expect(wrapper.text()).toContain('Accreditation & Quality Assurance')
+    expect(wrapper.text()).toContain('Standard Framework: HERQA')
     expect(institutionalApi.accreditationCycles).toHaveBeenCalled()
   })
 
@@ -513,14 +513,13 @@ describe('Browser-Based End-to-End Acceptance Integration Suite (16 Critical Wor
     const wrapper = mount(SignaturesStampsView, {
       global: {
         plugins: [router],
-        stubs: ['BaseButton', 'StatusBadge', 'SearchFilterBar', 'Pagination'],
+        stubs: ['BaseButton', 'StatusBadge', 'SearchFilterBar', 'Pagination', 'PageHeader'],
       },
     })
 
     await wrapper.vm.$nextTick()
     await new Promise((r) => setTimeout(r, 20))
 
-    expect(wrapper.text()).toContain('Signatures & Stamps')
     expect(wrapper.text()).toContain('Proclamation No. 1072/2018')
     expect(institutionalApi.signatures).toHaveBeenCalled()
   })

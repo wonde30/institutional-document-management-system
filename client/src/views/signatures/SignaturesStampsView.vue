@@ -5,6 +5,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import type {
  SignatureRequestItem,
  StampDefinitionItem,
@@ -37,6 +39,7 @@ const authStore = useAuthStore()
 const toast = useToast()
 
 const loading = ref(true)
+const error = ref<string | null>(null)
 const activeTab = ref<'signatures' | 'stamps' | 'provider'>('signatures')
 const signatures = ref<SignatureRequestItem[]>([])
 const stamps = ref<StampDefinitionItem[]>([])
@@ -167,6 +170,7 @@ async function submitSignatureRequest() {
  }
  } catch (err: any) {
  toast.error('Request Failed', err.response?.data?.message || err.message || 'Failed to request signature.')
+   error.value = err.response?.data?.message || 'Failed to load data'
  } finally {
  submitting.value = false
  }
@@ -242,6 +246,7 @@ async function submitApplyStamp() {
  }
  } catch (err: any) {
  toast.error('Application Failed', err.response?.data?.message || err.message || 'Failed to apply stamp.')
+   error.value = err.response?.data?.message || 'Failed to load data'
  } finally {
  isApplyingStamp.value = false
  }
@@ -251,30 +256,36 @@ async function submitApplyStamp() {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold text-ink tracking-tight flex items-center gap-2.5">
- <Stamp class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Signatures & Stamps</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Cryptographic signing requests, authorized signers, and departmental office seal registries.
- </p>
- </div>
+ <PageHeader title="Digital Signature & Official Stamp Registry">
+   <template #subtitle>Manage institutional authority signatures, digital seal images, and approval delegation records.</template>
+   <template #actions>
+    <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
+     <RefreshCw class="w-4 h-4 mr-1.5" />
+     Refresh
+    </BaseButton>
+    <BaseButton
+     v-if="authStore.hasPermission('signatures.create')"
+     variant="primary"
+     size="sm"
+     @click="openSignatureModal"
+    >
+     <PenLine class="w-4 h-4 mr-1.5" />
+     Request signature
+    </BaseButton>
+   </template>
+  </PageHeader>
 
- <div class="flex items-center gap-2">
- <button
- type="button"
- class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors"
- @click="openSignatureModal"
- >
- <PenLine class="w-4 h-4" />
- <span>Request signature</span>
- </button>
- </div>
- </div>
+  <BaseAlert v-if="error" variant="error">
+   {{ error }}
+   <template #actions>
+    <BaseButton size="sm" variant="outline" @click="loadData">
+     <RefreshCw class="w-4 h-4 mr-1.5" />
+     Retry
+    </BaseButton>
+   </template>
+  </BaseAlert>
 
- <!-- Institutional Policy Notice (Mandatory from UI Blueprint) -->
+  <!-- Institutional Policy Notice (Mandatory from UI Blueprint) -->
  <div class="p-3.5 rounded-lg bg-canvas-soft border border-hairline text-xs text-ink-secondary">
  <div class="flex items-start gap-3">
  <ShieldAlert class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />

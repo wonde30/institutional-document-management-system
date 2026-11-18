@@ -8,6 +8,9 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import {
  Users,
  Plus,
@@ -226,18 +229,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <Users class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Staff Records & Physical Original Custody</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Dual tracking of electronic staff dossiers alongside physical paper original location, custodian, and retention rules.
- </p>
- </div>
+ 
+ <PageHeader title="Staff Professional Development Records">
 
- <div class="flex items-center gap-2.5">
+  <template #subtitle>Approved proposals and finalized trainings for institutional staff capacity development.</template>
+
+  <template #actions>
+
  <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
  <RefreshCw class="w-4 h-4 mr-1.5" />
  Refresh
@@ -252,8 +250,11 @@ onMounted(() => {
  <Plus class="w-4 h-4 mr-1.5" />
  Register Original Record
  </BaseButton>
- </div>
- </div>
+ 
+
+  </template>
+
+ </PageHeader>
 
  <!-- Institutional Non-Destruction Invariant -->
  <div class="p-3.5 rounded-lg bg-[#fff4e6] dark:bg-[#382412] border border-[#dd5b00]/30 text-xs text-[#dd5b00] dark:text-[#ff9243] flex items-start gap-2.5">

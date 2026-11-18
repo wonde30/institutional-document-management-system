@@ -5,6 +5,9 @@ import type { ReportsSummary } from '@/types'
 import { downloadBlob } from '@/utils/formatters'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import { useToast } from '@/composables/useToast'
 import {
  BarChart3,
@@ -116,18 +119,13 @@ onMounted(() => {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <BarChart3 class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Executive Reports & Statistical Summaries</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Institutional analytics, operational correspondence audit, document lifecycle distribution, and movement trends.
- </p>
- </div>
+ 
+ <PageHeader title="Analytical Reports & Insights">
 
- <div class="flex items-center gap-2.5">
+  <template #subtitle>Pre-configured analytics dashboards for document activity, compliance, and system usage patterns.</template>
+
+  <template #actions>
+
  <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
  <RefreshCw class="w-4 h-4 mr-1.5" />
  Refresh
@@ -143,8 +141,11 @@ onMounted(() => {
  <FileSpreadsheet class="w-4 h-4 mr-1.5 text-emerald-600" />
  Export CSV Spreadsheet
  </BaseButton>
- </div>
- </div>
+ 
+
+  </template>
+
+ </PageHeader>
 
  <!-- Date Filter Bar -->
  <div class="bg-surface rounded-lg border border-hairline p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -245,9 +246,7 @@ onMounted(() => {
  </span>
  </div>
 
- <div v-if="summary.documents_by_category.length === 0" class="py-8 text-center text-xs text-ink-muted">
- No document category records in selected date range.
- </div>
+ <EmptyState v-if="summary.documents_by_category.length === 0" icon="Inbox" message="No document category records in selected date range" class="p-8" />
 
  <div v-else class="space-y-3">
  <div

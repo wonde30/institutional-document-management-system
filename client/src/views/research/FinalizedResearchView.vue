@@ -8,6 +8,8 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import {
  BookOpen,
  Plus,
@@ -181,37 +183,27 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <BookOpen class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Finalized Faculty Research Repository</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Departmental publication of research completed and selected through external university processes.
- </p>
- </div>
+ <PageHeader title="Finalized Faculty Research Repository">
+   <template #subtitle>Departmental publication of research completed and selected through external university processes.</template>
+   <template #actions>
+    <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
+     <RefreshCw class="w-4 h-4 mr-1.5" />
+     Refresh
+    </BaseButton>
 
- <div class="flex items-center gap-2.5">
- <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
- <RefreshCw class="w-4 h-4 mr-1.5" />
- Refresh
- </BaseButton>
+    <BaseButton
+     v-if="authStore.hasPermission('research.create') || authStore.hasPermission('documents.create')"
+     variant="primary"
+     size="sm"
+     @click="showModal = true"
+    >
+     <Plus class="w-4 h-4 mr-1.5" />
+     Register Finalized Research
+    </BaseButton>
+   </template>
+  </PageHeader>
 
- <BaseButton
- v-if="authStore.hasPermission('research.create') || authStore.hasPermission('documents.create')"
- variant="primary"
- size="sm"
- @click="showModal = true"
- >
- <Plus class="w-4 h-4 mr-1.5" />
- Register Finalized Research
- </BaseButton>
- </div>
- </div>
-
- <!-- Institutional Policy Notice -->
+  <!-- Institutional Policy Notice -->
  <div class="p-3.5 rounded-lg bg-canvas-soft border border-hairline text-xs text-ink-secondary flex items-start gap-2.5">
  <Info class="w-4 h-4 text-primary shrink-0 mt-0.5" />
  <p class="leading-relaxed">
@@ -247,7 +239,10 @@ onMounted(() => {
  <!-- Loading Skeleton -->
  <LoadingSkeleton v-if="loading" :count="4" class="p-4" />
 
- <!-- Table Directory -->
+   <!-- Empty State -->
+   <EmptyState v-else-if="filteredList.length === 0" icon="BookOpen" message="No research records found" class="p-4" />
+
+   <!-- Table Directory -->
  <div v-else class="overflow-x-auto">
  <table class="w-full text-left text-xs border-collapse">
  <thead class="bg-canvas-soft text-ink-muted font-semibold border-b border-hairline">
