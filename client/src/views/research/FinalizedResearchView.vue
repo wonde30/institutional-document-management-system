@@ -183,8 +183,7 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <PageHeader title="Finalized Faculty Research Repository">
-   <template #subtitle>Departmental publication of research completed and selected through external university processes.</template>
+ <PageHeader title="Finalized Faculty Research Repository" subtitle="Departmental publication of research completed and selected through external university processes.">
    <template #actions>
     <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
      <RefreshCw class="w-4 h-4 mr-1.5" />

@@ -7,6 +7,7 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import BaseAlert from '@/components/ui/BaseAlert.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 import type {
  SignatureRequestItem,
  StampDefinitionItem,
@@ -33,6 +34,7 @@ import {
  Info,
  KeyRound,
  FileCheck2,
+ RefreshCw,
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -256,8 +258,7 @@ async function submitApplyStamp() {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <PageHeader title="Digital Signature & Official Stamp Registry">
-   <template #subtitle>Manage institutional authority signatures, digital seal images, and approval delegation records.</template>
+ <PageHeader title="Digital Signature & Official Stamp Registry" subtitle="Manage institutional authority signatures, digital seal images, and approval delegation records.">
    <template #actions>
     <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
      <RefreshCw class="w-4 h-4 mr-1.5" />

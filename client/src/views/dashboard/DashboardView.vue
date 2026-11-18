@@ -6,6 +6,7 @@ import type { DashboardMetrics, WorkflowTask } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import {
   FileText,
   MailPlus,

@@ -171,9 +171,6 @@ describe('Accreditation Evidence View & Navigation Security', () => {
     const wrapper = mount(AccreditationEvidenceView, {
       global: {
         plugins: [router],
-        stubs: {
-          PageHeader: true,
-        },
       },
     })
 

@@ -230,9 +230,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Staff Professional Development Records">
-
-  <template #subtitle>Approved proposals and finalized trainings for institutional staff capacity development.</template>
+ <PageHeader title="Staff Professional Development Records" subtitle="Approved proposals and finalized trainings for institutional staff capacity development.">
 
   <template #actions>
 

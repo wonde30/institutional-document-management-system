@@ -10,6 +10,7 @@ import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseAlert from '@/components/ui/BaseAlert.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import ClassificationBadge from '@/components/ClassificationBadge.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -354,9 +355,7 @@ onMounted(() => {
   <div class="space-y-5">
     <!-- Header -->
     
-        <PageHeader title="Institutional Physical Archive Registry">
-
-         <template #subtitle>Browse hard-copy file locations, boxes, shelves, and active/closed collection records.</template>
+        <PageHeader title="Institutional Physical Archive Registry" subtitle="Browse hard-copy file locations, boxes, shelves, and active/closed collection records.">
 
          <template #actions>
 

@@ -163,9 +163,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Institutional Organization Structure">
-
-  <template #subtitle>Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.</template>
+ <PageHeader title="Institutional Organization Structure" subtitle="Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.">
 
   <template #actions>
 

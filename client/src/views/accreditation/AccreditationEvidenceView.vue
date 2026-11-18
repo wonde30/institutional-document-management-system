@@ -295,8 +295,7 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <PageHeader title="Accreditation Evidence Repository">
-   <template #subtitle>Quality assurance documentation and accreditation criterion evidence for institutional compliance.</template>
+ <PageHeader title="Accreditation Evidence Repository" subtitle="Quality assurance documentation and accreditation criterion evidence for institutional compliance.">
    <template #actions>
     <select
      v-model="selectedCycleId"

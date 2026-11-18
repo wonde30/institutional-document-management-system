@@ -146,8 +146,7 @@ async function submitProposal() {
 
 <template>
  <div class="space-y-6">
- <PageHeader title="Community Engagement & Innovation Projects">
-   <template #subtitle>University outreach projects, community partnerships, and innovation initiatives.</template>
+ <PageHeader title="Community Engagement & Innovation Projects" subtitle="University outreach projects, community partnerships, and innovation initiatives.">
    <template #actions>
     <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
      <RefreshCw class="w-4 h-4 mr-1.5" />

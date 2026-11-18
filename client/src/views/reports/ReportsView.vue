@@ -120,9 +120,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Analytical Reports & Insights">
-
-  <template #subtitle>Pre-configured analytics dashboards for document activity, compliance, and system usage patterns.</template>
+ <PageHeader title="Analytical Reports & Insights" subtitle="Pre-configured analytics dashboards for document activity, compliance, and system usage patterns.">
 
   <template #actions>
 
