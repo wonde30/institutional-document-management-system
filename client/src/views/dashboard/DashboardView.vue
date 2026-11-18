@@ -71,13 +71,11 @@ watch(() => authStore.activeUnitId, () => {
 
 <template>
   <div class="space-y-5">
-    <!-- Page Header: title + subtitle + actions -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-      <div class="max-w-2xl">
-        <h1 class="text-2xl font-semibold tracking-tight text-ink text-balance">Workspace</h1>
-        <p class="text-sm text-ink-muted mt-1">Administrative workload, pending decisions, and correspondence</p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
+    <PageHeader
+      title="Workspace"
+      subtitle="Administrative workload, pending decisions, and correspondence"
+    >
+      <template #actions>
         <BaseButton variant="secondary" size="sm" :loading="isLoading" @click="loadData" title="Refresh dashboard data" class="hidden lg:flex">
           <RefreshCw class="w-3.5 h-3.5" />
           <span class="ml-1.5">Refresh</span>
@@ -95,8 +93,8 @@ watch(() => authStore.activeUnitId, () => {
           <Plus class="w-3.5 h-3.5 mr-1" />
           Register document
         </BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Error State -->
     <div v-if="errorMessage" class="p-3.5 rounded-lg bg-[#fde8e8] dark:bg-[#371717] border border-[#f87171]/40 text-[#e03e3e] dark:text-[#f87171] text-xs flex items-center justify-between">

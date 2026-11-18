@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -317,24 +318,17 @@ onMounted(loadAll)
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
-      <div>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
-          <ArrowUpDown class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-          <span>Data Imports &amp; Structured Exports</span>
-        </h1>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Run a validated batch import against an authorised organizational unit, or generate a
-          structured export of the records you are permitted to reach.
-        </p>
-      </div>
-
-      <BaseButton variant="outline" size="sm" :disabled="isLoading" @click="loadAll">
-        <RefreshCw class="w-3.5 h-3.5 mr-1.5" />
-        Refresh
-      </BaseButton>
-    </div>
+    <PageHeader
+      title="Data Imports & Structured Exports"
+      subtitle="Run a validated batch import against an authorised organizational unit, or generate a structured export of the records you are permitted to reach."
+    >
+      <template #actions>
+        <BaseButton variant="outline" size="sm" :disabled="isLoading" @click="loadAll">
+          <RefreshCw class="w-3.5 h-3.5 mr-1.5" />
+          Refresh
+        </BaseButton>
+      </template>
+    </PageHeader>
 
     <!-- Loading -->
     <LoadingSkeleton v-if="isLoading" :rows="6" type="card" />

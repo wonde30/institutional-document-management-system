@@ -5,6 +5,7 @@ import type { RoleItem, PermissionItem, RoleAssignedUser } from '@/types'
 import { useToast } from '@/composables/useToast'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import {
@@ -266,19 +267,11 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
-          <Shield class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-          <span>Scoped Role Management</span>
-        </h1>
-        <p class="text-sm text-ink-muted mt-1">
-          Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes
-        </p>
-      </div>
-
-      <div class="flex items-center gap-2.5 shrink-0">
+    <PageHeader
+      title="Scoped Role Management"
+      subtitle="Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes"
+    >
+      <template #actions>
         <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
           <RefreshCw class="w-4 h-4 mr-1.5" />
           Refresh
@@ -288,8 +281,8 @@ onMounted(() => {
           <Plus class="w-4 h-4 mr-1.5" />
           Create custom role
         </BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Search & Filter Bar -->
     <div class="bg-surface rounded-lg border border-line p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

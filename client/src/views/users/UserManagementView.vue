@@ -11,6 +11,7 @@ import type {
  PermissionLineageData,
  PermissionLineageItem,
 } from '@/types'
+import PageHeader from '@/components/PageHeader.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import DataTable, { type TableColumn } from '@/components/data-display/DataTable.vue'
 import Pagination from '@/components/Pagination.vue'
