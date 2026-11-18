@@ -23,7 +23,7 @@ import {
  FileText,
  AlertCircle,
  Eye,
- Upload,
+ Upload
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()

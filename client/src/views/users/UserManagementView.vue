@@ -44,7 +44,7 @@ import {
  ArrowRight,
  Clock,
  Info,
- Check,
+ Check
 } from 'lucide-vue-next'
 
 const toast = useToast()

@@ -19,7 +19,7 @@ import {
  KeyRound,
  CheckCircle2,
  AlertCircle,
- RefreshCw,
+ RefreshCw
 } from 'lucide-vue-next'
 
 const route = useRoute()

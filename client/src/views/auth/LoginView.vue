@@ -9,7 +9,7 @@ import {
  Eye,
  EyeOff,
  AlertCircle,
- Lock,
+ Lock
 } from 'lucide-vue-next'
 
 const router = useRouter()

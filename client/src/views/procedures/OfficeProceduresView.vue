@@ -13,7 +13,7 @@ import {
  ShieldAlert,
  Building2,
  FileCheck,
- X,
+ X
 } from 'lucide-vue-next'
 
 const toast = useToast()

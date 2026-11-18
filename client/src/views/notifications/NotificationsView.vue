@@ -17,7 +17,7 @@ import {
  ShieldCheck,
  Archive,
  ArrowRight,
- RefreshCw,
+ RefreshCw
 } from 'lucide-vue-next'
 
 const router = useRouter()

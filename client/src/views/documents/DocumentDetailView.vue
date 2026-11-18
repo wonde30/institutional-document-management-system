@@ -59,7 +59,7 @@ import {
   CheckSquare,
   GitCompare,
   Link2,
-  Plus,
+  Plus
 } from 'lucide-vue-next'
 
 const route = useRoute()

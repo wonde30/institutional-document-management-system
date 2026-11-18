@@ -7,7 +7,7 @@ import { navigationConfig, resolveNavIcon, type NavigationSection, type Navigati
 import {
  ChevronDown,
  X,
- Bell,
+ Bell
 } from 'lucide-vue-next'
 
 interface Props {

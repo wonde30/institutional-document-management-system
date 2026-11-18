@@ -16,7 +16,7 @@ import {
  FileCheck,
  Clock,
  ShieldAlert,
- Server,
+ Server
 } from 'lucide-vue-next'
 
 const loading = ref(true)

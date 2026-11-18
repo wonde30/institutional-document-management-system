@@ -34,7 +34,7 @@ import {
  Info,
  KeyRound,
  FileCheck2,
- RefreshCw,
+ RefreshCw
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -258,9 +258,9 @@ async function submitApplyStamp() {
 <template>
  <div class="space-y-6">
  <!-- Header -->
- <PageHeader title="Digital Signature & Official Stamp Registry" subtitle="Manage institutional authority signatures, digital seal images, and approval delegation records.">
+ <PageHeader title="Signatures & Stamps" subtitle="Cryptographic signing requests, authorized signers, and departmental office seal registries.">
    <template #actions>
-    <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
+    <BaseButton variant="outline" size="sm" :loading="loading" @click="fetchData">
      <RefreshCw class="w-4 h-4 mr-1.5" />
      Refresh
     </BaseButton>
@@ -276,10 +276,10 @@ async function submitApplyStamp() {
    </template>
   </PageHeader>
 
-  <BaseAlert v-if="error" variant="error">
+  <BaseAlert v-if="error" variant="danger">
    {{ error }}
    <template #actions>
-    <BaseButton size="sm" variant="outline" @click="loadData">
+    <BaseButton size="sm" variant="outline" @click="fetchData">
      <RefreshCw class="w-4 h-4 mr-1.5" />
      Retry
     </BaseButton>

@@ -8,7 +8,7 @@ import {
  Mail,
  Files,
  Archive,
- Users,
+ Users
 } from 'lucide-vue-next'
 
 const searchQuery = ref('')

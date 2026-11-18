@@ -218,7 +218,7 @@ onMounted(async () => {
  </div>
 
  <!-- Error State -->
- <BaseAlert v-if="errorMessage && !isLoading" variant="error" class="mb-4">
+ <BaseAlert v-if="errorMessage && !isLoading" variant="danger" class="mb-4">
   <p>{{ errorMessage }}</p>
   <template #actions>
     <BaseButton size="sm" variant="outline" @click="loadDocuments(1)">Retry</BaseButton>

@@ -18,7 +18,7 @@ import {
  Search,
  User as UserIcon,
  Lock,
- SlidersHorizontal,
+ SlidersHorizontal
 } from 'lucide-vue-next'
 
 const router = useRouter()

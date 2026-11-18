@@ -11,7 +11,7 @@ import {
  Search,
  ArrowRight,
  Building2,
- Calendar,
+ Calendar
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -248,10 +248,10 @@ onMounted(() => {
  </div>
 
  <!-- Loading Skeleton -->
- <BaseAlert v-if="error" variant="error" class="mb-4">
+ <BaseAlert v-if="error" variant="danger" class="mb-4">
     {{ error }}
     <template #actions>
-     <BaseButton size="sm" variant="outline" @click="loadData || performSearch">
+     <BaseButton size="sm" variant="outline" @click="executeSearch">
       <RefreshCw class="w-4 h-4 mr-1.5" />
       Retry
      </BaseButton>

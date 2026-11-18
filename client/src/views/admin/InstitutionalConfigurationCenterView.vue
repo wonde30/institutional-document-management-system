@@ -8,7 +8,7 @@ import {
   retentionPoliciesApi,
   metadataApi,
   organizationUnitsApi,
-  rolesApi,
+  rolesApi
 } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
@@ -55,7 +55,7 @@ import {
   FileText,
   AlertCircle,
   Copy,
-  Send,
+  Send
 } from 'lucide-vue-next'
 
 const route = useRoute()

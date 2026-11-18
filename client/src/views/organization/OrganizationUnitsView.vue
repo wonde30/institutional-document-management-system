@@ -23,7 +23,7 @@ import {
  XCircle,
  Edit2,
  ChevronRight,
- ChevronDown,
+ ChevronDown
 } from 'lucide-vue-next'
 
 const toast = useToast()

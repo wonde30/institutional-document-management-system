@@ -11,7 +11,7 @@ import {
   Laptop,
   Menu,
   X,
-  Lock,
+  Lock
 } from 'lucide-vue-next'
 
 const router = useRouter()

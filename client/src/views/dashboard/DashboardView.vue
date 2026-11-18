@@ -15,7 +15,7 @@ import {
   ArrowRight,
   RefreshCw,
   Plus,
-  CheckCircle2,
+  CheckCircle2
 } from 'lucide-vue-next'
 
 const router = useRouter()

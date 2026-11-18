@@ -31,7 +31,7 @@ import {
  CheckCheck,
  Eye,
  FileText,
- Upload,
+ Upload
 } from 'lucide-vue-next'
 
 const route = useRoute()

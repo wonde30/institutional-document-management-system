@@ -26,7 +26,7 @@ import {
   AlertCircle,
   RefreshCw,
   Plus,
-  X,
+  X
 } from 'lucide-vue-next'
 
 const toast = useToast()

@@ -17,7 +17,7 @@ import {
   Database,
   Lock,
   Layers,
-  FileCheck,
+  FileCheck
 } from 'lucide-vue-next'
 
 const router = useRouter()

@@ -26,7 +26,7 @@ import {
   Lock,
   Unlock,
   Edit2,
-  Info,
+  Info
 } from 'lucide-vue-next'
 
 const toast = useToast()

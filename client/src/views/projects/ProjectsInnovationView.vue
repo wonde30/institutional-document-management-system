@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseAlert from '@/components/ui/BaseAlert.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import type { ProjectProposal, Project, ProjectType, OrganizationUnit } from '@/types'
@@ -20,6 +21,7 @@ import {
  FileText,
  X,
  ShieldAlert,
+ RefreshCw
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -118,7 +120,6 @@ function openCreateModal() {
 async function submitProposal() {
  if (!form.value.title || !form.value.office_id || !form.value.project_type_id) {
  toast.error('Validation Error', 'Please fill in all required fields.')
-   error.value = err.response?.data?.message || 'Failed to load projects'
  return
  }
 
@@ -146,9 +147,9 @@ async function submitProposal() {
 
 <template>
  <div class="space-y-6">
- <PageHeader title="Community Engagement & Innovation Projects" subtitle="University outreach projects, community partnerships, and innovation initiatives.">
+ <PageHeader title="Projects & Innovation" subtitle="Registered project proposals, innovation grants, and active institutional initiatives.">
    <template #actions>
-    <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
+    <BaseButton variant="outline" size="sm" :loading="loading" @click="fetchData">
      <RefreshCw class="w-4 h-4 mr-1.5" />
      Refresh
     </BaseButton>

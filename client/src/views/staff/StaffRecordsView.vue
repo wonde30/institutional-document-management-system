@@ -18,7 +18,7 @@ import {
  Search,
  Trash2,
  CheckCircle2,
- AlertTriangle,
+ AlertTriangle
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -230,7 +230,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Staff Professional Development Records" subtitle="Approved proposals and finalized trainings for institutional staff capacity development.">
+ <PageHeader title="Staff Records & Physical Original Custody" subtitle="Dual tracking of electronic staff dossiers alongside physical paper original locations for institutional compliance.">
 
   <template #actions>
 

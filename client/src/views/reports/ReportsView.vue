@@ -22,7 +22,7 @@ import {
  Mail,
  Archive,
  RefreshCw,
- Building2,
+ Building2
 } from 'lucide-vue-next'
 
 const toast = useToast()
@@ -120,7 +120,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Analytical Reports & Insights" subtitle="Pre-configured analytics dashboards for document activity, compliance, and system usage patterns.">
+ <PageHeader title="Executive Reports & Statistical Summaries" subtitle="Institutional analytics, operational correspondence audit, document lifecycle diagnostics, and management dashboards.">
 
   <template #actions>
 

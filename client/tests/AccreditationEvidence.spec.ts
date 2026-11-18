@@ -179,10 +179,12 @@ describe('Accreditation Evidence View & Navigation Security', () => {
     await wrapper.vm.$nextTick()
 
     // Assert UI elements
-    expect(wrapper.text()).toContain('Standard Framework: HERQA')
+    expect(wrapper.text()).toContain('Accreditation & Quality Assurance')
+    expect(wrapper.text()).toContain('Attach evidence')
+    expect(wrapper.text()).toContain('Export Dossier')
     expect(wrapper.text()).toContain('HERQA_STD_02')
     expect(wrapper.text()).toContain('Medical School Curriculum Revision')
-    expect(wrapper.text()).toContain('Accepted') // Formatted sentence case via formatStatus
+    expect(wrapper.text()).toContain('accepted') // lowercase in badge
     expect(wrapper.text()).toContain('Evaluate')
   })
 })

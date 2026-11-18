@@ -30,7 +30,7 @@ import {
  Download,
  Award,
  Layers,
- HelpCircle,
+ HelpCircle
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -295,7 +295,7 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <PageHeader title="Accreditation Evidence Repository" subtitle="Quality assurance documentation and accreditation criterion evidence for institutional compliance.">
+ <PageHeader title="Accreditation & Quality Assurance" subtitle="Map frozen document versions to official national HERQA quality standards with traceable audit reviews.">
    <template #actions>
     <select
      v-model="selectedCycleId"
@@ -330,7 +330,7 @@ onMounted(() => {
    </template>
   </PageHeader>
 
-   <BaseAlert v-if="error" variant="error">
+   <BaseAlert v-if="error" variant="danger">
     {{ error }}
     <template #actions>
      <BaseButton size="sm" variant="outline" @click="refreshAll">

@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileWarning,
-  RotateCcw,
+  RotateCcw
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -355,7 +355,7 @@ onMounted(() => {
   <div class="space-y-5">
     <!-- Header -->
     
-        <PageHeader title="Institutional Physical Archive Registry" subtitle="Browse hard-copy file locations, boxes, shelves, and active/closed collection records.">
+        <PageHeader title="Digital Archive & Long-Term Preservation" subtitle="Statutory archival repository, retention schedules, legal holds, and historical preservation for auditable institutional memory.">
 
          <template #actions>
 

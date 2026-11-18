@@ -25,7 +25,7 @@ import {
   Building2,
   Shield,
   Layers,
-  Sparkles,
+  Sparkles
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -338,7 +338,7 @@ onMounted(() => {
     />
 
     <!-- Error State -->
-    <BaseAlert v-if="errorMessage && !isLoading" variant="error">
+    <BaseAlert v-if="errorMessage && !isLoading" variant="danger">
       <p>{{ errorMessage }}</p>
       <template #actions>
         <BaseButton size="sm" variant="outline" @click="loadTemplates(1)">Retry</BaseButton>

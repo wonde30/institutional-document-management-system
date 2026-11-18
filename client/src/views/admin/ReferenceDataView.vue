@@ -17,7 +17,7 @@ import {
   Edit2,
   CheckCircle,
   XCircle,
-  AlertCircle,
+  AlertCircle
 } from 'lucide-vue-next'
 
 const toast = useToast()

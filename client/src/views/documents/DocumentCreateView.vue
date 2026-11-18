@@ -27,7 +27,7 @@ import {
   Stamp,
   Calendar,
   Sparkles,
-  Layers,
+  Layers
 } from 'lucide-vue-next'
 
 const router = useRouter()

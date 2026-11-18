@@ -24,7 +24,7 @@ import {
  AlertCircle,
  UserCheck,
  UserPlus,
- ExternalLink,
+ ExternalLink
 } from 'lucide-vue-next'
 
 const router = useRouter()

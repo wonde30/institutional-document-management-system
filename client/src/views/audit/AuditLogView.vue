@@ -15,7 +15,7 @@ import {
  Globe,
  Terminal,
  RefreshCw,
- User as UserIcon,
+ User as UserIcon
 } from 'lucide-vue-next'
 
 const toast = useToast()

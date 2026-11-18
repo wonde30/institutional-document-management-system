@@ -25,7 +25,7 @@ import {
   Building2,
   Clock,
   Globe,
-  ArrowRight,
+  ArrowRight
 } from 'lucide-vue-next'
 
 const toast = useToast()
