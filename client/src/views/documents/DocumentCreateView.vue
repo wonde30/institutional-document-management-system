@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { OrganizationUnit } from '@/types'
 import { useToast } from '@/composables/useToast'
 import { gregorianToEthiopian } from '@/utils/ethiopianDate'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
@@ -431,24 +432,21 @@ watchEffect(() => {
 <template>
   <div class="max-w-7xl mx-auto space-y-6">
     <!-- Header with Breadcrumb Back -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
-      <div class="flex items-center gap-4">
-        <BaseButton variant="ghost" size="sm" @click="router.back()">
-          <ArrowLeft class="w-4 h-4" />
-        </BaseButton>
-        <div>
-          <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
-            <Plus class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-            <span>Register New Institutional Record</span>
-          </h1>
-          <p class="text-xs text-ink-muted mt-0.5">
-            Create authentic Wollo University letters matching institutional standards or register external document records.
-          </p>
-        </div>
+    <div class="flex items-center gap-4 border-b border-hairline pb-4">
+      <BaseButton variant="ghost" size="sm" @click="router.back()">
+        <ArrowLeft class="w-4 h-4" />
+      </BaseButton>
+      <div class="flex-1">
+        <PageHeader
+          title="Register New Institutional Record"
+          subtitle="Create authentic Wollo University letters matching institutional standards or register external document records."
+        />
       </div>
+    </div>
 
-      <!-- Creation Mode Selector Pill -->
-      <div class="inline-flex rounded-xl p-1 bg-surface-hover border border-hairline shrink-0">
+    <!-- Creation Mode Selector Pill -->
+    <div class="flex justify-center">
+      <div class="inline-flex rounded-xl p-1 bg-surface-hover border border-hairline">
         <button
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
@@ -471,7 +469,7 @@ watchEffect(() => {
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
           :class="creationMode === 'upload' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
-          @click="creationMode = 'upload'"
+          @click="creationMode === 'upload'"
         >
           <UploadCloud class="w-4 h-4" />
           <span>Physical / Digital Scan Intake</span>

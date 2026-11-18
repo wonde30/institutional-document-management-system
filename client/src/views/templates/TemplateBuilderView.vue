@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { templatesApi, organizationUnitsApi, metadataApi } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
@@ -313,24 +314,17 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
-      <div>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
-          <FileText class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-          <span>Institutional Document Templates</span>
-        </h1>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Standardized letterheads, memoranda, directives, and verified document templates.
-        </p>
-      </div>
-      <div>
+    <PageHeader
+      title="Institutional Document Templates"
+      subtitle="Standardized letterheads, memoranda, directives, and verified document templates."
+    >
+      <template #actions>
         <BaseButton v-if="authStore.hasPermission('documents.create')" variant="primary" size="sm" @click="openCreateModal">
           <Plus class="w-4 h-4 mr-1.5" />
           New Template
         </BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Search & Filter -->
     <SearchFilterBar
@@ -341,7 +335,8 @@ onMounted(() => {
     />
 
     <!-- Templates Data Table -->
-    <DataTable
+    <div class="overflow-x-auto">
+      <DataTable
       :columns="columns"
       :items="templates"
       :is-loading="isLoading"
@@ -420,6 +415,7 @@ onMounted(() => {
         </div>
       </template>
     </DataTable>
+    </div>
 
     <!-- Pagination -->
     <Pagination

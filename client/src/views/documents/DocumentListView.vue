@@ -6,6 +6,7 @@ import { useMetadataStore } from '@/stores/metadata'
 import type { Document, OrganizationUnit, PaginationMeta } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import DataTable, { type TableColumn } from '@/components/data-display/DataTable.vue'
 import SearchFilterBar from '@/components/data-display/SearchFilterBar.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -122,30 +123,22 @@ onMounted(async () => {
 
 <template>
  <div class="space-y-5">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
- <div>
- <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <FileText class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
- <span>Document Repository</span>
- </h1>
- <p class="mt-1 text-sm text-ink-muted">
- Search, view, and manage institutional records with version tracking and scoped security classifications
- </p>
- </div>
-
- <div class="flex items-center gap-2.5 shrink-0">
- <BaseButton
- v-if="authStore.hasPermission('documents.create')"
- variant="primary"
- size="sm"
- @click="router.push('/documents/create')"
- >
- <Plus class="w-3.5 h-3.5 mr-1" />
- Register document
- </BaseButton>
- </div>
- </div>
+  <PageHeader
+    title="Document Repository"
+    subtitle="Search, view, and manage institutional records with version tracking and scoped security classifications"
+  >
+    <template #actions>
+      <BaseButton
+        v-if="authStore.hasPermission('documents.create')"
+        variant="primary"
+        size="sm"
+        @click="router.push('/documents/create')"
+      >
+        <Plus class="w-3.5 h-3.5 mr-1" />
+        Register document
+      </BaseButton>
+    </template>
+  </PageHeader>
 
  <!-- Search & Filter Bar -->
  <div class="bg-surface border border-line rounded-lg p-3 sm:p-4 space-y-3">
@@ -221,7 +214,8 @@ onMounted(async () => {
  </div>
 
  <!-- Data Table -->
- <DataTable
+ <div class="overflow-x-auto">
+  <DataTable
  :columns="columns"
  :items="documents"
  :loading="isLoading"
@@ -286,6 +280,7 @@ onMounted(async () => {
  </div>
  </template>
  </DataTable>
+ </div>
 
  <!-- Pagination -->
  <Pagination
