@@ -500,19 +500,11 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
- <div>
- <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <Users class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>User Accounts & Staff Directory</span>
- </h1>
- <p class="text-sm text-ink-muted mt-1">
- Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status
- </p>
- </div>
-
- <div class="flex items-center gap-2.5 flex-wrap shrink-0">
+ <PageHeader 
+ title="User Accounts & Staff Directory"
+ subtitle="Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status"
+ >
+ <template #actions>
  <!-- View Mode Switcher -->
  <div class="inline-flex rounded-md border border-hairline p-0.5 bg-surface-muted">
  <button
@@ -544,8 +536,8 @@ onMounted(() => {
  <UserPlus class="w-4 h-4 mr-1.5" />
  Register staff member
  </BaseButton>
- </div>
- </div>
+ </template>
+ </PageHeader>
 
  <!-- Filters & Search Bar -->
  <div class="bg-surface rounded-lg border border-line p-4 flex flex-col md:flex-row items-center justify-between gap-4">
