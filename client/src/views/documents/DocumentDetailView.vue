@@ -16,6 +16,7 @@ import type {
 import { useAuthStore } from '@/stores/auth'
 import { useMetadataStore } from '@/stores/metadata'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import ClassificationBadge from '@/components/ClassificationBadge.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -795,7 +796,7 @@ onMounted(() => {
  </span>
  <StatusBadge v-if="document" :status="document.lifecycle" />
  </div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink mt-1">
+ <h1 class="text-2xl font-semibold tracking-tight text-balance mt-1">
  {{ document?.title || 'Document Record' }}
  </h1>
  </div>

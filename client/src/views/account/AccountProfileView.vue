@@ -98,11 +98,11 @@ function handleSavePreferences() {
  <!-- Page Header -->
  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
  <User class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
  <span>Account & Security Profile</span>
  </h1>
- <p class="text-xs text-ink-muted mt-0.5">
+ <p class="text-sm text-ink-muted mt-0.5">
  Manage your institutional identity, authentication credentials, and display preferences.
  </p>
  </div>

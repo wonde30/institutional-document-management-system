@@ -5,6 +5,7 @@ import { templatesApi, organizationUnitsApi, metadataApi } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import PageHeader from '@/components/PageHeader.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
@@ -36,6 +37,7 @@ const units = ref<any[]>([])
 const categories = ref<any[]>([])
 const confidentialityLevels = ref<any[]>([])
 const isLoading = ref(false)
+const errorMessage = ref('')
 const searchQuery = ref('')
 
 const pagination = ref({
@@ -128,7 +130,8 @@ async function loadTemplates(page = 1) {
       pagination.value = res.data.meta
     }
   } catch (err: any) {
-    toast.error(err.response?.data?.message || 'Failed to load templates.')
+    errorMessage.value = err.response?.data?.message || 'Failed to load templates.'
+    templates.value = []
   } finally {
     isLoading.value = false
   }
@@ -333,6 +336,14 @@ onMounted(() => {
       @search="loadTemplates(1)"
       @reset="searchQuery = ''; loadTemplates(1)"
     />
+
+    <!-- Error State -->
+    <BaseAlert v-if="errorMessage && !isLoading" variant="error">
+      <p>{{ errorMessage }}</p>
+      <template #actions>
+        <BaseButton size="sm" variant="outline" @click="loadTemplates(1)">Retry</BaseButton>
+      </template>
+    </BaseAlert>
 
     <!-- Templates Data Table -->
     <div class="overflow-x-auto">

@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notifications'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import {
  Bell,
  CheckCheck,
@@ -91,11 +93,11 @@ async function handleNavigate(notif: any) {
  <!-- Header -->
  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
  <Bell class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
  <span>Notifications & Institutional Activity</span>
  </h1>
- <p class="text-xs text-ink-muted mt-0.5">
+ <p class="text-sm text-ink-muted mt-0.5">
  Authorized event notifications, document dispatches, and pending workflow assignments.
  </p>
  </div>
@@ -142,8 +144,11 @@ async function handleNavigate(notif: any) {
  </button>
  </div>
 
+ <!-- Loading -->
+ <LoadingSkeleton v-if="notifStore.isLoading" :count="5" class="h-20" />
+
  <!-- Notifications List -->
- <div class="bg-surface border border-hairline rounded-xl overflow-hidden divide-y divide-hairline">
+ <div v-else-if="displayedNotifications.length > 0" class="bg-surface border border-hairline rounded-xl overflow-hidden divide-y divide-hairline">
  <div
  v-for="notif in displayedNotifications"
  :key="notif.id"
@@ -216,14 +221,14 @@ async function handleNavigate(notif: any) {
  </div>
  </div>
 
- <div
- v-if="displayedNotifications.length === 0"
- class="p-12 text-center text-xs text-ink-muted"
- >
- <Bell class="w-8 h-8 mx-auto text-ink-muted opacity-60 mb-2" />
- <div class="font-semibold text-ink-secondary">No notifications to display</div>
- <div class="mt-0.5">You are completely up to date with institutional assignments and alerts.</div>
  </div>
- </div>
+
+ <!-- Empty State -->
+ <EmptyState
+  v-else
+  icon="Bell"
+  title="No notifications"
+  description="You are completely up to date with institutional assignments and alerts."
+ />
  </div>
 </template>

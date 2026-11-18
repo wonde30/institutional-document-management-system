@@ -12,6 +12,7 @@ import SearchFilterBar from '@/components/data-display/SearchFilterBar.vue'
 import Pagination from '@/components/Pagination.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseAlert from '@/components/ui/BaseAlert.vue'
 import ClassificationBadge from '@/components/ClassificationBadge.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatDate } from '@/utils/formatters'
@@ -25,6 +26,7 @@ const toast = useToast()
 const documents = ref<Document[]>([])
 const units = ref<OrganizationUnit[]>([])
 const isLoading = ref(false)
+const errorMessage = ref('')
 const showFilters = ref(false)
 
 const pagination = ref<PaginationMeta>({
@@ -72,6 +74,7 @@ async function loadUnits() {
 
 async function loadDocuments(page = 1) {
  isLoading.value = true
+ errorMessage.value = ''
  try {
  const params: Record<string, unknown> = {
  page,
@@ -90,7 +93,8 @@ async function loadDocuments(page = 1) {
  pagination.value = res.data.meta
  }
  } catch (err: any) {
- toast.error(err.response?.data?.message || 'Failed to retrieve document repository.')
+ errorMessage.value = err.response?.data?.message || 'Failed to retrieve document repository.'
+ documents.value = []
  } finally {
  isLoading.value = false
  }
@@ -212,6 +216,14 @@ onMounted(async () => {
  </div>
  </div>
  </div>
+
+ <!-- Error State -->
+ <BaseAlert v-if="errorMessage && !isLoading" variant="error" class="mb-4">
+  <p>{{ errorMessage }}</p>
+  <template #actions>
+    <BaseButton size="sm" variant="outline" @click="loadDocuments(1)">Retry</BaseButton>
+  </template>
+ </BaseAlert>
 
  <!-- Data Table -->
  <div class="overflow-x-auto">

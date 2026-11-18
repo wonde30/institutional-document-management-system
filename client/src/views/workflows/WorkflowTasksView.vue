@@ -5,6 +5,7 @@ import { workflowApi, usersApi } from '@/api/client'
 import type { WorkflowTask, PaginationMeta, User } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import DataTable, { type TableColumn } from '@/components/data-display/DataTable.vue'
 import Pagination from '@/components/Pagination.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
@@ -242,11 +243,11 @@ onMounted(() => {
  <!-- Header -->
  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
  <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+ <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
  <CheckSquare class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
  <span>Workflow Tasks & Decision Approvals</span>
  </h1>
- <p class="mt-0.5 text-xs text-ink-muted">
+ <p class="mt-0.5 text-sm text-ink-muted">
  Review, approve, or return institutional documents and correspondence directives undergoing routing policy decisions.
  </p>
  </div>
@@ -312,7 +313,8 @@ onMounted(() => {
  </div>
 
  <!-- Data Table -->
- <DataTable
+ <div class="overflow-x-auto">
+  <DataTable
  :columns="columns"
  :items="tasks"
  :loading="isLoading"
@@ -464,6 +466,7 @@ onMounted(() => {
  </div>
  </template>
  </DataTable>
+ </div>
 
  <!-- Pagination -->
  <Pagination

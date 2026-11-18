@@ -96,7 +96,7 @@ for (const route of routes) {
     
     // Check 9: Banned classes count
     const bannedPatterns = [
-      /text-\[(?:9|10|11|13)px\]/g,
+      /text-\[(?:[1-9]|1[01])px\]/g, // text-[1-11px] - arbitrary sizes below 12px
       /rounded-2xl/g,
       /shadow-(?:sm|md)(?!:)/g,
       /uppercase(?! tabular-nums| font-mono)/g,
