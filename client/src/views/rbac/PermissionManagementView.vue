@@ -386,13 +386,13 @@ onMounted(() => {
             <div class="pt-3 mt-3 border-t border-hairline space-y-2">
               <div class="flex flex-wrap items-center gap-1.5">
                 <!-- Action Type Badge -->
-                <span class="text-[9px]  font-bold px-1.5 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline">
+                <span class="text-xs  font-bold px-1.5 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline">
                   {{ perm.action_type || 'action' }}
                 </span>
 
                 <!-- Risk Badge -->
                 <span
-                  class="text-[9px]  font-bold px-1.5 py-0.5 rounded"
+                  class="text-xs  font-bold px-1.5 py-0.5 rounded"
                   :class="{
                     'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300': perm.risk_classification === 'critical',
                     'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300': perm.risk_classification === 'high',
@@ -404,7 +404,7 @@ onMounted(() => {
                 </span>
 
                 <!-- Scope Tag -->
-                <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-medium">
+                <span class="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-medium">
                   {{ perm.scope_applicability === 'global_only' ? 'Global Only' : 'Unit / Subtree' }}
                 </span>
               </div>

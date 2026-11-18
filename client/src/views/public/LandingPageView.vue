@@ -393,7 +393,7 @@ function handleCtaClick() {
               Participating Offices
             </h2>
             <h3 class="text-xl sm:text-2xl font-bold text-ink mt-1">
-              Empowering Every Campus Persona
+              Supporting Every Campus Role
             </h3>
             <p class="text-xs sm:text-sm text-ink-muted mt-2">
               Dedicated interfaces and permissions tailored to each institutional responsibility.

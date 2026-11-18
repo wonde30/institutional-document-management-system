@@ -519,7 +519,7 @@ onMounted(() => {
                       {{ perm.code }}
                       <span
                         v-if="perm.risk_classification === 'critical'"
-                        class="text-[9px] px-1 rounded bg-rose-100 text-rose-700 font-sans font-bold"
+                        class="text-xs px-1 rounded bg-rose-100 text-rose-700 font-sans font-bold"
                       >
                         critical
                       </span>
@@ -594,7 +594,7 @@ onMounted(() => {
                 <td class="px-3 py-2.5">
                   <div class="flex items-center gap-1 font-medium text-ink-secondary">
                     <span
-                      class="uppercase text-[9px] font-bold px-1 py-0.2 rounded"
+                      class="uppercase text-xs font-bold px-1 py-0.2 rounded"
                       :class="{
                         'bg-purple-100 text-purple-700': user.scope_kind === 'global',
                         'bg-blue-100 text-blue-700': user.scope_kind === 'unit',
@@ -612,7 +612,7 @@ onMounted(() => {
                 <td class="px-3 py-2.5 whitespace-nowrap">
                   <span v-if="user.expires_at" :class="user.is_expired ? 'text-rose-600 font-semibold' : 'text-ink-muted'">
                     {{ new Date(user.expires_at).toLocaleDateString() }}
-                    <span v-if="user.is_expired" class="text-[9px] text-rose-500 block">Expired</span>
+                    <span v-if="user.is_expired" class="text-xs text-rose-500 block">Expired</span>
                   </span>
                   <span v-else class="text-ink-muted">Indefinite</span>
                 </td>

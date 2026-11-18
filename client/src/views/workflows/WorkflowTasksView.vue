@@ -480,7 +480,7 @@ onMounted(() => {
  >
  <form @submit.prevent="submitDecision" class="space-y-4">
  <p class="text-xs text-ink-muted">
- You are executing decision <strong class="uppercase text-primary">{{ decisionTypeLabel }}</strong> on Task #{{ selectedTask?.id }}.
+ You are executing decision <strong class="text-primary">{{ decisionTypeLabel }}</strong> on Task #{{ selectedTask?.id }}.
  </p>
 
  <div>

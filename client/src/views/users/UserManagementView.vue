@@ -667,7 +667,7 @@ onMounted(() => {
  class="text-xs font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline inline-flex items-center gap-1 group"
  >
  <span>{{ role.role_name || role.role_code }}</span>
- <span v-if="role.scope_kind" class="text-[9px] text-primary font-medium  ml-0.5">({{ role.scope_kind }})</span>
+ <span v-if="role.scope_kind" class="text-xs text-primary font-medium  ml-0.5">({{ role.scope_kind }})</span>
  <button type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke role assignment" @click.stop="handleRevokeRole(item, role)">&times;</button>
  </span>
  <span v-if="!item.roles || item.roles.length === 0" class="text-xs text-ink-muted">
@@ -872,7 +872,7 @@ onMounted(() => {
  class="text-xs font-semibold px-2 py-0.5 rounded bg-surface-muted text-ink-secondary border border-hairline"
  >
  {{ r.role_name || r.role_code }}
- <span v-if="r.scope_kind" class="text-[9px] text-primary font-medium  ml-0.5">({{ r.scope_kind }})</span>
+ <span v-if="r.scope_kind" class="text-xs text-primary font-medium  ml-0.5">({{ r.scope_kind }})</span>
  </span>
  <span v-if="!user.roles || user.roles.length === 0" class="text-xs text-ink-muted italic">
  No roles assigned
@@ -1485,7 +1485,7 @@ onMounted(() => {
  <!-- Permission & Module -->
  <td class="px-3 py-2.5 align-top">
  <div class="font-mono text-xs font-medium text-ink-secondary flex items-center gap-1.5">
- <span class="text-[9px]  px-1 py-0.2 rounded bg-surface-muted text-ink-muted border border-hairline font-sans font-semibold">
+ <span class="text-xs  px-1 py-0.2 rounded bg-surface-muted text-ink-muted border border-hairline font-sans font-semibold">
  {{ item.module }}
  </span>
  {{ item.permission_code }}
@@ -1515,7 +1515,7 @@ onMounted(() => {
  <td class="px-3 py-2.5 align-top">
  <div class="text-xs font-medium text-ink-secondary flex items-center gap-1">
  <span
- class="uppercase text-[9px] font-semibold px-1 py-0.2 rounded"
+ class="uppercase text-xs font-semibold px-1 py-0.2 rounded"
  :class="{
  'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300': item.scope_kind === 'global',
  'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300': item.scope_kind === 'unit',

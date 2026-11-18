@@ -83,25 +83,24 @@ function handleClickOutside(event: MouseEvent) {
  }
 }
 
-
 /**
  * Handle organizational unit switch.
  * The server validates the selection and recalculates the capability set.
  */
 async function handleUnitChange(event: Event) {
-  const target = event.target as HTMLSelectElement
-  const unitId = Number(target.value)
+ const target = event.target as HTMLSelectElement
+ const unitId = Number(target.value)
 
-  if (!Number.isFinite(unitId) || unitId === authStore.activeUnitId) {
-    return
-  }
+ if (!Number.isFinite(unitId) || unitId === authStore.activeUnitId) {
+  return
+ }
 
-  const switched = await authStore.switchUnit(unitId)
+ const switched = await authStore.switchUnit(unitId)
 
-  if (!switched) {
-    // Restore the control to the unit that is actually active.
-    target.value = authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''
-  }
+ if (!switched) {
+  // Restore the control to the unit that is actually active.
+  target.value = authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''
+ }
 }
 
 const themeTooltip = computed(() => {
@@ -161,14 +160,13 @@ async function handleLogout() {
  </button>
 
  <router-link to="/dashboard" class="xl:hidden flex items-center gap-2.5 group">
- <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-xs">
- WU
+ <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center ">\n WU
  </span>
  <div class="flex flex-col">
  <span class="text-sm font-semibold tracking-tight leading-tight text-ink">
  Wollo University
  </span>
- <small class="text-[11px] font-normal text-ink-muted">
+ <small class="text-xs font-normal text-ink-muted">
  Administrative DMS
  </small>
  </div>
@@ -184,8 +182,8 @@ async function handleLogout() {
  title="Search documents, letters, research"
  >
  <Search class="w-3.5 h-3.5" />
- <span class="hidden md:inline text-[11px]">Search records...</span>
- <kbd class="hidden md:inline text-[10px] bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">{{ isMac ? '⌘K' : 'Ctrl K' }}</kbd>
+ <span class="hidden md:inline text-xs">Search records...</span>
+ <kbd class="hidden md:inline text-xs bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">{{ isMac ? '?K' : 'Ctrl K' }}</kbd>
  </router-link>
 
  <!-- Tri-Mode Theme Toggle (Light / Dark / System) -->
@@ -226,7 +224,7 @@ async function handleLogout() {
  </span>
  <router-link
  to="/notifications"
- class="text-[11px] text-primary font-medium hover:underline"
+ class="text-xs text-primary font-medium hover:underline"
  @click="showNotifDropdown = false"
  >
  View all
@@ -243,7 +241,7 @@ async function handleLogout() {
  <div class="font-medium text-ink">
  {{ notif.event?.type_code || 'Security notice' }}
  </div>
- <div class="text-[11px] text-ink-muted mt-0.5">
+ <div class="text-xs text-ink-muted mt-0.5">
  {{ notif.created_at ? new Date(notif.created_at).toLocaleTimeString() : 'Recent' }}
  </div>
  </div>
@@ -274,27 +272,27 @@ async function handleLogout() {
  >
  <div class="px-4 py-2.5">
  <div class="font-semibold text-ink truncate">{{ authStore.user?.name }}</div>
- <div class="text-[11px] text-ink-muted truncate">{{ authStore.user?.email }}</div>
-  <div class="text-[11px] text-ink-muted truncate mt-0.5" v-if="authStore.primaryUnit?.position_title">{{ authStore.primaryUnit?.position_title }}</div>
-
-          <!-- Unit switcher: show when user has multiple units -->
-          <div v-if="authStore.availableUnits.length > 1" class="mt-2 pt-2 border-t border-hairline">
-            <label class="block text-xs font-medium text-ink-muted mb-1">
-              Organizational unit
-            </label>
-            <select
-              class="w-full rounded-md border border-hairline bg-surface px-2 py-1.5 text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-60"
-              :value="authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''"
-              :disabled="authStore.isSwitchingUnit"
-              @change="handleUnitChange"
-            >
-              <option v-for="unit in authStore.availableUnits" :key="unit.id" :value="unit.id">
-                {{ unit.name }}{{ unit.is_primary ? ' (primary)' : '' }}
-              </option>
-            </select>
-          </div>
-          <!-- Display-only unit when user has only one unit -->
-          <div v-else class="text-xs text-ink-muted truncate mt-0.5">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
+ <div class="text-xs text-ink-muted truncate">{{ authStore.user?.email }}</div>
+  <div class="text-xs text-ink-muted truncate mt-0.5" v-if="authStore.primaryUnit?.position_title">{{ authStore.primaryUnit?.position_title }}</div>
+ 
+ <!-- Unit switcher: show when user has multiple units -->
+ <div v-if="authStore.availableUnits.length > 1" class="mt-2 pt-2 border-t border-hairline">
+ <label class="block text-xs font-medium text-ink-muted mb-1">
+ Organizational unit
+ </label>
+ <select
+ class="w-full rounded-md border border-hairline bg-surface px-2 py-1.5 text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-60"
+ :value="authStore.activeUnitId !== null ? String(authStore.activeUnitId) : ''"
+ :disabled="authStore.isSwitchingUnit"
+ @change="handleUnitChange"
+ >
+ <option v-for="unit in authStore.availableUnits" :key="unit.id" :value="unit.id">
+ {{ unit.name }}{{ unit.is_primary ? ' (primary)' : '' }}
+ </option>
+ </select>
+ </div>
+ <!-- Display-only unit when user has only one unit -->
+ <div v-else class="text-xs text-ink-muted truncate mt-0.5">{{ authStore.activeUnit?.name || authStore.primaryUnit?.unit_name }}</div>
  </div>
 
  <div class="py-1">
