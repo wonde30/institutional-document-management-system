@@ -106,26 +106,26 @@ watch(() => authStore.activeUnitId, () => {
     <LoadingSkeleton v-if="isLoading" :count="4" class="my-4" />
 
     <template v-else>
-      <!-- Core KPI Grid: 4 cards, no icons, text-3xl values, 13px labels -->
+      <!-- Core KPI Grid: 4 cards, no icons, text-3xl values, text-sm labels -->
       <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <div class="p-4 rounded-lg bg-surface border border-hairline">
           <div class="text-3xl font-semibold tabular-nums text-ink">{{ tasks.length }}</div>
-          <div class="text-[13px] text-ink-muted mt-1">Open tasks</div>
+          <div class="text-sm text-ink-muted mt-1">Open tasks</div>
         </div>
 
         <div class="p-4 rounded-lg bg-surface border border-hairline">
           <div class="text-3xl font-semibold tabular-nums text-ink">{{ metrics?.overview?.documents_requiring_action ?? 0 }}</div>
-          <div class="text-[13px] text-ink-muted mt-1">Action required</div>
+          <div class="text-sm text-ink-muted mt-1">Action required</div>
         </div>
 
         <div class="p-4 rounded-lg bg-surface border border-hairline">
           <div class="text-3xl font-semibold tabular-nums text-ink">{{ metrics?.overview?.incoming_letters ?? 0 }}</div>
-          <div class="text-[13px] text-ink-muted mt-1">Incoming letters</div>
+          <div class="text-sm text-ink-muted mt-1">Incoming letters</div>
         </div>
 
         <div class="p-4 rounded-lg bg-surface border border-hairline">
           <div class="text-3xl font-semibold tabular-nums text-ink">{{ metrics?.overview?.outgoing_awaiting_dispatch ?? 0 }}</div>
-          <div class="text-[13px] text-ink-muted mt-1">Awaiting dispatch</div>
+          <div class="text-sm text-ink-muted mt-1">Awaiting dispatch</div>
         </div>
       </div>
 
@@ -142,7 +142,7 @@ watch(() => authStore.activeUnitId, () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <div class="text-[13px] text-ink-muted mt-0.5">Office pending tasks</div>
+            <div class="text-sm text-ink-muted mt-0.5">Office pending tasks</div>
           </router-link>
           <router-link to="/correspondence" class="p-4 hover:bg-surface-hover transition group">
             <div class="flex items-center gap-2 mb-1">
@@ -151,7 +151,7 @@ watch(() => authStore.activeUnitId, () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <div class="text-[13px] text-ink-muted mt-0.5">Unreceived dispatches</div>
+            <div class="text-sm text-ink-muted mt-0.5">Unreceived dispatches</div>
           </router-link>
           <router-link to="/archive" class="p-4 hover:bg-surface-hover transition group">
             <div class="flex items-center gap-2 mb-1">
@@ -160,7 +160,7 @@ watch(() => authStore.activeUnitId, () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <div class="text-[13px] text-ink-muted mt-0.5">Retention reviews due</div>
+            <div class="text-sm text-ink-muted mt-0.5">Retention reviews due</div>
           </router-link>
           <router-link to="/archive" class="p-4 hover:bg-surface-hover transition group">
             <div class="flex items-center gap-2 mb-1">
@@ -169,7 +169,7 @@ watch(() => authStore.activeUnitId, () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <div class="text-[13px] text-ink-muted mt-0.5">Pending disposals</div>
+            <div class="text-sm text-ink-muted mt-0.5">Pending disposals</div>
           </router-link>
         </div>
       </div>

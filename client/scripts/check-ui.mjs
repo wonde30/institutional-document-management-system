@@ -16,15 +16,31 @@ const routerContent = readFileSync(routerPath, 'utf8')
 // Extract routes with their view components
 const routeRegex = /\{\s*path:\s*['"]([^'"]+)['"]\s*,\s*name:\s*['"]([^'"]+)['"]\s*,\s*component:\s*\(\)\s*=>\s*import\(['"]@\/views\/([^'"]+)['"]\)/g
 
-const routes = []
+const rawRoutes = []
 let match
 while ((match = routeRegex.exec(routerContent)) !== null) {
-  routes.push({
+  rawRoutes.push({
     route: match[1],
     name: match[2],
     viewPath: `src/views/${match[3]}`
   })
 }
+
+// Deduplicate routes that share the same view (AccountProfileView tabs)
+const viewMap = new Map()
+for (const route of rawRoutes) {
+  const existing = viewMap.get(route.viewPath)
+  if (existing) {
+    existing.routes.push(route.route)
+  } else {
+    viewMap.set(route.viewPath, {
+      ...route,
+      routes: [route.route]
+    })
+  }
+}
+
+const routes = Array.from(viewMap.values())
 
 console.log('UI COMPLIANCE MATRIX')
 console.log('====================\n')
@@ -50,6 +66,12 @@ for (const route of routes) {
     const subtitleMatch = content.match(/<p[^>]*class="([^"]*text-sm[^"]*text-ink-muted[^"]*)"/)
     const subtitleClass = subtitleMatch ? subtitleMatch[1].substring(0, 40) : ''
     
+    // Check 4b: text-xs subtitle (target text-sm)
+    const hasXsSubtitle = /<p[^>]*class="[^"]*text-xs[^"]*text-ink-muted/.test(content)
+    
+    // Check 2b: h1 has text-xl (target text-2xl)
+    const hasTextXlH1 = h1Classes.includes('text-xl')
+    
     // Check 5: Loading state
     const hasLoadingState = 
       content.includes('LoadingSkeleton') || 
@@ -68,9 +90,9 @@ for (const route of routes) {
       /retry|Try again|@click.*load|errorMessage.*BaseAlert/i.test(content)
     
     // Check 8: Tables in overflow-x-auto
-    const tableMatches = (content.match(/<table/g) || []).length
-    const overflowMatches = (content.match(/overflow-x-auto/g) || []).length
-    const tablesWrapped = tableMatches > 0 ? (overflowMatches >= tableMatches ? 'y' : 'n') : 'n/a'
+    const hasTable = /<table/i.test(content) || /<DataTable/i.test(content) || /component.*Table/i.test(content)
+    const hasOverflow = /overflow-x-auto/.test(content)
+    const tablesWrapped = hasTable ? (hasOverflow ? 'y' : 'n') : 'none'
     
     // Check 9: Banned classes count
     const bannedPatterns = [
@@ -90,11 +112,13 @@ for (const route of routes) {
     
     results.push({
       view: route.viewPath.split('/').pop(),
-      route: route.route,
+      route: route.routes.length > 1 ? `${route.routes[0]} +${route.routes.length - 1} tabs` : route.route,
       usesPageHeader: usesPageHeader ? 'y' : 'n',
       h1Classes: h1Classes.substring(0, 40),
       hasFontSemibold: hasFontSemibold ? 'y' : 'n',
+      hasTextXlH1: hasTextXlH1 ? 'y' : 'n',
       subtitleClass: subtitleClass,
+      hasXsSubtitle: hasXsSubtitle ? 'y' : 'n',
       hasLoadingState: hasLoadingState ? 'y' : 'n',
       hasEmptyState: hasEmptyState ? 'y' : 'n',
       hasErrorRetry: hasErrorRetry ? 'y' : 'n',
@@ -105,22 +129,24 @@ for (const route of routes) {
   } catch (err) {
     results.push({
       view: route.viewPath.split('/').pop(),
-      route: route.route,
+      route: route.routes.length > 1 ? `${route.routes[0]} +${route.routes.length - 1} tabs` : route.route,
       usesPageHeader: 'ERR',
       h1Classes: 'FILE_NOT_FOUND',
       hasFontSemibold: 'n',
+      hasTextXlH1: 'n',
       subtitleClass: '',
+      hasXsSubtitle: 'n',
       hasLoadingState: 'n',
       hasEmptyState: 'n',
       hasErrorRetry: 'n',
-      tablesWrapped: 'n/a',
+      tablesWrapped: 'none',
       bannedCount: 0
     })
   }
 }
 
 // Generate table
-const header = 'view | route | PageHeader | h1 classes | font-semibold | subtitle | loading | empty | error+retry | tables wrapped | banned count'
+const header = 'view | route | PageHeader | h1 classes | font-semibold | h1 text-xl | subtitle | subtitle text-xs | loading | empty | error+retry | tables wrapped | banned count'
 const separator = '-'.repeat(header.length)
 
 let table = `${header}\n${separator}\n`
@@ -132,7 +158,9 @@ for (const r of results) {
     r.usesPageHeader.padEnd(10),
     r.h1Classes.padEnd(40),
     r.hasFontSemibold.padEnd(13),
+    r.hasTextXlH1.padEnd(10),
     r.subtitleClass.padEnd(30),
+    r.hasXsSubtitle.padEnd(16),
     r.hasLoadingState.padEnd(7),
     r.hasEmptyState.padEnd(5),
     r.hasErrorRetry.padEnd(11),
@@ -156,11 +184,13 @@ console.log(`\n✓ Matrix saved to ${matrixPath}`)
 // Summary
 const compliant = results.filter(r => 
   r.hasFontSemibold === 'y' && 
+  r.hasTextXlH1 === 'n' &&
+  r.hasXsSubtitle === 'n' &&
   r.hasLoadingState === 'y' && 
   r.hasEmptyState === 'y' && 
   r.hasErrorRetry === 'y' &&
   r.bannedCount === 0 &&
-  (r.tablesWrapped === 'y' || r.tablesWrapped === 'n/a')
+  (r.tablesWrapped === 'y' || r.tablesWrapped === 'none')
 ).length
 
 console.log(`\nCompliant: ${compliant}/${results.length}`)
