@@ -19,6 +19,102 @@ abstract class TestCase extends BaseTestCase
      * Automatically seed baseline reference data when RefreshDatabase is used.
      */
     protected bool $seed = true;
+
+    /**
+     * Override artisan to protect the test database schema from being dropped or rolled back mid-suite.
+     */
+    public function artisan($command, $parameters = [])
+    {
+        if (in_array($command, ['migrate:fresh', 'migrate:rollback'], true)) {
+            return 0;
+        }
+
+        return parent::artisan($command, $parameters);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $uses = array_flip(class_uses_recursive(static::class));
+        if (isset($uses[\Illuminate\Foundation\Testing\DatabaseMigrations::class])) {
+            $this->cleanUpAtomicityArtifacts();
+        }
+    }
+
+    protected function tearDown(): void
+    {
+        $uses = array_flip(class_uses_recursive(static::class));
+
+        if (isset($uses[\Illuminate\Foundation\Testing\DatabaseMigrations::class])) {
+            $this->cleanUpAtomicityArtifacts();
+            \Illuminate\Foundation\Testing\RefreshDatabaseState::$migrated = true;
+        } elseif (! isset($uses[\Illuminate\Foundation\Testing\RefreshDatabase::class])) {
+            // Non-transactional tests commit directly to the database.
+            // Clean up transactional records so they do not leak into subsequent RefreshDatabase tests.
+            try {
+                DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+                DB::statement('SET @dms_allow_version_mutation = 1');
+                DB::table('audit_events')->truncate();
+                DB::table('document_text_extractions')->truncate();
+                DB::table('version_files')->truncate();
+                DB::table('document_versions')->truncate();
+                DB::table('workflow_task_decisions')->truncate();
+                DB::table('workflow_tasks')->truncate();
+                DB::table('workflow_instances')->truncate();
+                DB::table('assignment_participants')->truncate();
+                DB::table('document_assignments')->truncate();
+                DB::table('correspondence_dispatches')->truncate();
+                DB::table('correspondences')->truncate();
+                DB::table('documents')->truncate();
+                DB::statement('SET @dms_allow_version_mutation = 0');
+                DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+            } catch (\Throwable) {
+            }
+        }
+
+        parent::tearDown();
+    }
+
+    protected function cleanUpAtomicityArtifacts(): void
+    {
+        try {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+            DB::statement('SET @dms_allow_version_mutation = 1');
+            DB::unprepared('DROP TRIGGER IF EXISTS ctx_assignment_audit_failure');
+
+            $atomicityDocs = DB::table('documents')->where('title', 'Atomicity document')->pluck('id');
+            if ($atomicityDocs->isNotEmpty()) {
+                $assignmentIds = DB::table('document_assignments')->whereIn('document_id', $atomicityDocs)->pluck('id');
+                if ($assignmentIds->isNotEmpty()) {
+                    DB::table('assignment_participants')->whereIn('assignment_id', $assignmentIds)->delete();
+                    DB::table('document_assignments')->whereIn('id', $assignmentIds)->delete();
+                }
+                DB::table('document_versions')->whereIn('document_id', $atomicityDocs)->delete();
+                DB::table('documents')->whereIn('id', $atomicityDocs)->delete();
+            }
+
+            $atomicityUsers = DB::table('users')->whereIn('email', [
+                'assignment.atomicity.officer@wu.edu.et',
+                'assignment.atomicity.participant@wu.edu.et',
+            ])->pluck('id');
+            if ($atomicityUsers->isNotEmpty()) {
+                DB::table('user_roles')->whereIn('user_id', $atomicityUsers)->delete();
+                DB::table('user_permissions')->whereIn('user_id', $atomicityUsers)->delete();
+                DB::table('users')->whereIn('id', $atomicityUsers)->delete();
+            }
+
+            $atomicityUnit = DB::table('organization_units')->where('code', 'ATOMICITY_UNIT_B')->first();
+            if ($atomicityUnit) {
+                DB::table('authorization_scopes')->where('unit_id', $atomicityUnit->id)->delete();
+                DB::table('organization_units')->where('id', $atomicityUnit->id)->delete();
+            }
+
+            DB::statement('SET @dms_allow_version_mutation = 0');
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        } catch (\Throwable) {
+        }
+    }
     /**
      * Authenticate user with Sanctum stateful session and bypass CSRF for JSON API tests.
      *
