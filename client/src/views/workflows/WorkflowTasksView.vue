@@ -444,7 +444,7 @@ onMounted(() => {
  </BaseButton>
 
  <BaseButton
- v-if="authStore.hasPermission('workflow.manage') || authStore.hasPermission('workflow.reassign') || authStore.hasPermission('system.configure')"
+ v-if="authStore.hasPermission('workflow.configure') || authStore.hasPermission('workflow.reassign') || authStore.hasPermission('system.configure')"
  size="sm"
  variant="outline"
  class="h-7 text-xs px-2 text-ink-secondary hover:bg-surface-hover"

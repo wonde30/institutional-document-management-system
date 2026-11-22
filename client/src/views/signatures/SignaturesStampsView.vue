@@ -265,7 +265,7 @@ async function submitApplyStamp() {
      Refresh
     </BaseButton>
     <BaseButton
-     v-if="authStore.hasPermission('signatures.create')"
+     v-if="authStore.hasPermission('signatures.request')"
      variant="primary"
      size="sm"
      @click="openSignatureModal"

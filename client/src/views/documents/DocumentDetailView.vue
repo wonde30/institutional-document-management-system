@@ -1010,7 +1010,7 @@ onMounted(() => {
  </div>
 
  <!-- Action buttons if task is open and actor is eligible -->
- <div v-if="!t.closed_at && (authStore.user?.id === t.assigned_user_id || authStore.hasPermission('workflow.review') || authStore.hasPermission('workflow.manage') || authStore.hasPermission('system.configure'))" class="flex items-center gap-1.5 shrink-0">
+ <div v-if="!t.closed_at && (authStore.user?.id === t.assigned_user_id || authStore.hasPermission('workflow.review') || authStore.hasPermission('workflow.configure') || authStore.hasPermission('system.configure'))" class="flex items-center gap-1.5 shrink-0">
  <BaseButton
  size="sm"
  variant="primary"

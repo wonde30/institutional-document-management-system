@@ -581,7 +581,7 @@ onMounted(() => {
         <template #cell-actions="{ item }">
           <div class="flex items-center justify-end gap-1.5 flex-wrap sm:flex-nowrap">
             <BaseButton
-              v-if="item.document?.lifecycle !== 'tombstoned' && (authStore.hasPermission('archive.manage') || authStore.hasPermission('archive.transfer'))"
+              v-if="item.document?.lifecycle !== 'tombstoned' && (authStore.hasPermission('archive.manage_retention') || authStore.hasPermission('archive.transfer'))"
               variant="outline"
               size="sm"
               class="text-primary hover:bg-primary-subtle"
