@@ -123,11 +123,6 @@ class AuditIntegrityTest extends TestCase
 
     public function test_direct_database_update_is_blocked_by_trigger(): void
     {
-        // Skip if audit triggers are disabled (test environment)
-        if (app()->environment('testing')) {
-            $this->markTestSkipped('Audit triggers are disabled in test environment to allow transaction rollbacks');
-        }
-
         $event = AuditService::log(
             action: 'test.trigger_protected',
             targetType: 'document',
@@ -148,11 +143,6 @@ class AuditIntegrityTest extends TestCase
 
     public function test_direct_database_delete_is_blocked_by_trigger(): void
     {
-        // Skip if audit triggers are disabled (test environment)
-        if (app()->environment('testing')) {
-            $this->markTestSkipped('Audit triggers are disabled in test environment to allow transaction rollbacks');
-        }
-
         $event = AuditService::log(
             action: 'test.trigger_delete_protected',
             targetType: 'document',
