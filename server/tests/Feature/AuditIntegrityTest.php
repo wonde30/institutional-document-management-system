@@ -227,28 +227,77 @@ class AuditIntegrityTest extends TestCase
 
     public function test_failed_audit_write_is_logged_with_context(): void
     {
-        // Simulate a failure by temporarily breaking the connection
-        // (audit_events table requires non-null actor_id, so passing null should fail)
-        \Log::spy();
+        \Illuminate\Support\Facades\Log::spy();
 
-        try {
-            DB::table('audit_events')->insert([
-                'action' => 'test.forced_failure',
-                'target_type' => 'test',
-                'target_id' => '999',
-                'actor_id' => null, // violates NOT NULL constraint
-                'details' => '{}',
-                'event_time' => now(),
-            ]);
-            $this->fail('Expected exception was not thrown');
-        } catch (\Throwable $e) {
-            // This is expected - audit write should fail
-            $this->assertStringContainsString('actor_id', $e->getMessage());
-        }
+        // Create document, version, and file
+        $unit = \App\Models\OrganizationUnit::first();
+        $category = \App\Models\DocumentCategory::first();
+        $conf = \App\Models\ConfidentialityLevel::first();
 
-        // In a real scenario, the controller try/catch would log this.
-        // We verify the log format is present by checking the DocumentController has the pattern.
-        // This test ensures the structure exists; integration tests verify the actual behavior.
-        $this->assertTrue(true);
+        $document = \App\Models\Document::create([
+            'reference_number' => 'REF-AUDIT-' . uniqid(),
+            'category_id' => $category->id,
+            'confidentiality_id' => $conf->id,
+            'owner_unit_id' => $unit->id,
+            'title' => 'Audit Test Document',
+            'summary' => 'Summary',
+            'created_by' => $this->testUser->id,
+            'lifecycle' => 'active',
+            'document_date' => now()->toDateString(),
+            'registered_at' => now(),
+        ]);
+
+        $version = \App\Models\DocumentVersion::create([
+            'document_id' => $document->id,
+            'version_number' => 1,
+            'created_by' => $this->testUser->id,
+        ]);
+
+        $file = \App\Models\FileObject::create([
+            'storage_disk' => 'local',
+            'storage_key' => 'documents/audit_fail_test.pdf',
+            'original_filename' => 'audit_fail_test.pdf',
+            'detected_mime' => 'application/pdf',
+            'byte_size' => strlen('Test file content'),
+            'sha256' => hash('sha256', 'Test file content'),
+            'uploaded_by' => $this->testUser->id,
+            'uploaded_at' => now(),
+            'scan_status' => 'clean',
+            'storage_status' => 'ready',
+        ]);
+
+        \App\Models\VersionFile::create([
+            'document_version_id' => $version->id,
+            'file_object_id' => $file->id,
+            'purpose' => 'primary',
+        ]);
+
+        // Ensure physical file exists so download doesn't 404
+        \Illuminate\Support\Facades\Storage::disk('local')->put($file->storage_key, 'Test file content');
+
+        $this->authenticateAs($this->testUser);
+
+        // Force AuditEvent creation to throw an exception
+        \App\Models\AuditEvent::saving(function () {
+            throw new \RuntimeException('Forced audit database failure');
+        });
+
+        // Execute download request
+        $response = $this->getJson("/api/v1/files/{$file->id}/download");
+        $response->assertStatus(200);
+
+        // Verify Log::error was called with context containing user, document, and action
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('error')
+            ->atLeast()->once()
+            ->with(
+                \Mockery::pattern('/Failed to record.*audit/'),
+                \Mockery::on(function ($context) use ($document) {
+                    return isset($context['user_id'])
+                        && isset($context['document_id'])
+                        && $context['document_id'] === $document->id
+                        && isset($context['action'])
+                        && isset($context['error']);
+                })
+            );
     }
 }
