@@ -82,6 +82,13 @@ vi.mock('@/api/client', () => ({
     correspondenceTypes: vi.fn().mockResolvedValue({ data: { data: [] } }),
     priorities: vi.fn().mockResolvedValue({ data: { data: [] } }),
     getCategories: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    getConfidentialityLevels: vi.fn().mockResolvedValue({ data: { data: [] } }),
+  },
+  officialLettersApi: {
+    baselineConfig: vi.fn().mockResolvedValue({ data: { data: {} } }),
+    numberingSchemas: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    preview: vi.fn().mockResolvedValue({ data: { data: {} } }),
+    generate: vi.fn().mockResolvedValue({ data: { data: {} } }),
   },
 }))
 
@@ -148,92 +155,109 @@ describe('PageHeader Render Test', () => {
     {
       name: 'DashboardView',
       component: DashboardView,
-      expectedTitle: 'Administrative workload, pending decisions, and correspondence',
+      expectedTitle: 'Workspace',
+      expectedSubtitle: 'Administrative workload, pending decisions, and correspondence',
     },
     {
       name: 'RoleManagementView',
       component: RoleManagementView,
-      expectedTitle: 'Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes',
+      expectedTitle: 'Scoped Role Management',
+      expectedSubtitle: 'Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes.',
     },
     {
       name: 'DataImportsExportsView',
       component: DataImportsExportsView,
-      expectedTitle: 'Run a validated batch import against an authorised organizational unit, or generate a structured export of the records you are permitted to reach.',
+      expectedTitle: 'Data Imports & Structured Exports',
+      expectedSubtitle: 'Run a validated batch import against an authorised organizational unit, or generate a structured export of the records you are permitted to reach.',
     },
     {
       name: 'DocumentListView',
       component: DocumentListView,
-      expectedTitle: 'Search, view, and manage institutional records with version tracking and scoped security classifications',
+      expectedTitle: 'Document Repository',
+      expectedSubtitle: 'Search, view, and manage institutional records with version tracking and scoped security classifications.',
     },
     {
       name: 'DocumentCreateView',
       component: DocumentCreateView,
-      expectedTitle: 'Create authentic Wollo University letters matching institutional standards or register external document records.',
+      expectedTitle: 'Register New Institutional Record',
+      expectedSubtitle: 'Create authentic Wollo University letters matching institutional standards or register external document records.',
     },
     {
       name: 'TemplateBuilderView',
       component: TemplateBuilderView,
-      expectedTitle: 'Standardized letterheads, memoranda, directives, and verified document templates.',
+      expectedTitle: 'Institutional Document Templates',
+      expectedSubtitle: 'Standardized letterheads, memoranda, directives, and verified document templates.',
     },
     {
       name: 'WorkflowTasksView',
       component: WorkflowTasksView,
-      expectedTitle: 'Review, approve, or return institutional documents and correspondence directives undergoing routing policy decisions.',
+      expectedTitle: 'Workflow Tasks & Decision Approvals',
+      expectedSubtitle: 'Review, approve, or return institutional documents and correspondence directives undergoing routing policy decisions.',
     },
     {
       name: 'NotificationsView',
       component: NotificationsView,
-      expectedTitle: 'Authorized event notifications, document dispatches, and pending workflow assignments.',
+      expectedTitle: 'Notifications & Institutional Activity',
+      expectedSubtitle: 'Authorized event notifications, document dispatches, and pending workflow assignments.',
     },
     {
       name: 'AccountProfileView',
       component: AccountProfileView,
-      expectedTitle: 'Manage your institutional identity, authentication credentials, and display preferences.',
+      expectedTitle: 'Account & Security Profile',
+      expectedSubtitle: 'Manage your institutional identity, authentication credentials, and display preferences.',
     },
     {
       name: 'FinalizedResearchView',
       component: FinalizedResearchView,
-      expectedTitle: 'Departmental publication of research completed and selected through external university processes.',
+      expectedTitle: 'Finalized Faculty Research Repository',
+      expectedSubtitle: 'Departmental publication of research completed and selected through external university processes.',
     },
     {
       name: 'StaffRecordsView',
       component: StaffRecordsView,
-      expectedTitle: 'Dual tracking of electronic staff dossiers alongside physical paper original locations for institutional compliance.',
+      expectedTitle: 'Staff Records & Physical Original Custody',
+      expectedSubtitle: 'Dual tracking of electronic staff dossiers alongside physical paper original location, custodian, and retention rules.',
     },
     {
       name: 'ArchiveListView',
       component: ArchiveListView,
-      expectedTitle: 'Statutory archival repository, retention schedules, legal holds, and historical preservation for auditable institutional memory.',
+      expectedTitle: 'Digital Archive & Long-Term Preservation',
+      expectedSubtitle: 'Statutory archival repository, retention schedules, legal holds, and historical record curation.',
     },
     {
       name: 'AccreditationEvidenceView',
       component: AccreditationEvidenceView,
-      expectedTitle: 'Map frozen document versions to official national HERQA quality standards with traceable audit reviews.',
+      expectedTitle: 'Accreditation & Quality Assurance',
+      expectedSubtitle: 'Map frozen document versions to official national HERQA quality standards with traceable audit reviews.',
     },
     {
       name: 'ProjectsInnovationView',
       component: ProjectsInnovationView,
-      expectedTitle: 'Registered project proposals, innovation grants, and active institutional initiatives.',
+      expectedTitle: 'Projects & Innovation',
+      expectedSubtitle: 'Registered project proposals, innovation grants, and active institutional initiatives.',
     },
     {
       name: 'SignaturesStampsView',
       component: SignaturesStampsView,
-      expectedTitle: 'Cryptographic signing requests, authorized signers, and departmental office seal registries.',
+      expectedTitle: 'Signatures & Stamps',
+      expectedSubtitle: 'Cryptographic signing requests, authorized signers, and departmental office seal registries.',
     },
     {
       name: 'ReportsView',
       component: ReportsView,
-      expectedTitle: 'Institutional analytics, operational correspondence audit, document lifecycle diagnostics, and management dashboards.',
+      expectedTitle: 'Executive Reports & Statistical Summaries',
+      expectedSubtitle: 'Institutional analytics, operational correspondence audit, document lifecycle distribution, and movement trends.',
     },
     {
       name: 'OrganizationUnitsView',
       component: OrganizationUnitsView,
-      expectedTitle: 'Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.',
+      expectedTitle: 'Institutional Organization Structure',
+      expectedSubtitle: 'Hierarchical structure of colleges, directorates, departments, and academic units across Wollo University campuses.',
     },
   ]
 
-  testCases.forEach(({ name, component, expectedTitle }) => {
-    it(`${name} renders PageHeader with correct subtitle text`, async () => {
+  testCases.forEach(({ name, component, expectedTitle, expectedSubtitle }) => {
+    it(`${name} renders PageHeader with correct title and subtitle text`, async () => {
       const wrapper = mount(component, {
         global: {
           plugins: [router],
@@ -247,10 +271,15 @@ describe('PageHeader Render Test', () => {
       // Wait for async setup
       await wrapper.vm.$nextTick()
 
+      // Find the h1 inside PageHeader
+      const h1 = wrapper.find('h1')
+      expect(h1.exists()).toBe(true)
+      expect(h1.text()).toBe(expectedTitle)
+
       // Find the subtitle paragraph (PageHeader subtitle prop renders as <p class="text-sm text-ink-muted">)
       const subtitle = wrapper.find('p.text-sm.text-ink-muted')
       expect(subtitle.exists()).toBe(true)
-      expect(subtitle.text()).toBe(expectedTitle)
+      expect(subtitle.text()).toBe(expectedSubtitle)
 
       // Ensure no console.warn or console.error about "Failed to resolve component" or "Vue warn"
       const resolveWarnings = consoleWarnSpy.mock.calls.filter((call: any[]) =>

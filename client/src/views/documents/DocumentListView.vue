@@ -129,7 +129,7 @@ onMounted(async () => {
  <div class="space-y-5">
   <PageHeader
     title="Document Repository"
-    subtitle="Search, view, and manage institutional records with version tracking and scoped security classifications"
+    subtitle="Search, view, and manage institutional records with version tracking and scoped security classifications."
   >
     <template #actions>
       <BaseButton

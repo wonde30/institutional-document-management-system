@@ -53,7 +53,7 @@ for (const route of routes) {
     const content = readFileSync(route.viewPath, 'utf8')
     
     // Check 1: Uses <PageHeader>
-    const usesPageHeader = /<PageHeader/.test(content)
+    const usesPageHeader = /<PageHeader[\s>\/]/.test(content)
     
     // Check 2: Inline <h1> classes
     const h1Match = content.match(/<h1([^>]*)class="([^"]+)"/g)
@@ -104,7 +104,7 @@ for (const route of routes) {
       /text-\[(?:[1-9]|1[01])px\]/g, // text-[1-11px] - arbitrary sizes below 12px
       /rounded-2xl/g,
       /shadow-(?:sm|md)(?!:)/g,
-      /uppercase(?! tabular-nums| font-mono|[^"]*(?:font-mono|placeholder|input))/g, // whitelist uppercase for code/placeholder/input
+      /\buppercase\b(?![^"]*\b(?:font-mono|placeholder|input)\b)/g, // whitelist uppercase when font-mono, placeholder, or input is in same class attr
       /tracking-(?:wide|wider|widest)/g,
       /border-l-4/g
     ]

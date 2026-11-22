@@ -71,9 +71,9 @@ class ArchiveController extends Controller
         }
 
         $actor = $request->user();
-        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage')) {
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage_retention')) {
             $query->whereHas('document', function ($dq) use ($actor) {
-                $dq->accessibleBy($actor, 'archive.access');
+                $dq->accessibleBy($actor, 'archive.view');
             });
         }
 
@@ -331,7 +331,7 @@ class ArchiveController extends Controller
         $entry = ArchiveEntry::with(['document', 'retentionPolicyVersion.policy'])->findOrFail($id);
         $actor = $request->user();
 
-        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage') && ! $actor->hasPermission('archive.transfer')) {
+        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage_retention') && ! $actor->hasPermission('archive.transfer')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You do not have permission to perform retention reviews on archived records.',

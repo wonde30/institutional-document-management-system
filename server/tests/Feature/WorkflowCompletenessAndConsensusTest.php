@@ -145,6 +145,7 @@ class WorkflowCompletenessAndConsensusTest extends TestCase
             'workflow_version_id' => $wfVer->id,
             'code' => 'dept_eval',
             'name' => 'Department Evaluation',
+            'assigned_unit_id' => $this->deptUnit->id,
             'is_initial' => 1,
             'is_terminal' => 0,
         ]);
@@ -153,6 +154,7 @@ class WorkflowCompletenessAndConsensusTest extends TestCase
             'workflow_version_id' => $wfVer->id,
             'code' => 'college_eval',
             'name' => 'College Approval',
+            'assigned_unit_id' => $this->collegeUnit->id,
             'is_initial' => 0,
             'is_terminal' => 0,
         ]);
@@ -215,6 +217,13 @@ class WorkflowCompletenessAndConsensusTest extends TestCase
         // Verify task closed and terminal state reached (no open tasks remain)
         $this->assertNotNull($task2->fresh()->closed_at);
         $this->assertEquals(0, WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->count());
+
+        // Verify parent document received terminal workflow audit event
+        $this->assertDatabaseHas('audit_events', [
+            'action' => 'document.workflow_approved',
+            'target_type' => 'document',
+            'target_id' => (string) $doc->id,
+        ]);
     }
 
     /**
@@ -284,6 +293,11 @@ class WorkflowCompletenessAndConsensusTest extends TestCase
         $vote1->assertStatus(202);
         $this->assertEquals('pending_consensus', $vote1->json('data.status'));
         $this->assertNull($task->fresh()->closed_at);
+
+        // Member 1 attempts duplicate vote -> rejected with HTTP 422
+        $duplicateVote = $this->postJson("/api/v1/workflows/tasks/{$task->id}/decide", ['decision' => 'approve']);
+        $duplicateVote->assertStatus(422)
+            ->assertJsonPath('message', 'Participant has already submitted a decision for this task.');
 
         // Member 2 votes approve -> consensus met (HTTP 200)
         $this->authenticateAs($this->staffUser2);

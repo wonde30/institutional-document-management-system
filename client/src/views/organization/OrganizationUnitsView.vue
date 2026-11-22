@@ -493,7 +493,7 @@ onMounted(() => {
  v-model="form.code"
  placeholder="e.g. CNCS, CS-DEPARTMENT, REGISTRAR"
  
- class="uppercase":disabled="isEditing"
+ :disabled="isEditing"
  />
  </div>
 

@@ -299,21 +299,50 @@ class WorkflowEngineService
 
             // 4. Authorization check
             $isAssigned = $task->assigned_user_id === $actor->id || $task->delegated_to_user_id === $actor->id;
-            $participant = WorkflowTaskParticipant::where('task_id', $task->id)
+            $directParticipant = WorkflowTaskParticipant::where('task_id', $task->id)
                 ->where('user_id', $actor->id)
                 ->first();
+
+            // Resolve represented participant seat if actor is acting as an authorized delegate
+            $representedParticipant = null;
+            if (! $directParticipant && $task->delegated_to_user_id === $actor->id) {
+                $delegatorId = $task->delegated_by ?? $task->assigned_user_id;
+                if ($delegatorId) {
+                    $representedParticipant = WorkflowTaskParticipant::where('task_id', $task->id)
+                        ->where('user_id', $delegatorId)
+                        ->first();
+                }
+            }
+
+            $effectiveParticipant = $directParticipant ?? $representedParticipant;
+
+            $allParticipants = WorkflowTaskParticipant::where('task_id', $task->id)
+                ->whereIn('participation_role', ['lead_reviewer', 'reviewer'])
+                ->get();
+            $totalParticipantCount = $allParticipants->count();
+            $participantUserIds = $allParticipants->pluck('user_id')->all();
 
             $hasPerm = $actor->hasPermission('workflow.review', $task->assigned_unit_id)
                 || $actor->hasPermission('workflow.review')
                 || $actor->can('workflow.review');
 
-            if (! $isAssigned && ! $participant && ! $hasPerm) {
+            if (! $isAssigned && ! $effectiveParticipant && ! $hasPerm) {
                 throw new HttpException(403, 'Forbidden: You are not authorized to decide this workflow task.');
             }
 
+            // Committee restriction: if multiple participants are assigned, only registered participants or delegates can vote
+            if ($totalParticipantCount > 1 && ! $effectiveParticipant) {
+                throw new HttpException(403, 'Forbidden: You are not a designated participant or delegate on this committee task.');
+            }
+
+            // Prevent duplicate voting by the seat/participant
+            if ($effectiveParticipant && $effectiveParticipant->status === 'completed') {
+                throw new HttpException(422, 'Participant has already submitted a decision for this task.');
+            }
+
             // 5. Update participant status if registered
-            if ($participant) {
-                $participant->update([
+            if ($effectiveParticipant) {
+                $effectiveParticipant->update([
                     'status' => 'completed',
                     'responded_at' => $now,
                 ]);
@@ -333,6 +362,8 @@ class WorkflowEngineService
                     'vote' => $decision,
                     'reason' => $reason,
                     'user_id' => $actor->id,
+                    'participant_id' => $effectiveParticipant?->id,
+                    'represented_user_id' => $effectiveParticipant?->user_id ?? $actor->id,
                 ],
             ]);
 
@@ -344,19 +375,40 @@ class WorkflowEngineService
                 ->get();
             $totalParticipantCount = $allParticipants->count();
 
-            // Fetch all cast votes from audit ledger for this task
+            // NOTE: Deduplicating votes by seat (participant_id or represented_user_id) ensures
+            // committee quorum cannot be forged by replay or duplicate delegation.
             $pastVotes = AuditEvent::where('action', 'workflow.task_participant_vote')
                 ->where('target_type', 'workflow_task')
                 ->where('target_id', (string) $task->id)
+                ->orderBy('occurred_at')
                 ->get();
+
+            $latestVotesBySeat = [];
+            foreach ($pastVotes as $v) {
+                $details = $v->details_json;
+                if (! is_array($details)) {
+                    continue;
+                }
+
+                // Strict task & instance scoping
+                if (($details['task_id'] ?? null) != $task->id || ($details['instance_id'] ?? null) != $task->instance_id) {
+                    continue;
+                }
+
+                $vt = $details['vote'] ?? null;
+                $representedUserId = $details['represented_user_id'] ?? $v->actor_id;
+                $seatKey = $details['participant_id'] ?? $representedUserId;
+
+                if ($vt && ($totalParticipantCount <= 1 || in_array($representedUserId, $participantUserIds, true))) {
+                    $latestVotesBySeat[$seatKey] = $vt;
+                }
+            }
 
             $approvals = 0;
             $rejections = 0;
             $returns = 0;
 
-            foreach ($pastVotes as $v) {
-                $details = $v->details_json;
-                $vt = $details['vote'] ?? null;
+            foreach ($latestVotesBySeat as $seatKey => $vt) {
                 if ($vt === 'approve') {
                     $approvals++;
                 } elseif ($vt === 'reject') {
@@ -635,6 +687,33 @@ class WorkflowEngineService
                                 'document_version_id' => $task->instance->document_version_id,
                             ],
                         ]);
+
+                        // Synchronize terminal workflow state with parent document lifecycle and audit trail
+                        $parentDoc = $task->instance->documentVersion?->document;
+                        if ($parentDoc) {
+                            $isRejection = $finalOutcome === 'reject' || str_contains(strtolower($toState->code), 'reject');
+                            $isRetirement = str_contains(strtolower($toState->code), 'retire') || str_contains(strtolower($toState->code), 'archive');
+
+                            if ($isRetirement) {
+                                $parentDoc->update(['lifecycle' => 'retired']);
+                            }
+
+                            AuditEvent::create([
+                                'actor_id' => $actor->id,
+                                'action' => $isRejection ? 'document.workflow_rejected' : 'document.workflow_approved',
+                                'target_type' => 'document',
+                                'target_id' => (string) $parentDoc->id,
+                                'request_id' => (string) Str::uuid(),
+                                'occurred_at' => $now,
+                                'details_json' => [
+                                    'workflow_instance_id' => $task->instance_id,
+                                    'state_code' => $toState->code,
+                                    'state_name' => $toState->name,
+                                    'final_outcome' => $finalOutcome,
+                                    'lifecycle' => $parentDoc->fresh()->lifecycle,
+                                ],
+                            ]);
+                        }
                     }
                 }
             }

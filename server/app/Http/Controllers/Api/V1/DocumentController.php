@@ -478,6 +478,40 @@ class DocumentController extends Controller
             ], 404);
         }
 
+        // Security Hardening: Audit confidential document access
+        // Ensure confidentiality relationship is loaded
+        if (! $doc->relationLoaded('confidentiality')) {
+            $doc->load('confidentiality');
+        }
+        
+        $confLevel = $doc->confidentiality?->code ?? 'public';
+        if ($confLevel !== 'public') {
+            try {
+                AuditService::recordDocumentEvent(
+                    action: 'document.confidential_access',
+                    actorId: $actor->id,
+                    documentId: $doc->id,
+                    details: [
+                        'file_object_id' => $file->id,
+                        'original_filename' => $file->original_filename,
+                        'classification_level' => $confLevel,
+                        'sha256' => $file->sha256,
+                        'byte_size' => $file->byte_size,
+                        'access_type' => 'download',
+                    ],
+                    request: request()
+                );
+            } catch (\Throwable $e) {
+                // Log but don't fail the download
+                \Log::error('Failed to record confidential access audit', [
+                    'document_id' => $doc->id,
+                    'file_id' => $file->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // General file download audit (all documents, including public)
         try {
             AuditService::recordDocumentEvent(
                 action: 'documents.downloaded',
@@ -491,7 +525,13 @@ class DocumentController extends Controller
                 ],
                 request: request()
             );
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            \Log::error('Failed to record download audit', [
+                'document_id' => $doc->id,
+                'file_id' => $file->id,
+                'error' => $e->getMessage()
+            ]);
+        }
 
         return app(\App\Services\FileSecurityService::class)->createDownloadResponse($file);
     }

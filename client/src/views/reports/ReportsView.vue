@@ -120,7 +120,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Executive Reports & Statistical Summaries" subtitle="Institutional analytics, operational correspondence audit, document lifecycle diagnostics, and management dashboards.">
+ <PageHeader title="Executive Reports & Statistical Summaries" subtitle="Institutional analytics, operational correspondence audit, document lifecycle distribution, and movement trends.">
 
   <template #actions>
 

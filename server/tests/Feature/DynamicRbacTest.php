@@ -164,4 +164,25 @@ class DynamicRbacTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_syncing_role_permissions_increments_authz_version_for_role_holders(): void
+    {
+        $this->authenticateAs($this->admin);
+
+        $role = Role::where('code', 'staff')->first();
+        $initialAuthzVersion = (int) $this->regularUser->authz_version;
+
+        $perm = Permission::where('code', 'documents.view')->first();
+
+        // Sync permissions on role
+        $res = $this->postJson("/api/v1/roles/{$role->id}/permissions", [
+            'permission_ids' => [$perm->id],
+        ]);
+
+        $res->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        // Regular user holding this role must have bumped authz_version
+        $this->assertGreaterThan($initialAuthzVersion, (int) $this->regularUser->fresh()->authz_version);
+    }
 }

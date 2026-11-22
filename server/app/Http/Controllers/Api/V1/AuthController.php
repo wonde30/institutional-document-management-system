@@ -138,14 +138,18 @@ class AuthController extends Controller
             Auth::guard('web')->logout();
         }
 
-        if ($request->hasSession()) {
+        $logoutAll = $request->boolean('all_devices', false);
+
+        if ($logoutAll && $user) {
+            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+        } elseif ($request->hasSession()) {
+            $currentSessionId = $request->session()->getId();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-        }
 
-        // Revoke user sessions and transition tokens from sessions table
-        if ($user) {
-            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+            if ($currentSessionId) {
+                \Illuminate\Support\Facades\DB::table('sessions')->where('id', $currentSessionId)->delete();
+            }
         }
 
         return response()->json([

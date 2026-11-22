@@ -59,6 +59,26 @@ class AuditService
     }
 
     /**
+     * Record a document-related audit event with standardized metadata.
+     */
+    public static function recordDocumentEvent(
+        string $action,
+        int $actorId,
+        int $documentId,
+        ?array $details = null,
+        ?Request $request = null
+    ): AuditEvent {
+        return static::log(
+            action: $action,
+            targetType: 'document',
+            targetId: (string) $documentId,
+            details: $details,
+            actorId: $actorId,
+            request: $request
+        );
+    }
+
+    /**
      * Redact sensitive credentials, secrets, and authorization tokens.
      */
     public static function sanitizeValues(?array $values): ?array

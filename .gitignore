@@ -60,6 +60,11 @@ Thumbs.db
 /*~
 /*.orig
 
+# Backup directories (never commit backups)
+/CLEANUP_BACKUP_*/
+/WU-DMS_*_BACKUP_*/
+/*_backup_*/
+
 # Test outputs, fixtures & acceptance run artifacts
 /docs/screenshots/
 /acceptance_doc_ids.txt

@@ -272,4 +272,39 @@ class DigitalSignaturePkiTest extends TestCase
             @unlink(storage_path('app/' . $sig->signedFile->storage_key));
         }
     }
+
+    public function test_signed_pdf_file_can_be_downloaded_with_200_and_integrity_headers(): void
+    {
+        $this->grantPermissionToUser($this->dean, 'documents.download', 'global');
+        $this->grantPermissionToUser($this->dean, 'documents.view', 'global');
+        $this->authenticateAs($this->dean);
+
+        $req = SignatureRequest::create([
+            'document_version_id' => $this->docVersion->id,
+            'requested_by' => $this->dean->id,
+            'signer_id' => $this->dean->id,
+            'requested_at' => now(),
+            'purpose' => 'Download Verification Test',
+        ]);
+
+        $execRes = $this->postJson("/api/v1/signatures/{$req->id}/execute");
+        $execRes->assertStatus(200);
+        $sigId = $execRes->json('data.id');
+
+        $sig = DigitalSignature::with('signedFile')->findOrFail($sigId);
+        $signedFileId = $sig->signed_file_id;
+        $this->assertNotNull($signedFileId);
+
+        // Download signed PDF
+        $downloadRes = $this->get("/api/v1/files/{$signedFileId}/download");
+        $downloadRes->assertStatus(200);
+        $downloadRes->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotNull($downloadRes->getFile());
+        $this->assertFileExists($downloadRes->getFile()->getPathname());
+
+        // Unauthorized user cannot download
+        $this->authenticateAs($this->unauthorizedUser);
+        $unauthRes = $this->get("/api/v1/files/{$signedFileId}/download");
+        $unauthRes->assertStatus(403);
+    }
 }

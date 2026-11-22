@@ -183,6 +183,10 @@ class RolePermissionController extends Controller
 
         $role->update($validated);
 
+        if (array_key_exists('active', $validated)) {
+            User::whereHas('userRoles', fn ($q) => $q->where('role_id', $role->id))->increment('authz_version');
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Role updated successfully.',
@@ -204,6 +208,9 @@ class RolePermissionController extends Controller
 
         $role->permissions()->sync($validated['permission_ids']);
         $role->load('permissions');
+
+        // Increment authz_version for all users holding this role to invalidate stale cached permissions
+        User::whereHas('userRoles', fn ($q) => $q->where('role_id', $role->id))->increment('authz_version');
 
         return response()->json([
             'success' => true,

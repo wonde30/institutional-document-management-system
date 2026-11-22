@@ -16,6 +16,7 @@ class ProjectProposal extends Model
     protected $fillable = [
         'document_id',
         'project_type_id',
+        'workflow_status',
         'recorded_by',
         'recorded_at',
     ];

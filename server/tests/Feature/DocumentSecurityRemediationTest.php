@@ -591,4 +591,206 @@ class DocumentSecurityRemediationTest extends TestCase
             'change_note' => 'Administrative policy amendment',
         ])->assertStatus(201);
     }
+
+    // =========================================================================
+    // SECURITY HARDENING: CONFIDENTIAL DOCUMENT ACCESS AUDIT
+    // =========================================================================
+
+    public function test_confidential_document_access_is_audited(): void
+    {
+        // Create confidential document
+        $confidentialLevel = \App\Models\ConfidentialityLevel::where('code', 'confidential')->first();
+        if (! $confidentialLevel) {
+            $confidentialLevel = \App\Models\ConfidentialityLevel::create([
+                'code' => 'confidential',
+                'name' => 'Confidential',
+                'clearance_required' => 'staff',
+                'display_order' => 2,
+                'active' => 1,
+            ]);
+        }
+
+        $disk = config('filesystems.default', 'local');
+        $storedPath = 'documents/'.date('Y').'/confidential_test.pdf';
+        Storage::disk($disk)->put($storedPath, 'CONFIDENTIAL_CONTENT');
+
+        $fileObject = FileObject::create([
+            'storage_disk' => $disk,
+            'storage_key' => $storedPath,
+            'original_filename' => 'confidential_report.pdf',
+            'detected_mime' => 'application/pdf',
+            'byte_size' => strlen('CONFIDENTIAL_CONTENT'),
+            'sha256' => hash('sha256', 'CONFIDENTIAL_CONTENT'),
+            'uploaded_by' => $this->adminUser->id,
+            'uploaded_at' => now(),
+            'scan_status' => 'clean',
+            'scanned_at' => now(),
+            'storage_status' => 'ready',
+        ]);
+
+        $ref = sprintf('WU/CONF/%s/%06d', date('Y'), random_int(100000, 999999));
+        $document = Document::create([
+            'reference_number' => $ref,
+            'title' => 'Confidential Security Assessment',
+            'summary' => 'High-sensitivity document for audit testing.',
+            'category_id' => $this->category->id,
+            'confidentiality_id' => $confidentialLevel->id,
+            'owner_unit_id' => $this->unitA->id,
+            'created_by' => $this->adminUser->id,
+            'custodian_id' => $this->adminUser->id,
+            'document_date' => now()->toDateString(),
+            'registered_at' => now(),
+            'lifecycle' => 'active',
+            'lock_version' => 0,
+        ]);
+
+        $version = DocumentVersion::create([
+            'document_id' => $document->id,
+            'version_number' => 1,
+            'change_note' => 'Initial confidential version',
+            'created_by' => $this->adminUser->id,
+            'created_at' => now(),
+        ]);
+
+        VersionFile::create([
+            'document_version_id' => $version->id,
+            'file_object_id' => $fileObject->id,
+            'purpose' => 'primary',
+            'display_order' => 1,
+        ]);
+
+        // Create authorized user with clearance for confidential documents
+        $authorizedUser = $this->createUserWithPermissions(
+            'authorized.confidential@wu.edu.et',
+            ['documents.view', 'documents.download', 'staff.view_sensitive'],
+            $this->unitA->id
+        );
+
+        $this->authenticateAs($authorizedUser);
+
+        // Record pre-download audit count
+        $beforeCount = DB::table('audit_events')
+            ->where('action', 'document.confidential_access')
+            ->where('target_type', 'document')
+            ->where('target_id', (string) $document->id)
+            ->count();
+
+        // Download confidential document
+        $response = $this->getJson("/api/v1/files/{$fileObject->id}/download");
+        $response->assertStatus(200);
+
+        // Verify confidential access audit event was created
+        $afterCount = DB::table('audit_events')
+            ->where('action', 'document.confidential_access')
+            ->where('target_type', 'document')
+            ->where('target_id', (string) $document->id)
+            ->count();
+
+        $this->assertEquals($beforeCount + 1, $afterCount, 'Confidential document access was not audited');
+
+        // Verify audit event contains required details
+        $auditEvent = DB::table('audit_events')
+            ->where('action', 'document.confidential_access')
+            ->where('target_type', 'document')
+            ->where('target_id', (string) $document->id)
+            ->where('actor_id', $authorizedUser->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $this->assertNotNull($auditEvent);
+        $this->assertEquals($authorizedUser->id, $auditEvent->actor_id);
+        
+        $details = json_decode($auditEvent->details_json, true);
+        $this->assertEquals($fileObject->id, $details['file_object_id']);
+        $this->assertEquals('confidential', $details['classification_level']);
+        $this->assertEquals('confidential_report.pdf', $details['original_filename']);
+        $this->assertEquals('download', $details['access_type']);
+        $this->assertNotNull($auditEvent->ip_address);
+    }
+
+    public function test_public_document_access_does_not_create_confidential_access_audit(): void
+    {
+        $publicLevel = \App\Models\ConfidentialityLevel::where('code', 'public')->first();
+        if (! $publicLevel) {
+            $publicLevel = \App\Models\ConfidentialityLevel::create([
+                'code' => 'public',
+                'name' => 'Public',
+                'clearance_required' => 'none',
+                'display_order' => 0,
+                'active' => 1,
+            ]);
+        }
+
+        $fixture = $this->createDocumentFixture($this->unitA, filename: 'public_doc.pdf');
+        $fixture['document']->update(['confidentiality_id' => $publicLevel->id]);
+
+        $user = $this->createUserWithPermissions(
+            'public.viewer@wu.edu.et',
+            ['documents.view', 'documents.download'],
+            $this->unitA->id
+        );
+
+        $this->authenticateAs($user);
+
+        // Record pre-download audit count for confidential access events
+        $beforeCount = DB::table('audit_events')
+            ->where('action', 'document.confidential_access')
+            ->count();
+
+        // Download public document
+        $response = $this->getJson("/api/v1/files/{$fixture['fileObject']->id}/download");
+        $response->assertStatus(200);
+
+        // Verify no confidential access audit event was created
+        $afterCount = DB::table('audit_events')
+            ->where('action', 'document.confidential_access')
+            ->count();
+
+        $this->assertEquals($beforeCount, $afterCount, 'Public document should not create confidential access audit');
+
+        // But general download audit should still exist
+        $generalDownload = DB::table('audit_events')
+            ->where('action', 'documents.downloaded')
+            ->where('target_id', (string) $fixture['document']->id)
+            ->where('actor_id', $user->id)
+            ->exists();
+
+        $this->assertTrue($generalDownload, 'General download audit should be created for all documents');
+    }
+
+    public function test_restricted_document_access_is_audited_with_proper_classification(): void
+    {
+        $restrictedLevel = \App\Models\ConfidentialityLevel::where('code', 'restricted')->first();
+        if (! $restrictedLevel) {
+            $restrictedLevel = \App\Models\ConfidentialityLevel::create([
+                'code' => 'restricted',
+                'name' => 'Restricted',
+                'clearance_required' => 'manager',
+                'display_order' => 3,
+                'active' => 1,
+            ]);
+        }
+
+        $fixture = $this->createDocumentFixture($this->unitA, filename: 'restricted_doc.pdf');
+        $fixture['document']->update(['confidentiality_id' => $restrictedLevel->id]);
+
+        $this->authenticateAs($this->adminUser);
+
+        // Download restricted document
+        $response = $this->getJson("/api/v1/files/{$fixture['fileObject']->id}/download");
+        $response->assertStatus(200);
+
+        // Verify audit event exists with correct classification
+        $auditEvent = DB::table('audit_events')
+            ->where('action', 'document.confidential_access')
+            ->where('target_id', (string) $fixture['document']->id)
+            ->where('actor_id', $this->adminUser->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $this->assertNotNull($auditEvent);
+        $details = json_decode($auditEvent->details_json, true);
+        $this->assertEquals('restricted', $details['classification_level']);
+    }
 }
+

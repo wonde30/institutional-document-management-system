@@ -20,6 +20,7 @@ class ResearchRecord extends Model
         'research_type',
         'completed_on',
         'external_selection_reference',
+        'workflow_status',
         'recorded_by',
         'recorded_at',
     ];

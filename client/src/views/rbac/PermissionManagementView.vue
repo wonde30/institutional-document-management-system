@@ -3,12 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { permissionsApi } from '@/api/client'
 import type { PermissionItem } from '@/types'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import {
-  Key,
   Shield,
   Search,
   RefreshCw,
@@ -26,7 +26,8 @@ import {
   Lock,
   Unlock,
   Edit2,
-  Info
+  Info,
+  Key
 } from 'lucide-vue-next'
 
 const toast = useToast()
@@ -199,25 +200,18 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
-          <Key class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-          <span>Institutional Permission Registry</span>
-        </h1>
-        <p class="text-sm text-ink-muted mt-1">
-          Catalog of atomic security capabilities enforcing server-side authorization boundaries, risk classification, and scope applicability
-        </p>
-      </div>
-
-      <div class="flex items-center gap-2.5 shrink-0">
+    <PageHeader
+      :icon="Key"
+      title="Institutional Permission Registry"
+      subtitle="Catalog of atomic security capabilities enforcing server-side authorization boundaries, risk classification, and scope applicability."
+    >
+      <template #actions>
         <BaseButton variant="outline" size="sm" :loading="loading" @click="loadPermissions">
           <RefreshCw class="w-4 h-4 mr-1.5" />
           Refresh
         </BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Stats Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">

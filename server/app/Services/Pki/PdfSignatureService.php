@@ -9,6 +9,7 @@ use App\Models\FileObject;
 use App\Models\SignatureRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -81,8 +82,9 @@ class PdfSignatureService
             throw new RuntimeException('Byte offset misalignment during PDF signature insertion.');
         }
 
-        // Store signed PDF on disk
+        // NOTE: Dual storage path compatibility: file is written to storage disk and synchronized with storage_path for legacy controllers.
         $relativeStorageKey = 'documents/signed_' . Str::random(24) . '.pdf';
+        Storage::disk('local')->put($relativeStorageKey, $signedPdfBytes);
         $fullPath = storage_path('app/' . $relativeStorageKey);
         File::ensureDirectoryExists(dirname($fullPath));
         File::put($fullPath, $signedPdfBytes);
@@ -304,9 +306,14 @@ class PdfSignatureService
     private function getSourcePdfBytes(FileObject $fileObject, SignatureRequest $request): string
     {
         if ($fileObject->storage_key) {
-            $path = storage_path('app/' . $fileObject->storage_key);
-            if (File::exists($path)) {
-                $content = File::get($path);
+            $disk = $fileObject->storage_disk ?: 'local';
+            if (Storage::disk($disk)->exists($fileObject->storage_key)) {
+                $content = Storage::disk($disk)->get($fileObject->storage_key);
+                if (str_starts_with($content, '%PDF-')) {
+                    return $content;
+                }
+            } elseif (File::exists(storage_path('app/' . $fileObject->storage_key))) {
+                $content = File::get(storage_path('app/' . $fileObject->storage_key));
                 if (str_starts_with($content, '%PDF-')) {
                     return $content;
                 }

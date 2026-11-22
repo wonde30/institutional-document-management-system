@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notifications'
 import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseAlert from '@/components/ui/BaseAlert.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import {
@@ -16,8 +15,7 @@ import {
  AlertCircle,
  ShieldCheck,
  Archive,
- ArrowRight,
- RefreshCw
+ ArrowRight
 } from 'lucide-vue-next'
 
 const router = useRouter()

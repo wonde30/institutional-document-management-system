@@ -206,6 +206,8 @@ async function handleLogout() {
  class="relative p-2 rounded-[6px] text-ink-muted hover:text-ink hover:bg-canvas-soft transition-colors"
  @click="showNotifDropdown = !showNotifDropdown"
  aria-label="View notifications"
+ :aria-expanded="showNotifDropdown"
+ aria-haspopup="true"
  >
  <Bell class="w-4 h-4" />
  <span
@@ -232,11 +234,12 @@ async function handleLogout() {
  </div>
 
  <div class="max-h-64 overflow-y-auto divide-y divide-hairline-subtle">
- <div
+ <button
+ type="button"
  v-for="notif in notifStore.notifications.slice(0, 5)"
  :key="notif.id"
- class="p-3 text-xs hover:bg-canvas-soft transition cursor-pointer"
- @click="router.push('/notifications')"
+ class="w-full text-left p-3 text-xs hover:bg-canvas-soft transition cursor-pointer focus:outline-none focus:bg-canvas-soft block"
+ @click="router.push('/notifications'); showNotifDropdown = false"
  >
  <div class="font-medium text-ink">
  {{ notif.event?.type_code || 'Security notice' }}
@@ -244,7 +247,7 @@ async function handleLogout() {
  <div class="text-xs text-ink-muted mt-0.5">
  {{ notif.created_at ? new Date(notif.created_at).toLocaleTimeString() : 'Recent' }}
  </div>
- </div>
+ </button>
 
  <div v-if="notifStore.notifications.length === 0" class="py-6 text-center text-xs text-ink-faint">
  No pending notifications

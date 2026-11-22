@@ -355,7 +355,7 @@ onMounted(() => {
   <div class="space-y-5">
     <!-- Header -->
     
-        <PageHeader title="Digital Archive & Long-Term Preservation" subtitle="Statutory archival repository, retention schedules, legal holds, and historical preservation for auditable institutional memory.">
+        <PageHeader title="Digital Archive &amp; Long-Term Preservation" subtitle="Statutory archival repository, retention schedules, legal holds, and historical record curation.">
 
          <template #actions>
 

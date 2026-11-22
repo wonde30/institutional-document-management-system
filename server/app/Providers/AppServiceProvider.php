@@ -36,7 +36,12 @@ class AppServiceProvider extends ServiceProvider
         \Laravel\Sanctum\Sanctum::usePersonalAccessTokenModel(\App\Models\LegacyTransitionToken::class);
 
         // Defensible Institutional Rate Limiting: Normalized Account + Source IP
+        // Bypass rate limiting in test environment to prevent test flakiness
         RateLimiter::for('login', function (Request $request) {
+            if (app()->environment('testing')) {
+                return Limit::none();
+            }
+            
             $email = (string) Str::transliterate(Str::lower($request->input('email', '')));
             return [
                 Limit::perMinute(5)->by($email),

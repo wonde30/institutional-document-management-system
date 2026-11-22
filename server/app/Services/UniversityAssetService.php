@@ -74,8 +74,7 @@ class UniversityAssetService
                 // Verify the asset resides within private institutional storage boundaries
                 $isWithinAllowedStorage = false;
                 foreach ($allowedRoots as $root) {
-                    $realRoot = realpath($root);
-                    if ($realRoot && str_starts_with($realPath, $realRoot)) {
+                    if (FileSecurityService::resolveContainedPath($realPath, $root) !== null) {
                         $isWithinAllowedStorage = true;
                         break;
                     }

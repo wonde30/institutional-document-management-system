@@ -6,6 +6,7 @@ import { useMetadataStore } from '@/stores/metadata'
 import type { Correspondence, OrganizationUnit, User, PaginationMeta } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import DataTable, { type TableColumn } from '@/components/data-display/DataTable.vue'
 import SearchFilterBar from '@/components/data-display/SearchFilterBar.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -625,19 +626,12 @@ onMounted(async () => {
 
 <template>
  <div class="space-y-5">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
- <div>
- <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-ink flex items-center gap-2.5">
- <Mail class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
- <span>Correspondence & Inter-Office Registry</span>
- </h1>
- <p class="mt-1 text-sm text-ink-muted">
- Dual-path incoming letter logging, version-bound outgoing dispatch, and inter-office memoranda tracking
- </p>
- </div>
-
- <div class="flex items-center gap-2.5 shrink-0">
+ <PageHeader
+ :icon="Mail"
+ title="Correspondence & Inter-Office Registry"
+ subtitle="Dual-path incoming letter logging, version-bound outgoing dispatch, and inter-office memoranda tracking."
+ >
+ <template #actions>
  <BaseButton
  v-if="authStore.hasPermission('correspondence.register')"
  variant="primary"
@@ -647,8 +641,8 @@ onMounted(async () => {
  <Plus class="w-3.5 h-3.5 mr-1" />
  Log correspondence
  </BaseButton>
- </div>
- </div>
+ </template>
+ </PageHeader>
 
  <!-- Type Tabs Bar -->
  <div class="flex items-center gap-2 border-b border-hairline pb-px text-xs" role="tablist" aria-label="Correspondence types">

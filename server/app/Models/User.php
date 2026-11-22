@@ -86,6 +86,15 @@ class User extends Authenticatable
     }
 
     /**
+     * Organization units the user is a member of.
+     */
+    public function organizationUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(OrganizationUnit::class, 'organization_memberships', 'user_id', 'unit_id')
+            ->withPivot(['position_title', 'starts_at', 'ends_at', 'created_by', 'created_at']);
+    }
+
+    /**
      * Active primary membership.
      */
     public function primaryMembershipRecord(): HasOne

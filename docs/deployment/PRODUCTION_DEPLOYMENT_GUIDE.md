@@ -290,6 +290,70 @@ Restart MySQL:
 sudo systemctl restart mysql
 ```
 
+### 5.1 Database User & Grant Configuration
+
+**Critical Security Requirement: Audit Trail Append-Only Enforcement**
+
+The application database user must be restricted to prevent modification or deletion of audit records.
+
+Create the application database user with limited grants:
+
+```sql
+-- Create dedicated application database user
+CREATE USER 'wu_dms_app'@'%' IDENTIFIED BY 'STRONG_GENERATED_PASSWORD_HERE';
+
+-- Grant standard privileges for all tables
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES 
+ON wu_dms.* TO 'wu_dms_app'@'%';
+
+-- CRITICAL: Revoke UPDATE and DELETE on audit_events table to enforce append-only integrity
+REVOKE UPDATE, DELETE ON wu_dms.audit_events FROM 'wu_dms_app'@'%';
+
+-- Grant only SELECT and INSERT on audit_events (append-only)
+GRANT SELECT, INSERT ON wu_dms.audit_events TO 'wu_dms_app'@'%';
+
+-- Apply privileges
+FLUSH PRIVILEGES;
+```
+
+**Verification:**
+
+After configuring grants, verify the application user has the correct restricted permissions:
+
+```sql
+-- Show grants for application user
+SHOW GRANTS FOR 'wu_dms_app'@'%';
+
+-- Expected output should include:
+-- GRANT SELECT, INSERT ON `wu_dms`.`audit_events` TO `wu_dms_app`@`%`
+-- And NOT include UPDATE or DELETE on audit_events
+```
+
+**Rationale:**
+
+The `audit_events` table serves as the system's tamper-proof audit trail. Three layers of protection enforce immutability:
+
+1. **Application Layer**: Laravel Eloquent model events prevent UPDATE/DELETE operations
+2. **Database Layer**: MySQL triggers reject UPDATE/DELETE statements with integrity violation errors
+3. **Privilege Layer**: Application database user lacks UPDATE/DELETE grants on audit_events
+
+This defense-in-depth approach ensures audit integrity cannot be compromised through:
+- Direct SQL injection bypassing ORM protections
+- Compromised application code executing raw queries
+- Administrative mistakes or unauthorized database access
+
+Only the DBA user retains UPDATE/DELETE privileges for emergency recovery scenarios.
+
+**Administrative Access:**
+
+For legitimate audit record corrections (e.g., GDPR data deletion, court orders), use the DBA account:
+
+```sql
+-- Emergency audit correction (requires senior authorization)
+-- Document the operation in institutional change management system
+DELETE FROM audit_events WHERE id = <specific_record_id>;
+```
+
 ---
 
 ## 6. Systemd Background Daemon Services

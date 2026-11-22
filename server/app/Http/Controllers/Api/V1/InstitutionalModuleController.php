@@ -35,6 +35,7 @@ use App\Models\StampAuthorization;
 use App\Models\StampDefinition;
 use App\Models\StampVersion;
 use App\Models\VersionFile;
+use App\Services\FileSecurityService;
 use App\Services\Pki\CertificateService;
 use App\Services\Pki\PdfSignatureService;
 use App\Services\Pki\PdfSignatureVerificationService;
@@ -900,8 +901,9 @@ class InstitutionalModuleController extends Controller
             ], 404);
         }
 
-        $fullPath = storage_path('app/'.$signature->signedFile->storage_key);
-        if (! File::exists($fullPath)) {
+        $fullPath = app(FileSecurityService::class)->resolveFileObjectPath($signature->signedFile);
+
+        if (! $fullPath) {
             return response()->json([
                 'success' => false,
                 'message' => 'Signed PDF binary file is missing from storage disk.',
@@ -960,8 +962,14 @@ class InstitutionalModuleController extends Controller
             $filePath = $request->file('file')->getRealPath();
         } elseif ($request->filled('file_id')) {
             $fileObject = FileObject::findOrFail($request->integer('file_id'));
-            $disk = Storage::disk($fileObject->storage_disk ?? 'local');
-            $filePath = $disk->path($fileObject->storage_key);
+            $filePath = app(FileSecurityService::class)->resolveFileObjectPath($fileObject);
+
+            if (! $filePath) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File object physical binary not found in storage repository.',
+                ], 404);
+            }
         } else {
             return response()->json([
                 'success' => false,

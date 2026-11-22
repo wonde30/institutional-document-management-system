@@ -230,7 +230,7 @@ onMounted(() => {
  <div class="space-y-6">
  <!-- Header -->
  
- <PageHeader title="Staff Records & Physical Original Custody" subtitle="Dual tracking of electronic staff dossiers alongside physical paper original locations for institutional compliance.">
+ <PageHeader title="Staff Records & Physical Original Custody" subtitle="Dual tracking of electronic staff dossiers alongside physical paper original location, custodian, and retention rules.">
 
   <template #actions>
 

@@ -283,7 +283,20 @@ class CorrespondenceController extends Controller
                 'registered_at' => $now,
             ]);
 
-            // 4. Create communication parties if provided
+            // 4. Create initial document movement if correspondence has first_receiving_unit_id
+            if ($receivingUnitId && $receivingUnitId != $validated['owner_unit_id']) {
+                DocumentMovement::create([
+                    'document_id' => $doc->id,
+                    'from_unit_id' => $validated['owner_unit_id'],
+                    'to_unit_id' => $receivingUnitId,
+                    'sent_by' => $actor->id,
+                    'sent_at' => $now,
+                    'instruction' => 'Automatic routing via correspondence registration',
+                    'idempotency_key' => 'CORR-INIT-' . $doc->id,
+                ]);
+            }
+
+            // 5. Create communication parties if provided
             if (! empty($validated['sender_unit_id'])) {
                 $party = CommunicationParty::firstOrCreate([
                     'unit_id' => $validated['sender_unit_id'],

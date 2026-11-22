@@ -103,6 +103,9 @@ class FrontendApiContractTest extends TestCase
         foreach ($calls as $call) {
             [$method, $path] = array_pad(explode(' ', $call, 2), 2, '');
 
+            // Strip query parameters from path (they're optional URL parameters, not route segments)
+            $path = preg_replace('/\?.*$/', '', $path);
+
             // The front end template literal and the route parameter are the
             // same placeholder once normalised.
             $normalisedPath = preg_replace('/\$\{[^}]+\}/', '__PARAM__', $path);

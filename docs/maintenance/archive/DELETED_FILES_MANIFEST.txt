@@ -1,0 +1,88 @@
+﻿WU-DMS DELETED FILES MANIFEST
+Generated: 2026-11-20 20:24:53
+Total Files: 322 files + 341 files in removed backup directory
+
+=== CATEGORY SUMMARY ===
+AI Config: 4 files
+Artifacts - Browser Audit: 63 files
+Artifacts - Full App QA: 98 files
+Artifacts - Landing Page QA: 25 files
+Artifacts - UI Audit: 14 files
+Artifacts - UI/UX Audit: 92 files
+Scripts - Temporary Analysis: 20 files
+Temporary Files: 4 files
+Additional Local Deletions: 2 files (.skill/SYSTEM.md, .skill/DEBUG.md)
+
+=== COMPLETE FILE LIST ===
+
+AI CONFIG FILES (4):
+.skill/DEBUG.md
+.skill/QMT_FULLSTACK_AUDIT_PROMPT.md
+.skill/SYSTEM.md
+.skill/VIBE.md
+
+ARTIFACTS - BROWSER AUDIT (63):
+
+artifacts/browser-audit/audit_execution_summary.json
+artifacts/browser-audit/audit-runner.mjs
+artifacts/browser-audit/REAL_BROWSER_AUDIT_REPORT.md
+artifacts/browser-audit/screenshots/accreditation/accreditation-evidence.png
+artifacts/browser-audit/screenshots/admin/audit-log.png
+artifacts/browser-audit/screenshots/admin/configuration-center.png
+artifacts/browser-audit/screenshots/admin/data-imports-exports.png
+artifacts/browser-audit/screenshots/admin/help-guide.png
+artifacts/browser-audit/screenshots/admin/numbering-policies.png
+artifacts/browser-audit/screenshots/admin/organization-units.png
+artifacts/browser-audit/screenshots/admin/permissions.png
+artifacts/browser-audit/screenshots/admin/reference-data.png
+artifacts/browser-audit/screenshots/admin/retention-policies.png
+artifacts/browser-audit/screenshots/admin/roles-permissions.png
+artifacts/browser-audit/screenshots/admin/routing-policies.png
+artifacts/browser-audit/screenshots/admin/system-settings.png
+artifacts/browser-audit/screenshots/archive/archive-list.png
+artifacts/browser-audit/screenshots/archive/legal-holds.png
+artifacts/browser-audit/screenshots/archive/retention-review.png
+artifacts/browser-audit/screenshots/auth/account-preferences.png
+artifacts/browser-audit/screenshots/auth/account-profile-facts.png
+artifacts/browser-audit/screenshots/auth/account-security.png
+artifacts/browser-audit/screenshots/auth/forbidden-access.png
+artifacts/browser-audit/screenshots/auth/forgot-password.png
+artifacts/browser-audit/screenshots/auth/login.png
+artifacts/browser-audit/screenshots/auth/login-inactive-account.png
+artifacts/browser-audit/screenshots/auth/login-validation-error.png
+artifacts/browser-audit/screenshots/auth/not-found.png
+artifacts/browser-audit/screenshots/auth/reset-password.png
+artifacts/browser-audit/screenshots/auth/verify-email.png
+artifacts/browser-audit/screenshots/correspondence/incoming-letters.png
+artifacts/browser-audit/screenshots/correspondence/memoranda.png
+artifacts/browser-audit/screenshots/correspondence/new-correspondence-modal.png
+artifacts/browser-audit/screenshots/correspondence/outgoing-letters.png
+artifacts/browser-audit/screenshots/correspondence/registry.png
+artifacts/browser-audit/screenshots/correspondence/routing.png
+artifacts/browser-audit/screenshots/dashboard/overview.png
+artifacts/browser-audit/screenshots/dashboard/readonly-user-dashboard.png
+artifacts/browser-audit/screenshots/dashboard/unit-switch-dropdown.png
+artifacts/browser-audit/screenshots/documents/document-create.png
+artifacts/browser-audit/screenshots/documents/document-create-validation.png
+artifacts/browser-audit/screenshots/documents/document-detail.png
+artifacts/browser-audit/screenshots/documents/document-list.png
+artifacts/browser-audit/screenshots/documents/document-version-modal.png
+artifacts/browser-audit/screenshots/notifications/notifications-view.png
+artifacts/browser-audit/screenshots/operations/operations-health.png
+artifacts/browser-audit/screenshots/procedures/office-procedures.png
+artifacts/browser-audit/screenshots/projects/projects-innovation.png
+artifacts/browser-audit/screenshots/public/landing.png
+artifacts/browser-audit/screenshots/public/privacy.png
+artifacts/browser-audit/screenshots/public/terms.png
+artifacts/browser-audit/screenshots/reports/reports-overview.png
+artifacts/browser-audit/screenshots/research/research-outputs.png
+artifacts/browser-audit/screenshots/search/global-search.png
+artifacts/browser-audit/screenshots/signatures/signatures-stamps.png
+artifacts/browser-audit/screenshots/staff/staff-records.png
+artifacts/browser-audit/screenshots/templates/official-letter-preview.png
+artifacts/browser-audit/screenshots/templates/template-list.png
+artifacts/browser-audit/screenshots/templates/template-modal-preview.png
+artifacts/browser-audit/screenshots/users/user-create-modal.png
+artifacts/browser-audit/screenshots/users/user-management.png
+artifacts/browser-audit/screenshots/workflow/task-details.png
+artifacts/browser-audit/screenshots/workflow/tasks-list.png

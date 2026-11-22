@@ -784,10 +784,11 @@ onMounted(() => {
 <template>
  <div class="space-y-6 max-w-5xl mx-auto">
  <!-- Header -->
- <PageHeader 
- :title="document?.title || 'Document Record'"
- subtitle="Comprehensive document record with metadata, versions, attachments, and lifecycle history."
- >
+ <PageHeader>
+ <template #title>
+ <span v-if="document">{{ document.title }}</span>
+ <span v-else>Document Record</span>
+ </template>
  <template #actions>
  <BaseButton variant="ghost" size="sm" @click="router.push('/documents')">
  <ArrowLeft class="w-4 h-4" />
