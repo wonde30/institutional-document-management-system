@@ -112,6 +112,9 @@ class RestorationService
             $restoredDocCount = DB::connection('mysql_isolated_verify')->table('documents')->count();
             $restoredRoleCount = DB::connection('mysql_isolated_verify')->table('roles')->count();
 
+            DB::disconnect('mysql_isolated_verify');
+            DB::purge('mysql_isolated_verify');
+
             // 6. Restore document storage into isolated directory
             $storageRestoreResult = $this->storageBackupService->restore($effectiveZipPath, $effectiveStorageDir);
 

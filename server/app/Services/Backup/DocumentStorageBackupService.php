@@ -62,7 +62,7 @@ class DocumentStorageBackupService
                         continue;
                     }
 
-                    $relativePath = "storage/{$groupName}/" . $file->getRelativePathname();
+                    $relativePath = "storage/{$groupName}/" . str_replace('\\', '/', $file->getRelativePathname());
                     $fullPath = $file->getRealPath();
                     $sha256 = hash_file('sha256', $fullPath);
                     $size = $file->getSize();
@@ -181,7 +181,8 @@ class DocumentStorageBackupService
         $missingFiles = [];
 
         foreach ($manifest['files'] as $entry) {
-            $extractedFilePath = $targetDirectory . '/' . $entry['archive_path'];
+            $normPath = str_replace('\\', '/', $entry['archive_path']);
+            $extractedFilePath = $targetDirectory . '/' . $normPath;
             if (!File::exists($extractedFilePath)) {
                 $missingFiles[] = $entry['archive_path'];
                 continue;

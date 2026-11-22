@@ -231,6 +231,9 @@ class DatabaseBackupService
             $tables = DB::connection('mysql_recovery_check')->select('SHOW TABLES');
             $tableCount = count($tables);
 
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
+
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
             return [
