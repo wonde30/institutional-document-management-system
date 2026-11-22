@@ -281,9 +281,9 @@ Route::prefix('v1')->group(function () {
         Route::post('correspondences/{id}/dispatch', [CorrespondenceController::class, 'dispatch'])
             ->middleware('permission:correspondence.dispatch');
         Route::post('correspondences/{id}/dispatches/{dispatchId}/delivery-evidence', [CorrespondenceController::class, 'recordDispatchDeliveryEvidence'])
-            ->middleware('permission:correspondence.dispatch|correspondence.manage');
+            ->middleware('permission:correspondence.dispatch');
         Route::post('correspondences/{id}/close', [CorrespondenceController::class, 'close'])
-            ->middleware('permission:correspondence.manage|correspondence.register');
+            ->middleware('permission:correspondence.register');
 
         // Workflow & Routing
         Route::get('workflows/definitions', [WorkflowController::class, 'definitions'])
@@ -313,7 +313,7 @@ Route::prefix('v1')->group(function () {
         Route::get('archive/entries/{id}/disposal-eligibility', [ArchiveController::class, 'disposalEligibility'])
             ->middleware('permission:archive.view');
         Route::post('archive/entries/{id}/review', [ArchiveController::class, 'review'])
-            ->middleware('permission:archive.manage|archive.transfer');
+            ->middleware('permission:archive.transfer');
         Route::post('archive/entries/{id}/request-disposal', [ArchiveController::class, 'requestDisposal'])
             ->middleware('permission:archive.request_disposal');
         Route::post('archive/disposition-requests/{id}/decide', [ArchiveController::class, 'decideDisposal'])

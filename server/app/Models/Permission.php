@@ -160,25 +160,6 @@ class Permission extends Model
         return $this->active ? 'assignable' : 'deactivated';
     }
 
-    public function newEloquentBuilder($query)
-    {
-        return new class($query) extends \Illuminate\Database\Eloquent\Builder {
-            public function pluck($column, $key = null)
-            {
-                $results = parent::pluck($column, $key);
-                if ($column === 'code' || str_ends_with((string) $column, '.code')) {
-                    $standard = ['correspondence.manage', 'archive.manage'];
-                    foreach ($standard as $s) {
-                        if (! $results->contains($s)) {
-                            $results->push($s);
-                        }
-                    }
-                }
-                return $results;
-            }
-        };
-    }
-
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'role_permissions');
