@@ -2,6 +2,4 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// API-only application - all routes are in routes/api.php
