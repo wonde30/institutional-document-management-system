@@ -131,7 +131,7 @@ test.describe('Landing Page E2E & Scrolling Verification', () => {
     await expect(heroTitle).toContainText('Integrated Institutional Repository')
 
     // Live Product Preview preview check
-    const preview = page.locator('text=Enterprise Node Active')
+    const preview = page.locator('text=Live Node')
     await expect(preview).toBeVisible()
 
     // Test that the page can scroll down past hero
@@ -147,8 +147,8 @@ test.describe('Landing Page E2E & Scrolling Verification', () => {
     expect(scrolledY).toBeGreaterThan(400)
 
     // Verify footer content
-    await expect(page.locator('text=Kombolcha Institute of Technology')).toBeVisible()
-    await expect(page.locator('text=All systems operational')).toBeVisible()
+    await expect(footer.getByText('Kombolcha Institute of Technology', { exact: false })).toBeVisible()
+    await expect(footer.getByText('99.9% Uptime', { exact: false })).toBeVisible()
   })
 
   test('navigates to anchor sections and activates scrollspy', async ({ page }) => {
@@ -167,7 +167,7 @@ test.describe('Landing Page E2E & Scrolling Verification', () => {
     await accreditationSection.scrollIntoViewIfNeeded()
 
     const accreditationHeading = page.locator('#accreditation h2')
-    await expect(accreditationHeading).toContainText('HERQA Institutional Accreditation')
+    await expect(accreditationHeading).toContainText('HERQA Accreditation Readiness')
   })
 
   test('theme switcher has accessible tooltip and aria-label', async ({ page }) => {
