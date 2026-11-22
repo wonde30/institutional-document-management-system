@@ -327,16 +327,10 @@ class RolePermissionController extends Controller
         // Resolve or create authorization scope
         $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : $validated['unit_id'];
         
-        $scope = AuthorizationScope::where('kind', $validated['scope_kind'])
-            ->where('unit_id', $scopeUnitId)
-            ->first();
-
-        if (! $scope) {
-            $scope = AuthorizationScope::create([
-                'kind' => $validated['scope_kind'],
-                'unit_id' => $scopeUnitId,
-            ]);
-        }
+        $scope = AuthorizationScope::firstOrCreate([
+            'kind' => $validated['scope_kind'],
+            'unit_id' => $scopeUnitId,
+        ]);
 
         // Grant role
         DB::table('user_roles')->updateOrInsert(
@@ -486,16 +480,10 @@ class RolePermissionController extends Controller
         // Resolve or create authorization scope
         $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : $validated['unit_id'];
 
-        $scope = AuthorizationScope::where('kind', $validated['scope_kind'])
-            ->where('unit_id', $scopeUnitId)
-            ->first();
-
-        if (! $scope) {
-            $scope = AuthorizationScope::create([
-                'kind' => $validated['scope_kind'],
-                'unit_id' => $scopeUnitId,
-            ]);
-        }
+        $scope = AuthorizationScope::firstOrCreate([
+            'kind' => $validated['scope_kind'],
+            'unit_id' => $scopeUnitId,
+        ]);
 
         // Grant single-user direct permission
         DB::table('user_permissions')->updateOrInsert(
