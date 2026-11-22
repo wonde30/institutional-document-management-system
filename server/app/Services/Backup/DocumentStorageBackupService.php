@@ -186,12 +186,23 @@ class DocumentStorageBackupService
         foreach ($manifest['files'] as $entry) {
             $normPath = str_replace('\\', '/', $entry['archive_path']);
             $extractedFilePath = $targetDirectory . '/' . $normPath;
-            if (!File::exists($extractedFilePath)) {
+            if (!File::exists($extractedFilePath) || !is_file($extractedFilePath)) {
                 $missingFiles[] = $entry['archive_path'];
                 continue;
             }
 
-            $observedSha256 = hash_file('sha256', $extractedFilePath);
+            $observedSha256 = @hash_file('sha256', $extractedFilePath);
+            if ($observedSha256 === false) {
+                clearstatcache(true, $extractedFilePath);
+                usleep(50000); // 50ms transient lock backoff on Windows
+                $observedSha256 = @hash_file('sha256', $extractedFilePath);
+            }
+
+            if ($observedSha256 === false) {
+                $missingFiles[] = $entry['archive_path'];
+                continue;
+            }
+
             if ($observedSha256 !== $entry['sha256']) {
                 $corruptedFiles[] = [
                     'path' => $entry['archive_path'],
