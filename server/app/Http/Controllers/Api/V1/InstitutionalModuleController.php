@@ -1097,46 +1097,56 @@ class InstitutionalModuleController extends Controller
         $stampedStorageKey = 'documents/stamped_' . Str::random(24) . '.pdf';
         Storage::disk('local')->put($stampedStorageKey, $sourceBytes);
 
-        $resultFile = FileObject::create([
-            'storage_disk' => 'local',
-            'storage_key' => $stampedStorageKey,
-            'original_filename' => 'stamped_' . ($sourceFile->original_filename ?: 'letter.pdf'),
-            'detected_mime' => 'application/pdf',
-            'byte_size' => strlen($sourceBytes),
-            'sha256' => hash('sha256', $sourceBytes . '_STAMP_' . $stampVersion->id . '_' . $formattedNow),
-            'uploaded_by' => $actor->id,
-            'uploaded_at' => $formattedNow,
-            'scan_status' => 'clean',
-            'storage_status' => 'ready',
-        ]);
+        try {
+            $application = DB::transaction(function () use (
+                $stampedStorageKey, $sourceFile, $sourceBytes, $stampVersion,
+                $formattedNow, $actor, $docVersion, $validated, $stamp
+            ) {
+                $resultFile = FileObject::create([
+                    'storage_disk' => 'local',
+                    'storage_key' => $stampedStorageKey,
+                    'original_filename' => 'stamped_' . ($sourceFile->original_filename ?: 'letter.pdf'),
+                    'detected_mime' => 'application/pdf',
+                    'byte_size' => strlen($sourceBytes),
+                    'sha256' => hash('sha256', $sourceBytes . '_STAMP_' . $stampVersion->id . '_' . $formattedNow),
+                    'uploaded_by' => $actor->id,
+                    'uploaded_at' => $formattedNow,
+                    'scan_status' => 'clean',
+                    'storage_status' => 'ready',
+                ]);
 
-        // 7. Create StampApplication record
-        $application = StampApplication::create([
-            'stamp_version_id' => $stampVersion->id,
-            'document_version_id' => $docVersion->id,
-            'source_file_id' => $sourceFile->id,
-            'result_file_id' => $resultFile->id,
-            'applied_by' => $actor->id,
-            'applied_at' => $formattedNow,
-            'reason' => $validated['reason'],
-        ]);
+                $application = StampApplication::create([
+                    'stamp_version_id' => $stampVersion->id,
+                    'document_version_id' => $docVersion->id,
+                    'source_file_id' => $sourceFile->id,
+                    'result_file_id' => $resultFile->id,
+                    'applied_by' => $actor->id,
+                    'applied_at' => $formattedNow,
+                    'reason' => $validated['reason'],
+                ]);
 
-        // 8. Audit event
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'stamp.applied',
-            'target_type' => 'stamp_application',
-            'target_id' => (string) $application->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $formattedNow,
-            'details_json' => [
-                'stamp_id' => $stamp->id,
-                'stamp_version_id' => $stampVersion->id,
-                'version_number' => $stampVersion->version_number,
-                'document_version_id' => $docVersion->id,
-                'reason' => $application->reason,
-            ],
-        ]);
+                AuditEvent::create([
+                    'actor_id' => $actor->id,
+                    'action' => 'stamp.applied',
+                    'target_type' => 'stamp_application',
+                    'target_id' => (string) $application->id,
+                    'request_id' => (string) Str::uuid(),
+                    'occurred_at' => $formattedNow,
+                    'details_json' => [
+                        'stamp_id' => $stamp->id,
+                        'stamp_version_id' => $stampVersion->id,
+                        'version_number' => $stampVersion->version_number,
+                        'document_version_id' => $docVersion->id,
+                        'reason' => $application->reason,
+                    ],
+                ]);
+
+                return $application;
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($stampedStorageKey);
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
