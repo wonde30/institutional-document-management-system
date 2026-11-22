@@ -1,112 +1,142 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Tests\Feature;
 
+use App\Models\AuthorizationScope;
+use App\Models\ConfidentialityLevel;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\DocumentVersion;
 use App\Models\OrganizationUnit;
+use App\Models\Permission;
 use App\Models\User;
+use App\Models\UserPermission;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowInstance;
-use App\Models\WorkflowState;
 use App\Models\WorkflowTask;
+use Database\Seeders\BaselineReferenceVocabularySeeder;
 use Database\Seeders\WorkflowBaselineSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Complete Workflow Lifecycle Integration Test
+ *
+ * Verifies end-to-end workflow execution against real API endpoints:
+ * - Start workflow instance on a document version
+ * - Complete task decisions through real lifecycle transitions
+ * - Enforces anti-self-approval boundary (INV-04)
+ * - Rejects invalid state transitions
+ * - Enforces authorization boundaries
+ * - Protects against duplicate/concurrent decisions
+ */
 class CompleteWorkflowLifecycleTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $staff;
+    protected User $submitter;
     protected User $reviewer;
-    protected User $unauthorized;
-    protected OrganizationUnit $unit;
-    protected DocumentCategory $category;
-    protected \App\Models\ConfidentialityLevel $confidentiality;
+    protected User $unauthorizedUser;
     protected WorkflowDefinition $definition;
+    protected Document $document;
+    protected DocumentVersion $version;
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->seed(BaselineReferenceVocabularySeeder::class);
         $this->seed(WorkflowBaselineSeeder::class);
 
-        $this->unit = OrganizationUnit::first();
-        $this->category = DocumentCategory::first();
-        $this->confidentiality = \App\Models\ConfidentialityLevel::first();
+        $unit = OrganizationUnit::first();
+        $category = DocumentCategory::first();
+        $conf = ConfidentialityLevel::first();
+
+        // 1. Submitter (has workflow.review and workflow.submit to start and submit workflows)
+        $this->submitter = User::create([
+            'name' => 'Workflow Submitter',
+            'email' => 'workflow.submitter@wu.edu.et',
+            'password' => bcrypt('Password123!'),
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+        $this->grantGlobalPermission($this->submitter, 'workflow.review');
+        $this->grantGlobalPermission($this->submitter, 'workflow.submit');
+
+        // 2. Reviewer (independent officer with workflow.review and workflow.approve)
+        $this->reviewer = User::create([
+            'name' => 'Independent Reviewer',
+            'email' => 'workflow.reviewer@wu.edu.et',
+            'password' => bcrypt('Password123!'),
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+        $this->grantGlobalPermission($this->reviewer, 'workflow.review');
+        $this->grantGlobalPermission($this->reviewer, 'workflow.approve');
+
+        // 3. Unauthorized User (has no workflow permissions)
+        $this->unauthorizedUser = User::create([
+            'name' => 'Unauthorized User',
+            'email' => 'unauthorized.user@wu.edu.et',
+            'password' => bcrypt('Password123!'),
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+
+        // Definition from WorkflowBaselineSeeder
         $this->definition = WorkflowDefinition::where('code', 'standard_doc_approval')->firstOrFail();
 
-        $this->staff = User::create([
-            'name' => 'Staff Workflow Author',
-            'email' => 'staff.wf.' . uniqid() . '@wu.edu.et',
-            'password' => bcrypt('StrongPass123!'),
-            'status' => 'active',
-            'authz_version' => 1,
-        ]);
-        $this->grantPermissionToUser($this->staff, 'documents.create', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->staff, 'documents.view', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->staff, 'workflow.view', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->staff, 'workflow.submit', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->staff, 'workflow.review', 'unit', $this->unit->id);
-
-        $this->reviewer = User::create([
-            'name' => 'Department Head Reviewer',
-            'email' => 'head.wf.' . uniqid() . '@wu.edu.et',
-            'password' => bcrypt('StrongPass123!'),
-            'status' => 'active',
-            'authz_version' => 1,
-        ]);
-        $this->grantPermissionToUser($this->reviewer, 'documents.view', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->reviewer, 'workflow.view', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->reviewer, 'workflow.review', 'unit', $this->unit->id);
-        $this->grantPermissionToUser($this->reviewer, 'workflow.approve', 'unit', $this->unit->id);
-
-        $this->unauthorized = User::create([
-            'name' => 'Unauthorized User',
-            'email' => 'unauth.wf.' . uniqid() . '@wu.edu.et',
-            'password' => bcrypt('StrongPass123!'),
-            'status' => 'active',
-            'authz_version' => 1,
-        ]);
-    }
-
-    private function createDocumentWithVersion(User $author): array
-    {
-        $doc = Document::create([
+        // Document and Version
+        $this->document = Document::create([
             'reference_number' => 'DOC-WF-' . uniqid(),
-            'title' => 'Curriculum Revision Proposal',
-            'category_id' => $this->category->id,
-            'confidentiality_id' => $this->confidentiality->id,
-            'owner_unit_id' => $this->unit->id,
-            'created_by' => $author->id,
+            'title' => 'Policy Approval Document',
+            'summary' => 'Document for workflow integration tests',
+            'category_id' => $category->id,
+            'confidentiality_id' => $conf->id,
+            'owner_unit_id' => $unit->id,
+            'created_by' => $this->submitter->id,
             'lifecycle' => 'active',
             'document_date' => now()->toDateString(),
             'registered_at' => now(),
         ]);
 
-        $ver = DocumentVersion::create([
-            'document_id' => $doc->id,
+        $this->version = DocumentVersion::create([
+            'document_id' => $this->document->id,
             'version_number' => 1,
-            'created_by' => $author->id,
-            'comment' => 'Initial version for review',
+            'created_by' => $this->submitter->id,
+            'comment' => 'Initial version for workflow lifecycle',
         ]);
-
-        return [$doc, $ver];
     }
 
-    public function test_complete_workflow_lifecycle_from_start_to_final_approval(): void
+    private function grantGlobalPermission(User $user, string $permCode): void
     {
-        [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
+        $perm = Permission::where('code', $permCode)->first();
+        if (! $perm) {
+            $perm = Permission::create(['code' => $permCode, 'name' => $permCode, 'active' => 1]);
+        }
 
-        // 1. Staff starts workflow instance via real API
-        $this->authenticateAs($this->staff);
+        $globalScope = AuthorizationScope::firstOrCreate([
+            'kind' => 'global',
+            'unit_id' => null,
+        ]);
+
+        UserPermission::updateOrInsert(
+            ['user_id' => $user->id, 'permission_id' => $perm->id, 'scope_id' => $globalScope->id],
+            ['granted_by' => $this->submitter->id, 'granted_at' => now()]
+        );
+    }
+
+    /**
+     * Test complete happy-path workflow lifecycle: start -> submit -> approve -> completion.
+     */
+    public function test_complete_workflow_lifecycle_from_start_to_completion(): void
+    {
+        $this->authenticateAs($this->submitter);
+
+        // 1. Start workflow instance
         $startResp = $this->postJson('/api/v1/workflows/instances', [
             'workflow_definition_id' => $this->definition->id,
-            'document_version_id' => $ver->id,
+            'document_version_id' => $this->version->id,
         ]);
 
         $startResp->assertStatus(201)
@@ -115,154 +145,191 @@ class CompleteWorkflowLifecycleTest extends TestCase
         $instanceId = $startResp->json('data.id');
         $this->assertNotNull($instanceId);
 
-        // 2. Initial task is in 'draft' state
-        $draftTask = WorkflowTask::where('instance_id', $instanceId)
-            ->whereNull('closed_at')
-            ->firstOrFail();
+        // Find initial draft task
+        $task1 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $this->assertEquals('draft', $task1->state->code);
 
-        // 3. Staff submits draft task -> advances to under_review
-        $submitResp = $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", [
+        // 2. Submitter submits the draft task
+        $submitResp = $this->postJson("/api/v1/workflows/tasks/{$task1->id}/decide", [
             'decision' => 'submit',
-            'reason' => 'Submitted for review',
+            'reason' => 'Submitting policy document for review.',
         ]);
-        $submitResp->assertStatus(200);
 
-        $this->assertNotNull($draftTask->fresh()->closed_at);
+        $submitResp->assertStatus(200)
+            ->assertJsonPath('success', true);
 
-        // 4. Next task is in 'under_review' state
-        $reviewTask = WorkflowTask::where('instance_id', $instanceId)
-            ->whereNull('closed_at')
-            ->firstOrFail();
+        // Task 1 is closed
+        $this->assertNotNull($task1->fresh()->closed_at);
 
-        // 5. Reviewer approves task -> advances to terminal 'approved' state
+        // New task spawned for 'under_review' state
+        $task2 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $this->assertEquals('under_review', $task2->state->code);
+
+        // 3. Independent Reviewer approves
         $this->authenticateAs($this->reviewer);
-        $approveResp = $this->postJson("/api/v1/workflows/tasks/{$reviewTask->id}/decide", [
+        $approveResp = $this->postJson("/api/v1/workflows/tasks/{$task2->id}/decide", [
             'decision' => 'approve',
-            'reason' => 'Proposal is sound and approved.',
+            'reason' => 'Approved by independent reviewer.',
         ]);
-        $approveResp->assertStatus(200);
 
-        $this->assertNotNull($reviewTask->fresh()->closed_at);
+        $approveResp->assertStatus(200)
+            ->assertJsonPath('success', true);
 
-        // 6. No more open tasks; terminal state reached
-        $openTasks = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->count();
-        $this->assertSame(0, $openTasks);
+        // Task 2 is closed
+        $this->assertNotNull($task2->fresh()->closed_at);
+
+        // Workflow completed: no remaining open tasks
+        $openTasksCount = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->count();
+        $this->assertEquals(0, $openTasksCount);
+
+        // Terminal audit event recorded
+        $this->assertDatabaseHas('audit_events', [
+            'action' => 'workflow.terminal_state_reached',
+            'target_id' => (string) $instanceId,
+        ]);
+        $this->assertDatabaseHas('audit_events', [
+            'action' => 'document.workflow_approved',
+            'target_id' => (string) $this->document->id,
+        ]);
     }
 
-    public function test_self_approval_is_rejected_with_state_unchanged(): void
+    /**
+     * Required Case 1: Anti-Self-Approval Enforcement (INV-04)
+     * The submitter/author cannot decide their own approval task; expect 422; task and instance state unchanged.
+     */
+    public function test_workflow_strictly_prohibits_self_approval(): void
     {
-        [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
+        $this->authenticateAs($this->submitter);
 
-        $this->authenticateAs($this->staff);
+        // Start instance and submit initial draft
         $startResp = $this->postJson('/api/v1/workflows/instances', [
             'workflow_definition_id' => $this->definition->id,
-            'document_version_id' => $ver->id,
+            'document_version_id' => $this->version->id,
         ]);
         $startResp->assertStatus(201);
         $instanceId = $startResp->json('data.id');
 
-        // Submit draft task
-        $draftTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
-        $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", [
-            'decision' => 'submit',
-        ])->assertStatus(200);
+        $task1 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $this->postJson("/api/v1/workflows/tasks/{$task1->id}/decide", ['decision' => 'submit'])->assertStatus(200);
 
-        // Under review task
-        $reviewTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
-        $originalStateId = $reviewTask->state_id;
+        // Second task is under_review
+        $task2 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $initialStateId = $task2->state_id;
 
-        // Staff (author of document & version) attempts to approve own document
-        $selfApprovalResp = $this->postJson("/api/v1/workflows/tasks/{$reviewTask->id}/decide", [
+        // Submitter attempts to self-approve
+        $selfApproveResp = $this->postJson("/api/v1/workflows/tasks/{$task2->id}/decide", [
             'decision' => 'approve',
-            'reason' => 'Self-approving my own proposal',
+            'reason' => 'Attempting self-approval.',
         ]);
 
-        $this->assertContains($selfApprovalResp->status(), [403, 422]);
+        $selfApproveResp->assertStatus(422)
+            ->assertJsonPath('message', 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
 
-        // State remains unchanged and task remains open
-        $freshTask = $reviewTask->fresh();
-        $this->assertNull($freshTask->closed_at);
-        $this->assertSame($originalStateId, $freshTask->state_id);
+        // Verify task state unchanged
+        $freshTask2 = $task2->fresh();
+        $this->assertNull($freshTask2->closed_at, 'Task must remain open after rejected self-approval');
+        $this->assertEquals($initialStateId, $freshTask2->state_id);
+        $this->assertEquals('under_review', $freshTask2->state->code);
     }
 
-    public function test_invalid_transition_is_rejected_with_state_unchanged(): void
+    /**
+     * Required Case 2: Invalid Transition Rejection
+     * Expect 422; state unchanged.
+     */
+    public function test_workflow_rejects_invalid_transition(): void
     {
-        [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
+        $this->authenticateAs($this->submitter);
 
-        $this->authenticateAs($this->staff);
         $startResp = $this->postJson('/api/v1/workflows/instances', [
             'workflow_definition_id' => $this->definition->id,
-            'document_version_id' => $ver->id,
+            'document_version_id' => $this->version->id,
         ]);
         $startResp->assertStatus(201);
         $instanceId = $startResp->json('data.id');
 
-        $draftTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
-        $originalStateId = $draftTask->state_id;
+        $task1 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $initialStateId = $task1->state_id;
 
-        // In draft state, only 'submit' is valid. 'reject' is invalid from draft.
-        $this->authenticateAs($this->reviewer);
-        $invalidResp = $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", [
-            'decision' => 'reject',
-            'reason' => 'Attempting invalid reject from draft state',
+        // In draft state, only 'submit' is valid. Attempting 'approve' directly must be rejected.
+        $invalidResp = $this->postJson("/api/v1/workflows/tasks/{$task1->id}/decide", [
+            'decision' => 'approve',
+            'reason' => 'Invalid direct approval from draft state.',
         ]);
 
-        $invalidResp->assertStatus(422);
+        $invalidResp->assertStatus(422)
+            ->assertJsonPath('message', "Invalid workflow transition: action 'approve' is not permitted from current state.");
 
-        // State remains unchanged and task remains open
-        $freshTask = $draftTask->fresh();
-        $this->assertNull($freshTask->closed_at);
-        $this->assertSame($originalStateId, $freshTask->state_id);
+        // Task state unchanged
+        $this->assertNull($task1->fresh()->closed_at);
+        $this->assertEquals($initialStateId, $task1->fresh()->state_id);
+        $this->assertEquals('draft', $task1->fresh()->state->code);
     }
 
-    public function test_unauthorized_user_gets_403(): void
+    /**
+     * Required Case 3: Unauthorized User Rejection
+     * Expect 403.
+     */
+    public function test_workflow_rejects_unauthorized_user(): void
     {
-        [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
+        $this->authenticateAs($this->submitter);
 
-        $this->authenticateAs($this->staff);
         $startResp = $this->postJson('/api/v1/workflows/instances', [
             'workflow_definition_id' => $this->definition->id,
-            'document_version_id' => $ver->id,
+            'document_version_id' => $this->version->id,
         ]);
         $startResp->assertStatus(201);
         $instanceId = $startResp->json('data.id');
 
-        $draftTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $task1 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
 
-        // Unauthorized user attempts to decide task
-        $this->authenticateAs($this->unauthorized);
-        $unauthResp = $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", [
+        // Unauthorized user attempts decision
+        $this->authenticateAs($this->unauthorizedUser);
+        $unauthResp = $this->postJson("/api/v1/workflows/tasks/{$task1->id}/decide", [
             'decision' => 'submit',
         ]);
 
         $unauthResp->assertStatus(403);
+
+        // Task remains open and unmutated
+        $this->assertNull($task1->fresh()->closed_at);
+        $this->assertEquals('draft', $task1->fresh()->state->code);
     }
 
-    public function test_duplicate_decision_is_rejected(): void
+    /**
+     * Required Case 4: Concurrent/Duplicate Decision Protection
+     * The second decision is rejected with 422.
+     */
+    public function test_workflow_rejects_duplicate_decision(): void
     {
-        [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
+        $this->authenticateAs($this->submitter);
 
-        $this->authenticateAs($this->staff);
         $startResp = $this->postJson('/api/v1/workflows/instances', [
             'workflow_definition_id' => $this->definition->id,
-            'document_version_id' => $ver->id,
+            'document_version_id' => $this->version->id,
         ]);
         $startResp->assertStatus(201);
         $instanceId = $startResp->json('data.id');
 
-        $draftTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $task1 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $this->postJson("/api/v1/workflows/tasks/{$task1->id}/decide", ['decision' => 'submit'])->assertStatus(200);
 
-        // Submit task first time
-        $firstResp = $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", [
-            'decision' => 'submit',
+        $task2 = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+
+        // Reviewer approves task 2
+        $this->authenticateAs($this->reviewer);
+        $firstResp = $this->postJson("/api/v1/workflows/tasks/{$task2->id}/decide", [
+            'decision' => 'approve',
+            'reason' => 'First approval.',
         ]);
         $firstResp->assertStatus(200);
 
-        // Attempt second decision on the same already-closed task
-        $duplicateResp = $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", [
-            'decision' => 'submit',
+        // Second decision on the now-closed task is rejected
+        $secondResp = $this->postJson("/api/v1/workflows/tasks/{$task2->id}/decide", [
+            'decision' => 'approve',
+            'reason' => 'Duplicate approval attempt.',
         ]);
 
-        $this->assertContains($duplicateResp->status(), [404, 422]);
+        $secondResp->assertStatus(422)
+            ->assertJsonPath('message', 'Workflow task has already been completed and closed.');
     }
 }
