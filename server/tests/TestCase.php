@@ -11,6 +11,7 @@ use App\Models\UserRole;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
@@ -19,6 +20,19 @@ abstract class TestCase extends BaseTestCase
      * Automatically seed baseline reference data when RefreshDatabase is used.
      */
     protected bool $seed = true;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (Schema::hasTable('documents') && Schema::hasTable('assignment_participants')) {
+            $docCount = DB::table('documents')->count();
+            $partCount = DB::table('assignment_participants')->count();
+            $testName = static::class . '::' . ($this->name() ?? '');
+            @file_put_contents('C:/tmp/order.log', "{$testName} documents_rows={$docCount} participants={$partCount}\n", FILE_APPEND);
+        }
+    }
+
     /**
      * Authenticate user with Sanctum stateful session and bypass CSRF for JSON API tests.
      *
@@ -53,7 +67,7 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Assign scoped role to a user.
+     * Helper to grant a scoped role to a user.
      */
     protected function assignRoleToUser(User $user, string $roleCode, string $scopeKind = 'global', ?int $unitId = null): void
     {
@@ -63,20 +77,17 @@ abstract class TestCase extends BaseTestCase
             'unit_id' => $unitId,
         ]);
 
-        $adminId = DB::table('users')->where('email', 'admin@wu.edu.et')->value('id') ?? $user->id;
-
         UserRole::firstOrCreate([
             'user_id' => $user->id,
             'role_id' => $role->id,
             'scope_id' => $scope->id,
-        ], [
-            'granted_by' => $adminId,
+            'granted_by' => $user->id,
             'granted_at' => now(),
         ]);
     }
 
     /**
-     * Grant direct scoped permission to a user.
+     * Helper to grant a scoped permission to a user directly.
      */
     protected function grantPermissionToUser(User $user, string $permissionCode, string $scopeKind = 'global', ?int $unitId = null): void
     {
@@ -86,14 +97,11 @@ abstract class TestCase extends BaseTestCase
             'unit_id' => $unitId,
         ]);
 
-        $adminId = DB::table('users')->where('email', 'admin@wu.edu.et')->value('id') ?? $user->id;
-
         UserPermission::firstOrCreate([
             'user_id' => $user->id,
             'permission_id' => $permission->id,
             'scope_id' => $scope->id,
-        ], [
-            'granted_by' => $adminId,
+            'granted_by' => $user->id,
             'granted_at' => now(),
         ]);
     }
