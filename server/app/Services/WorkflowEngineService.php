@@ -299,7 +299,7 @@ class WorkflowEngineService
             $doc = $task->instance->documentVersion?->document;
             $ver = $task->instance->documentVersion;
 
-            if ($decision === 'approve' && $transition && $transition->prohibit_self_approval && $doc && $ver) {
+            if ($decision === 'approve' && $transitionsExist && $doc && $ver) {
                 if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
                     throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
                 }
