@@ -247,22 +247,10 @@ class RealOperationalAcceptanceTest extends TestCase
 
         // 5. Deliberately tamper with the signed PDF by changing 1 byte inside signed data
         $tamperedBytes = $signedPdfBytes;
-        
-        // Parse ByteRange to tamper with guaranteed signed content (Part 1)
-        if (preg_match('/\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/', $tamperedBytes, $matches)) {
-            $offset1 = (int)$matches[1];
-            $len1 = (int)$matches[2];
-            
-            // Tamper with Part 1 (middle of signed content before signature)
-            if ($len1 > 10) {
-                $pos = $offset1 + (int)($len1 / 2);
-                $tamperedBytes[$pos] = $tamperedBytes[$pos] === 'a' ? 'b' : 'a';
-            }
-        } else {
-            // Fallback: tamper with PDF header area (always signed)
-            $pos = 50;
-            $tamperedBytes[$pos] = $tamperedBytes[$pos] === 'a' ? 'b' : 'a';
-        }
+        // Flip a byte near the start of the PDF (Catalog object)
+        $pos = strpos($tamperedBytes, '/Catalog');
+        $this->assertNotFalse($pos);
+        $tamperedBytes[$pos] = 'X';
 
         $tamperedPath = storage_path('app/documents/tampered_test_' . Str::random(8) . '.pdf');
         File::put($tamperedPath, $tamperedBytes);
@@ -271,13 +259,7 @@ class RealOperationalAcceptanceTest extends TestCase
         $tamperResult = $verifier->verifyPdf($tamperedPath);
         $this->assertEquals('invalid', $tamperResult['outcome']);
         $this->assertTrue($tamperResult['details']['tamper_detected']);
-        // The message should indicate either "tampered" or "verification failed" or "signature failed"
-        $this->assertTrue(
-            str_contains(strtolower($tamperResult['message']), 'tampered') ||
-            str_contains(strtolower($tamperResult['message']), 'verification failed') ||
-            str_contains(strtolower($tamperResult['message']), 'signature') && str_contains(strtolower($tamperResult['message']), 'failed'),
-            "Expected tamper detection message, got: {$tamperResult['message']}"
-        );
+        $this->assertStringContainsString('tampered', strtolower($tamperResult['message']));
 
         // Clean up tampered file
         @unlink($tamperedPath);
