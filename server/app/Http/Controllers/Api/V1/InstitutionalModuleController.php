@@ -1317,7 +1317,9 @@ class InstitutionalModuleController extends Controller
         try {
             $pendingJobs = DB::table('jobs')->count();
             $failedJobs = DB::table('failed_jobs')->count();
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to query queue job counts in operations status', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'success' => true,

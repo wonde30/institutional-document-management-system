@@ -27,7 +27,9 @@ class BackupController extends Controller
             if ($run->manifest_reference && File::exists($run->manifest_reference)) {
                 try {
                     $manifest = json_decode(File::get($run->manifest_reference), true);
-                } catch (\Throwable) {}
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to decode backup manifest reference', ['path' => $run->manifest_reference, 'error' => $e->getMessage()]);
+                }
             }
 
             return [

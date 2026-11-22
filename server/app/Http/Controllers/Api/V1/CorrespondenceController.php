@@ -727,7 +727,9 @@ class CorrespondenceController extends Controller
             try {
                 $settingsService = app(SettingsService::class);
                 $policyExceptionAllowed = (bool) ($settingsService->effectiveValue('institution.permit_emblem_exception') ?? false);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to resolve emblem exception policy setting', ['error' => $e->getMessage()]);
+            }
 
             if (! $hasApprovedEmblem && ! $policyExceptionAllowed) {
                 return response()->json([
