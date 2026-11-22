@@ -207,15 +207,15 @@ class DatabaseBackupService
             DB::disconnect('mysql_pitr_check');
             DB::purge('mysql_pitr_check');
 
-            // Recreate target isolated database to ensure clean state and eliminate locks
-            $recreateDbCmd = [
+            // Create target isolated database if it doesn't exist
+            $createDbCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
                 '-e',
-                "DROP DATABASE IF EXISTS `{$targetDatabase}`; CREATE DATABASE `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+                "CREATE DATABASE IF NOT EXISTS `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             ];
-            $recreateProc = new Process($recreateDbCmd);
-            $recreateProc->mustRun();
+            $createProc = new Process($createDbCmd);
+            $createProc->mustRun();
 
             // Execute restore with retry on transient deadlock
             $restoreCmd = [
@@ -244,8 +244,8 @@ class DatabaseBackupService
                     if ($attempt === $maxAttempts || (! str_contains($e->getMessage(), 'Deadlock') && ! str_contains($e->getMessage(), 'Lock wait timeout'))) {
                         throw $e;
                     }
-                    $recreateProc = new Process($recreateDbCmd);
-                    $recreateProc->run();
+                    $createProc = new Process($createDbCmd);
+                    $createProc->run();
                     usleep(500000);
                 }
             }
@@ -257,9 +257,6 @@ class DatabaseBackupService
 
             $tables = DB::connection('mysql_recovery_check')->select('SHOW TABLES');
             $tableCount = count($tables);
-
-            DB::disconnect('mysql_recovery_check');
-            DB::purge('mysql_recovery_check');
 
             DB::disconnect('mysql_recovery_check');
             DB::purge('mysql_recovery_check');
