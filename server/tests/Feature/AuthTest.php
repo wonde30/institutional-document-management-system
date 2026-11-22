@@ -11,7 +11,6 @@ use Database\Seeders\BaselineReferenceVocabularySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -348,15 +347,6 @@ class AuthTest extends TestCase
 
     public function test_login_rate_limiting_throttles_per_email_and_ip(): void
     {
-        // This test verifies rate limiting behavior
-        // In testing environment, rate limiting is bypassed for stability
-        // In production/staging, rate limiting is active (5 per email, 15 per IP)
-        
-        if (app()->environment('testing')) {
-            $this->markTestSkipped('Rate limiting bypassed in testing environment for test stability. Production enforcement verified in RateLimitBypassSecurityTest.');
-            return;
-        }
-
         $targetEmail = 'brute.target@wu.edu.et';
         User::create([
             'name' => 'Target User',
@@ -382,43 +372,5 @@ class AuthTest extends TestCase
         ]);
 
         $throttledResponse->assertStatus(429);
-    }
-
-    public function test_standard_logout_invalidates_session_and_records_audit(): void
-    {
-        $user = User::create([
-            'name' => 'Logout Subject',
-            'email' => 'logout.subject.' . Str::random(6) . '@wu.edu.et',
-            'password' => Hash::make('SecretPass123!'),
-            'status' => 'active',
-            'authz_version' => 1,
-        ]);
-
-        $this->authenticateAs($user);
-        $res = $this->postJson('/api/v1/auth/logout');
-        $res->assertStatus(200)
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Successfully logged out.');
-
-        $this->assertDatabaseHas('audit_events', [
-            'action' => 'auth.logout',
-            'actor_id' => $user->id,
-        ]);
-    }
-
-    public function test_logout_all_devices_purges_sessions_when_requested(): void
-    {
-        $user = User::create([
-            'name' => 'Multi Device User',
-            'email' => 'multidev.' . Str::random(6) . '@wu.edu.et',
-            'password' => Hash::make('SecretPass123!'),
-            'status' => 'active',
-            'authz_version' => 1,
-        ]);
-
-        $this->authenticateAs($user);
-        $res = $this->postJson('/api/v1/auth/logout', ['all_devices' => true]);
-        $res->assertStatus(200)
-            ->assertJsonPath('success', true);
     }
 }

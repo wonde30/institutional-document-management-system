@@ -56,6 +56,15 @@ ALTER TABLE `workflow_transitions`
   ADD CONSTRAINT `workflow_transitions_ck_6` CHECK (`join_policy` IS NULL OR `join_policy` IN ('all_branches', 'any_branch'));
 SQL
             );
+        } else {
+            $existingCheck = DB::select(
+                "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS 
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'workflow_transitions' 
+                 AND CONSTRAINT_TYPE = 'CHECK' AND CONSTRAINT_NAME = 'workflow_transitions_ck_6'"
+            );
+            if (empty($existingCheck)) {
+                DB::statement("ALTER TABLE `workflow_transitions` ADD CONSTRAINT `workflow_transitions_ck_6` CHECK (`join_policy` IS NULL OR `join_policy` IN ('all_branches', 'any_branch'))");
+            }
         }
     }
 
@@ -64,26 +73,18 @@ SQL
      */
     public function down(): void
     {
-        // Remove fork and join columns from workflow_transitions if they exist
-        if (Schema::hasColumn('workflow_transitions', 'fork_state_ids')) {
-            // MySQL syntax: DROP CHECK constraint by name
-            DB::statement("ALTER TABLE `workflow_transitions` DROP CHECK `workflow_transitions_ck_6`");
-            DB::statement("ALTER TABLE `workflow_transitions` DROP COLUMN `join_policy`, DROP COLUMN `fork_state_ids`");
-        }
-
-        // Remove state assignment columns from workflow_states if they exist
-        if (Schema::hasColumn('workflow_states', 'assigned_unit_id')) {
-            DB::statement("ALTER TABLE `workflow_states` DROP FOREIGN KEY IF EXISTS `workflow_states_fk_1`");
-            DB::statement("ALTER TABLE `workflow_states` DROP FOREIGN KEY IF EXISTS `workflow_states_fk_2`");
-            DB::statement("ALTER TABLE `workflow_states` DROP KEY IF EXISTS `workflow_states_ix_1`");
-            DB::statement("ALTER TABLE `workflow_states` DROP KEY IF EXISTS `workflow_states_ix_2`");
-            DB::statement("ALTER TABLE `workflow_states` DROP COLUMN `sla_hours`, DROP COLUMN `assigned_role_id`, DROP COLUMN `assigned_unit_id`");
-        }
-
-        // Remove branch_key from workflow_tasks if it exists
-        if (Schema::hasColumn('workflow_tasks', 'branch_key')) {
-            DB::statement("ALTER TABLE `workflow_tasks` DROP KEY IF EXISTS `workflow_tasks_ix_8`");
-            DB::statement("ALTER TABLE `workflow_tasks` DROP COLUMN `branch_key`");
+        // Drop workflow_transitions_ck_6 if it exists
+        $constraints = DB::select(
+            "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS 
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'workflow_transitions' 
+             AND CONSTRAINT_TYPE = 'CHECK' AND (CONSTRAINT_NAME = 'workflow_transitions_ck_6' OR CONSTRAINT_NAME LIKE '%ck%6%')"
+        );
+        foreach ($constraints as $constraint) {
+            try {
+                DB::statement("ALTER TABLE `workflow_transitions` DROP CHECK `{$constraint->CONSTRAINT_NAME}`");
+            } catch (\Throwable $e) {
+                // Ignore if already dropped
+            }
         }
 
         // Revert document_version_id to NOT NULL
