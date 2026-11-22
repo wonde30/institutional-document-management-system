@@ -51,11 +51,21 @@ class RestoredApplicationWorkflowTest extends TestCase
 
     protected function tearDown(): void
     {
-        // Restore original database configuration
+        // Restore original database configuration FIRST
         if (!empty($this->originalDbConfig)) {
             config(['database.connections.mysql' => $this->originalDbConfig]);
             DB::purge('mysql');
             DB::reconnect('mysql');
+        }
+
+        // Drop the isolated database to prevent pollution
+        try {
+            $tempConnection = config('database.default');
+            config(['database.default' => 'mysql']);
+            DB::reconnect('mysql');
+            DB::statement("DROP DATABASE IF EXISTS `{$this->isolatedDb}`");
+        } catch (\Throwable $e) {
+            // Best effort cleanup
         }
 
         if (File::isDirectory($this->isolatedStorageDir)) {
