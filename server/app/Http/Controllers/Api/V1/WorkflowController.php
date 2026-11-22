@@ -226,10 +226,10 @@ class WorkflowController extends Controller
      */
     public function decide(Request $request, int $id): JsonResponse
     {
-        $task = WorkflowTask::whereNull('closed_at')->findOrFail($id);
+        $task = WorkflowTask::findOrFail($id);
 
         $validated = $request->validate([
-            'decision' => 'required|in:approve,reject,return,cancel',
+            'decision' => 'required|in:approve,reject,return,cancel,submit',
             'reason' => 'nullable|string|max:1000',
             'idempotency_key' => 'nullable|string|max:100',
             'spawn_revision' => 'nullable|boolean',

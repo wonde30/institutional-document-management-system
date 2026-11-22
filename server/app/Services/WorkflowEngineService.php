@@ -275,6 +275,7 @@ class WorkflowEngineService
                 'approve' => 'approve',
                 'reject' => 'reject',
                 'return' => 'return',
+                'submit' => 'submit',
                 default => 'cancel',
             };
 
@@ -283,15 +284,14 @@ class WorkflowEngineService
                 ->first();
 
             if (! $transition) {
-                // Fallback: any transition originating from this state
-                $transition = WorkflowTransition::where('from_state_id', $task->state_id)->first();
+                throw new HttpException(422, "Invalid workflow transition: action '{$actionCode}' is not permitted from current state.");
             }
 
             // Anti-Self-Approval Enforcement (INV-04)
             $doc = $task->instance->documentVersion?->document;
             $ver = $task->instance->documentVersion;
 
-            if ($decision === 'approve' && $transition && $transition->prohibit_self_approval && $doc && $ver) {
+            if ($decision === 'approve' && $doc && $ver) {
                 if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
                     throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
                 }
@@ -485,11 +485,14 @@ class WorkflowEngineService
 
             // 9. Finalize Task Decision and Advance Workflow
             $finalOutcome = $finalOutcome ?? $decision;
+            $dbDecision = in_array($finalOutcome, ['approve', 'reject', 'return', 'cancel'], true)
+                ? $finalOutcome
+                : 'approve';
 
             $taskDecision = WorkflowTaskDecision::create([
                 'task_id' => $task->id,
                 'decided_by' => $actor->id,
-                'decision' => $finalOutcome,
+                'decision' => $dbDecision,
                 'reason' => $reason,
                 'decided_at' => $now,
             ]);
