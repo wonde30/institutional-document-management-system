@@ -818,7 +818,7 @@ class CorrespondenceController extends Controller
         $ownerUnitId = (int) $corr->document->owner_unit_id;
 
         if (! $actor->hasPermission('correspondence.dispatch', $ownerUnitId)
-            && ! $actor->hasPermission('correspondence.manage', $ownerUnitId)) {
+            && ! $actor->hasPermission('correspondence.send', $ownerUnitId)) {
             return response()->json([
                 'success' => false,
                 'message' => "Forbidden: You do not have permission to record delivery evidence for office ID {$ownerUnitId}.",
@@ -955,8 +955,7 @@ class CorrespondenceController extends Controller
 
             $ownerUnitId = (int) $lockedCorr->document->owner_unit_id;
 
-            if (! $actor->hasPermission('correspondence.manage', $ownerUnitId)
-                && ! $actor->hasPermission('correspondence.register', $ownerUnitId)) {
+            if (! $actor->hasPermission('correspondence.register', $ownerUnitId)) {
                 abort(403, 'Forbidden: You do not have permission to close correspondence in this unit.');
             }
 

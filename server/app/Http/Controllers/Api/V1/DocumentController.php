@@ -456,7 +456,7 @@ class DocumentController extends Controller
         if ($doc->correspondence) {
             $ownerUnitId = (int) $doc->owner_unit_id;
             $hasCorrAccess = $actor->hasPermission('correspondence.view', $ownerUnitId)
-                || $actor->hasPermission('correspondence.manage', $ownerUnitId)
+                || $actor->hasPermission('correspondence.register', $ownerUnitId)
                 || $actor->hasPermission('correspondence.dispatch', $ownerUnitId);
         }
 
