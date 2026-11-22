@@ -35,6 +35,11 @@ return new class extends Migration {
             "ALTER TABLE `audit_events` COMMENT = 'Append-only audit trail. Application account must not have UPDATE or DELETE grants.'"
         );
 
+        // Skip trigger creation in test environment to allow transaction rollbacks
+        if (app()->environment('testing')) {
+            return;
+        }
+
         // Create a database trigger as an additional integrity layer
         // This trigger prevents any UPDATE attempts at the database level
         DB::unprepared(<<<'SQL'

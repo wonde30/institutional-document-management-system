@@ -13,6 +13,7 @@ use App\Models\PhysicalOriginal;
 use App\Models\ReferenceSequence;
 use App\Models\VersionFile;
 use App\Models\WorkflowDefinition;
+use App\Services\AuditService;
 use App\Services\DocumentRepositoryService;
 use App\Services\DocumentTimelineService;
 use App\Services\Settings\SettingsService;
