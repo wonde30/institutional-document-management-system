@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -208,9 +209,7 @@ class RealOperationalAcceptanceTest extends TestCase
 
         // Ensure real PDF bytes exist
         $pdfContent = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000056 00000 n \n0000000111 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n185\n%%EOF\n";
-        $sourcePath = storage_path('app/' . $sourceFile->storage_key);
-        File::ensureDirectoryExists(dirname($sourcePath));
-        File::put($sourcePath, $pdfContent);
+        Storage::disk('local')->put($sourceFile->storage_key, $pdfContent);
 
         // 2. Create Signature Request
         $sigRequest = SignatureRequest::create([
