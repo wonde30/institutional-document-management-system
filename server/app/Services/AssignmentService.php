@@ -94,7 +94,7 @@ class AssignmentService
             try {
                 app(\App\Services\EmailNotificationService::class)->notifyAssignment($assignment, 'assigned');
             } catch (\Throwable $e) {
-                // Log and continue without interrupting assignment transaction
+                \Illuminate\Support\Facades\Log::error('Failed to send assignment notification', ['error' => $e->getMessage()]);
             }
 
             return $assignment;

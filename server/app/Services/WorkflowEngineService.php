@@ -108,7 +108,9 @@ class WorkflowEngineService
 
             try {
                 app(\App\Services\EmailNotificationService::class)->notifyWorkflowTask($task);
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send workflow task notification', ['error' => $e->getMessage()]);
+            }
 
             return $instance;
         });
@@ -179,7 +181,9 @@ class WorkflowEngineService
                     'user_id' => $targetUserId,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create workflow task delegated notification', ['error' => $e->getMessage()]);
+            }
 
             return $task;
         });
@@ -226,7 +230,9 @@ class WorkflowEngineService
                     'user_id' => $targetUserId,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create workflow task reassigned notification', ['error' => $e->getMessage()]);
+            }
 
             return $task;
         });
@@ -536,7 +542,9 @@ class WorkflowEngineService
             // Notify initiator or stakeholders of task decision
             try {
                 app(\App\Services\EmailNotificationService::class)->notifyWorkflowDecision($task->instance, $task, $finalOutcome);
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send workflow decision notification', ['error' => $e->getMessage()]);
+            }
 
             // Check if task is part of a parallel branch set
             $shouldAdvance = true;
@@ -650,7 +658,9 @@ class WorkflowEngineService
 
                             try {
                                 app(\App\Services\EmailNotificationService::class)->notifyWorkflowTask($newTask);
-                            } catch (\Throwable $e) {}
+                            } catch (\Throwable $e) {
+                                \Illuminate\Support\Facades\Log::error('Failed to send workflow task notification', ['error' => $e->getMessage()]);
+                            }
                         }
                     }
                 } elseif ($transition->to_state_id) {
@@ -673,7 +683,9 @@ class WorkflowEngineService
 
                         try {
                             app(\App\Services\EmailNotificationService::class)->notifyWorkflowTask($newTask);
-                        } catch (\Throwable $e) {}
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::error('Failed to send workflow task notification', ['error' => $e->getMessage()]);
+                        }
                     } elseif ($toState && $toState->is_terminal) {
                         AuditEvent::create([
                             'actor_id' => $actor->id,

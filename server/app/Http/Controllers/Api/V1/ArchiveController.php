@@ -152,7 +152,9 @@ class ArchiveController extends Controller
         if ($entry->next_review_at && $entry->next_review_at <= now()->addDays(30)) {
             try {
                 app(\App\Services\EmailNotificationService::class)->notifyRetentionReview($entry, 'due');
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send retention review notification', ['error' => $e->getMessage()]);
+            }
         }
 
         return response()->json([
@@ -411,7 +413,9 @@ class ArchiveController extends Controller
                     'user_id' => $actor->id,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create retention review notification', ['error' => $e->getMessage()]);
+            }
 
             return [
                 'entry' => $entry->fresh(['document', 'retentionPolicyVersion.policy']),

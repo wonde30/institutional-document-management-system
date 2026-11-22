@@ -790,7 +790,9 @@ class CorrespondenceController extends Controller
                     'user_id' => $actor->id,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create correspondence dispatched notification', ['error' => $e->getMessage()]);
+            }
 
             return $disp;
         });
@@ -1008,7 +1010,9 @@ class CorrespondenceController extends Controller
                     'user_id' => $actor->id,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create correspondence closed notification', ['error' => $e->getMessage()]);
+            }
 
             return $lockedCorr;
         });
