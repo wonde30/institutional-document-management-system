@@ -12,6 +12,7 @@ use App\Models\UserPermission;
 use App\Models\UserRole;
 use Database\Seeders\BaselineReferenceVocabularySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class UserEffectivePermissionsTest extends TestCase
