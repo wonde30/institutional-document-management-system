@@ -158,8 +158,8 @@ class WorkflowController extends Controller
         $isAssigned = $task->assigned_user_id === $actor->id;
         $canDelegate = $isAssigned
             || $actor->hasPermission('system.configure')
-            || $actor->hasPermission('workflow.delegate', $task->assigned_unit_id)
-            || $actor->hasPermission('workflow.manage', $task->assigned_unit_id);
+            || $actor->hasPermission('workflow.reassign', $task->assigned_unit_id)
+            || $actor->hasPermission('workflow.configure', $task->assigned_unit_id);
 
         if (! $canDelegate) {
             return response()->json([
@@ -195,7 +195,7 @@ class WorkflowController extends Controller
         $actor = $request->user();
         $task = WorkflowTask::with(['instance.documentVersion.document'])->findOrFail($id);
 
-        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('workflow.manage', $task->assigned_unit_id) && ! $actor->hasPermission('workflow.reassign', $task->assigned_unit_id)) {
+        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('workflow.configure', $task->assigned_unit_id) && ! $actor->hasPermission('workflow.reassign', $task->assigned_unit_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You are not authorized to reassign this workflow task.',
