@@ -42,6 +42,7 @@ abstract class TestCase extends BaseTestCase
             \Tests\Feature\ConcurrencyAndDeadlockTest::class,
             \Tests\Feature\DisasterRecoveryRestorationTest::class,
             \Tests\Feature\RestoredApplicationWorkflowTest::class,
+            \Tests\Unit\DisasterRecoveryEngineTest::class,
         ];
 
         if (! in_array(static::class, $excludeTransactions, true)
@@ -64,6 +65,7 @@ abstract class TestCase extends BaseTestCase
             \Tests\Feature\ConcurrencyAndDeadlockTest::class,
             \Tests\Feature\DisasterRecoveryRestorationTest::class,
             \Tests\Feature\RestoredApplicationWorkflowTest::class,
+            \Tests\Unit\DisasterRecoveryEngineTest::class,
         ];
 
         if (! in_array(static::class, $excludeTransactions, true)

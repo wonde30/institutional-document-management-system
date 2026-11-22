@@ -200,15 +200,22 @@ class DatabaseBackupService
         File::put($tempCnf, $cnfContent);
 
         try {
-            // Create target isolated database if it doesn't exist
-            $createDbCmd = [
+            DB::disconnect('mysql_isolated_verify');
+            DB::purge('mysql_isolated_verify');
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
+            DB::disconnect('mysql_pitr_check');
+            DB::purge('mysql_pitr_check');
+
+            // Recreate target isolated database to ensure clean state and eliminate locks
+            $recreateDbCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
                 '-e',
-                "CREATE DATABASE IF NOT EXISTS `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+                "DROP DATABASE IF EXISTS `{$targetDatabase}`; CREATE DATABASE `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             ];
-            $createProc = new Process($createDbCmd);
-            $createProc->mustRun();
+            $recreateProc = new Process($recreateDbCmd);
+            $recreateProc->mustRun();
 
             // Execute restore with retry on transient deadlock
             $restoreCmd = [
@@ -220,16 +227,25 @@ class DatabaseBackupService
 
             $maxAttempts = 3;
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                $fileHandle = fopen($sqlPath, 'rb');
                 try {
                     $process = new Process($restoreCmd);
-                    $process->setInput(fopen($sqlPath, 'rb'));
+                    $process->setInput($fileHandle);
                     $process->setTimeout(600);
                     $process->mustRun();
+                    if (is_resource($fileHandle)) {
+                        fclose($fileHandle);
+                    }
                     break;
                 } catch (\Throwable $e) {
-                    if ($attempt === $maxAttempts || ! str_contains($e->getMessage(), 'Deadlock')) {
+                    if (is_resource($fileHandle)) {
+                        fclose($fileHandle);
+                    }
+                    if ($attempt === $maxAttempts || (! str_contains($e->getMessage(), 'Deadlock') && ! str_contains($e->getMessage(), 'Lock wait timeout'))) {
                         throw $e;
                     }
+                    $recreateProc = new Process($recreateDbCmd);
+                    $recreateProc->run();
                     usleep(500000);
                 }
             }
@@ -241,6 +257,12 @@ class DatabaseBackupService
 
             $tables = DB::connection('mysql_recovery_check')->select('SHOW TABLES');
             $tableCount = count($tables);
+
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
+
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
@@ -314,10 +336,21 @@ class DatabaseBackupService
                     $targetDatabase,
                 ];
 
-                $mysqlProcess = new Process($mysqlCmd);
-                $mysqlProcess->setInput($sqlEvents);
-                $mysqlProcess->setTimeout(300);
-                $mysqlProcess->mustRun();
+                $maxAttempts = 3;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    try {
+                        $mysqlProcess = new Process($mysqlCmd);
+                        $mysqlProcess->setInput($sqlEvents);
+                        $mysqlProcess->setTimeout(300);
+                        $mysqlProcess->mustRun();
+                        break;
+                    } catch (\Throwable $e) {
+                        if ($attempt === $maxAttempts || ! str_contains($e->getMessage(), 'Deadlock')) {
+                            throw $e;
+                        }
+                        usleep(500000);
+                    }
+                }
             }
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
