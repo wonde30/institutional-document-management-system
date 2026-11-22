@@ -156,6 +156,58 @@ class RouteScopeResolver
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
 
+        // 6. Archive records: entries, disposition requests, and archive files.
+        if (str_contains($path, 'archive/entries')) {
+            $entry = \App\Models\ArchiveEntry::find($id);
+
+            if (! $entry) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $entry->document()->with('confidentiality')->first();
+
+            return $document
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        if (str_contains($path, 'archive/disposition-requests')) {
+            $disp = \App\Models\DispositionRequest::with('archiveEntry.document.confidentiality')->find($id);
+
+            if (! $disp) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $disp->archiveEntry?->document;
+
+            return $document
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        if (str_contains($path, 'archive/files')) {
+            $document = Document::resolveForFile($id);
+
+            return $document
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        // 7. Workflow instances: the instance is bound to the document version being routed.
+        if (str_contains($path, 'workflows/instances')) {
+            $instance = \App\Models\WorkflowInstance::with('documentVersion.document.confidentiality')->find($id);
+
+            if (! $instance) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $instance->documentVersion?->document;
+
+            return $document
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
         // A route that addresses a specific record but could not be resolved to a
         // document or an owning unit remains resource specific, so the decision
         // falls back to the global scope capability check rather than to the
