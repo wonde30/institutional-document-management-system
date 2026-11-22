@@ -296,12 +296,17 @@ class WorkflowEngineService
             }
 
             // Anti-Self-Approval Enforcement (INV-04)
+            // Default-deny: approve decisions block self-approval unless explicitly configured otherwise
             $doc = $task->instance->documentVersion?->document;
             $ver = $task->instance->documentVersion;
 
-            if ($decision === 'approve' && $transition && $transition->prohibit_self_approval && $doc && $ver) {
-                if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
-                    throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
+            if ($decision === 'approve' && $doc && $ver) {
+                // Prohibit if flag is missing (null) or explicitly true; allow only if explicitly false
+                $prohibit = $transition?->prohibit_self_approval ?? true;
+                if ($prohibit) {
+                    if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
+                        throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
+                    }
                 }
             }
 

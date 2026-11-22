@@ -110,7 +110,7 @@ class WorkflowBaselineSeeder extends Seeder
                 'permission_id' => $pApprove,
                 'requires_reason' => false,
                 'requires_signature' => false,
-                'prohibit_self_approval' => false,
+                'prohibit_self_approval' => true,
             ],
             [
                 'from_state_id' => $stateModels['under_review']->id,

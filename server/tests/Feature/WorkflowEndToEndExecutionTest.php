@@ -212,6 +212,48 @@ class WorkflowEndToEndExecutionTest extends TestCase
         $this->assertNull($reviewTask->fresh()->closed_at);
     }
 
+    public function test_approve_transition_with_flag_false_allows_self_approval(): void
+    {
+        [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
+
+        $this->authenticateAs($this->staff);
+        $startResp = $this->postJson('/api/v1/workflows/instances', [
+            'workflow_definition_id' => $this->definition->id,
+            'document_version_id' => $ver->id,
+        ]);
+        $startResp->assertStatus(201);
+        $instanceId = $startResp->json('data.id');
+
+        // Submit to move to under_review
+        $draftTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        $this->postJson("/api/v1/workflows/tasks/{$draftTask->id}/decide", ['decision' => 'submit'])->assertStatus(200);
+
+        $reviewTask = WorkflowTask::where('instance_id', $instanceId)->whereNull('closed_at')->firstOrFail();
+        
+        // Temporarily set the transition's prohibit_self_approval to false
+        $transition = WorkflowTransition::where('action_code', 'approve')
+            ->whereHas('fromState.workflowVersion', function ($q) {
+                $q->where('definition_id', $this->definition->id);
+            })
+            ->first();
+        $originalValue = $transition->prohibit_self_approval;
+        $transition->update(['prohibit_self_approval' => false]);
+
+        try {
+            // Staff (author) attempts to approve - should be ALLOWED when flag is explicitly false
+            $decideResp = $this->postJson("/api/v1/workflows/tasks/{$reviewTask->id}/decide", [
+                'decision' => 'approve',
+                'reason' => 'Self-approval allowed when flag is explicitly false',
+            ]);
+
+            $decideResp->assertStatus(200);
+            $this->assertNotNull($reviewTask->fresh()->closed_at);
+        } finally {
+            // Restore original value
+            $transition->update(['prohibit_self_approval' => $originalValue]);
+        }
+    }
+
     public function test_workflow_task_can_be_delegated(): void
     {
         [$doc, $ver] = $this->createDocumentWithVersion($this->staff);
