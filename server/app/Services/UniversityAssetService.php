@@ -213,7 +213,7 @@ class UniversityAssetService
                 // Check if user has unit-level stamping permission
                 $user = $application->appliedBy;
                 $unitId = $stampVersion->stamp->unit_id;
-                $isAuthorized = $user->hasPermission('system.configure') || $user->hasPermission('documents.stamp', $unitId) || $user->hasPermission('stamps.apply', $unitId);
+                $isAuthorized = $user->hasPermission('system.configure') || $user->hasPermission('stamps.manage', $unitId) || $user->hasPermission('stamps.apply', $unitId);
             }
 
             if (! $isAuthorized) {

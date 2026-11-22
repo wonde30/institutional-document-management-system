@@ -1049,7 +1049,7 @@ class InstitutionalModuleController extends Controller
         if (! $isAuthorized) {
             $unitId = (int) $stamp->unit_id;
             $isAuthorized = $actor->hasPermission('system.configure')
-                || $actor->hasPermission('documents.stamp', $unitId)
+                || $actor->hasPermission('stamps.manage', $unitId)
                 || $actor->hasPermission('stamps.apply', $unitId);
         }
 
