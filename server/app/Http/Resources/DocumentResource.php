@@ -319,21 +319,6 @@ class DocumentResource extends JsonResource
                     ] : null,
                 ]);
             }),
-            'correspondence' => $this->whenLoaded('correspondence', fn () => $this->correspondence ? [
-                'id' => $this->correspondence->id,
-                'type' => $this->correspondence->type ? [
-                    'id' => $this->correspondence->type->id,
-                    'code' => $this->correspondence->type->code,
-                    'name' => $this->correspondence->type->name,
-                ] : null,
-                'priority' => $this->correspondence->priority ? [
-                    'id' => $this->correspondence->priority->id,
-                    'code' => $this->correspondence->priority->code,
-                    'name' => $this->correspondence->priority->name,
-                ] : null,
-                'external_reference' => $this->correspondence->external_reference,
-                'correspondence_date' => $this->correspondence->correspondence_date?->toDateString(),
-            ] : null),
             'archive_entry' => $this->whenLoaded('archiveEntry', fn () => $this->archiveEntry ? [
                 'id' => $this->archiveEntry->id,
                 'archive_reference' => $this->archiveEntry->archive_reference,

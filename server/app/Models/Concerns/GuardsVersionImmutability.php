@@ -64,7 +64,7 @@ trait GuardsVersionImmutability
      */
     public static function allowMutation(callable $callback): mixed
     {
-        $connection = (new static)->getConnection();
+        $connection = static::resolveConnection();
         static::$mutationDepth++;
 
         if (static::$mutationDepth === 1) {
@@ -94,7 +94,7 @@ trait GuardsVersionImmutability
     {
         static::$mutationDepth = 0;
         try {
-            (new static)->getConnection()->statement('SET @dms_allow_version_mutation = 0');
+            static::resolveConnection()->statement('SET @dms_allow_version_mutation = 0');
         } catch (\Throwable) {
             // Suppress connection-loss errors during teardown
         }

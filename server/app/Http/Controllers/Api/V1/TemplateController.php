@@ -208,7 +208,7 @@ class TemplateController extends Controller
 
         if ($request->boolean('submit_for_approval')) {
             $initialVersion = $doc->versions()->first();
-            $workflowEngine = app(\App\Services\Workflow\WorkflowEngineService::class);
+            $workflowEngine = app(\App\Services\WorkflowEngineService::class);
             $standardWf = \Illuminate\Support\Facades\DB::table('workflow_definitions')->where('code', 'standard_doc_approval')->first();
             $hasVersion = $standardWf ? \Illuminate\Support\Facades\DB::table('workflow_versions')->where('definition_id', $standardWf->id)->exists() : false;
             if ($standardWf && $hasVersion && $initialVersion) {
