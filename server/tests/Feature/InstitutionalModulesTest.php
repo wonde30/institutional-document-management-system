@@ -23,6 +23,7 @@ class InstitutionalModulesTest extends TestCase
 
     protected User $admin;
     protected User $dean;
+    protected User $reviewer;
     protected OrganizationUnit $unit;
 
     protected function setUp(): void
@@ -41,6 +42,15 @@ class InstitutionalModulesTest extends TestCase
             'authz_version' => 1,
         ]);
         $this->assignRoleToUser($this->dean, 'department_head');
+
+        $this->reviewer = User::create([
+            'name' => 'Dr. Reviewer',
+            'email' => 'reviewer@wu.edu.et',
+            'password' => bcrypt('Password123!'),
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+        $this->assignRoleToUser($this->reviewer, 'document_controller');
     }
 
     public function test_research_output_registration_and_publication(): void
@@ -229,11 +239,14 @@ class InstitutionalModulesTest extends TestCase
         $task = WorkflowTask::create([
             'instance_id' => $instance->id,
             'state_id' => $state->id,
-            'assigned_user_id' => $this->dean->id,
+            'assigned_user_id' => $this->reviewer->id,
             'assigned_unit_id' => $this->unit->id,
             'due_at' => now()->addDays(3),
             'created_at' => now(),
         ]);
+
+        // Switch to reviewer
+        $this->authenticateAs($this->reviewer);
 
         // List tasks
         $tasksRes = $this->getJson('/api/v1/workflows/tasks?scope=mine');
