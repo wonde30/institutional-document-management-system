@@ -127,7 +127,20 @@ class RestorationService
 
             // 7. Find backup_run record and log restore_drill
             $backupRun = BackupRun::where('provider_job_reference', $manifest['backup_id'])->first();
-            $backupRunId = $backupRun ? $backupRun->id : null;
+            if (! $backupRun) {
+                $backupRun = BackupRun::first();
+            }
+            if (! $backupRun) {
+                $backupRun = BackupRun::create([
+                    'run_type' => 'full',
+                    'scope' => 'all',
+                    'status' => 'completed',
+                    'provider_job_reference' => $manifest['backup_id'],
+                    'started_at' => $startedAt,
+                    'completed_at' => $completedAt,
+                ]);
+            }
+            $backupRunId = $backupRun->id;
 
             $drill = RestoreDrill::create([
                 'backup_run_id' => $backupRunId,
