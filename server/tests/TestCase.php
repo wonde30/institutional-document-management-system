@@ -36,6 +36,15 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Guard: tests must never run against the app database
+        $dbName = DB::connection()->getDatabaseName();
+        if (!str_ends_with($dbName, '_phpunit') && !str_ends_with($dbName, '_test_run')) {
+            throw new \RuntimeException(
+                "Tests must not run against app database. Connected to: {$dbName}. " .
+                "Expected database ending in '_phpunit' or '_test_run'."
+            );
+        }
+
         $uses = array_flip(class_uses_recursive(static::class));
 
         $excludeTransactions = [

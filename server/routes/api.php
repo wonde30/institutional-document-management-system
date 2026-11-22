@@ -22,6 +22,8 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NumberingPolicyController;
 use App\Http\Controllers\Api\V1\OcrController;
 use App\Http\Controllers\Api\V1\OrganizationUnitController;
+use App\Http\Controllers\Api\V1\Public\PublicLandingController;
+use App\Http\Controllers\Api\V1\Public\PublicLegalController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RetentionPolicyController;
 use App\Http\Controllers\Api\V1\RolePermissionController;
@@ -65,6 +67,19 @@ Route::prefix('v1')->group(function () {
     // Configuration published on the public portal. Only the keys declared in
     // the public catalogue are exposed, and no value is a secret.
     Route::get('settings/public', [SettingsController::class, 'publicSettings']);
+
+    // Public Institutional Portal Endpoints (Unauthenticated, Read-Only, Rate-Limited)
+    Route::prefix('public')->middleware('throttle:60,1')->group(function () {
+        Route::prefix('landing')->group(function () {
+            Route::get('summary', [PublicLandingController::class, 'summary']);
+            Route::get('modules', [PublicLandingController::class, 'modules']);
+            Route::get('accreditation', [PublicLandingController::class, 'accreditation']);
+            Route::get('announcements', [PublicLandingController::class, 'announcements']);
+        });
+
+        Route::get('legal/{type}', [PublicLegalController::class, 'show'])
+            ->where('type', 'privacy|terms');
+    });
 
     // 2. Protected Endpoints (Sanctum SPA Session + Authz Version + Active Account Boundary)
     Route::middleware(['auth:sanctum', 'authz_version', 'active_account'])->group(function () {

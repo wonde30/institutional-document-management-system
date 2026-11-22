@@ -118,14 +118,25 @@ class ResearchProjectWorkflowSeeder extends Seeder
         }
 
         // 4. Resolve Research Permissions
-        $pSubmit = Permission::where('code', 'research.submit')->value('id')
-            ?? Permission::where('code', 'research.create')->value('id');
-        $pApprove = Permission::where('code', 'research.approve')->value('id')
-            ?? Permission::where('code', 'research.publish')->value('id');
-        $pReject = Permission::where('code', 'research.reject')->value('id')
-            ?? Permission::where('code', 'research.approve')->value('id');
-        $pReview = Permission::where('code', 'research.review')->value('id')
-            ?? Permission::where('code', 'research.view')->value('id');
+        $pSubmit = Permission::where('code', 'research.submit')->value('id');
+        if (!$pSubmit) {
+            throw new \RuntimeException('Missing permission code: research.submit');
+        }
+
+        $pApprove = Permission::where('code', 'research.approve')->value('id');
+        if (!$pApprove) {
+            throw new \RuntimeException('Missing permission code: research.approve');
+        }
+
+        $pReject = Permission::where('code', 'research.reject')->value('id');
+        if (!$pReject) {
+            throw new \RuntimeException('Missing permission code: research.reject');
+        }
+
+        $pReview = Permission::where('code', 'research.review')->value('id');
+        if (!$pReview) {
+            throw new \RuntimeException('Missing permission code: research.review');
+        }
 
         // 5. Research Workflow Transitions
         $researchTransitions = [
@@ -287,14 +298,25 @@ class ResearchProjectWorkflowSeeder extends Seeder
         }
 
         // 4. Resolve Project Permissions
-        $pSubmit = Permission::where('code', 'projects.submit')->value('id')
-            ?? Permission::where('code', 'projects.view')->value('id');
-        $pApprove = Permission::where('code', 'projects.approve')->value('id')
-            ?? Permission::where('code', 'projects.submit')->value('id');
-        $pReject = Permission::where('code', 'projects.reject')->value('id')
-            ?? Permission::where('code', 'projects.approve')->value('id');
-        $pReview = Permission::where('code', 'projects.review')->value('id')
-            ?? Permission::where('code', 'projects.view')->value('id');
+        $pSubmit = Permission::where('code', 'projects.submit')->value('id');
+        if (!$pSubmit) {
+            throw new \RuntimeException('Missing permission code: projects.submit');
+        }
+
+        $pApprove = Permission::where('code', 'projects.approve')->value('id');
+        if (!$pApprove) {
+            throw new \RuntimeException('Missing permission code: projects.approve');
+        }
+
+        $pReject = Permission::where('code', 'projects.reject')->value('id');
+        if (!$pReject) {
+            throw new \RuntimeException('Missing permission code: projects.reject');
+        }
+
+        $pReview = Permission::where('code', 'projects.review')->value('id');
+        if (!$pReview) {
+            throw new \RuntimeException('Missing permission code: projects.review');
+        }
 
         // 5. Project Workflow Transitions
         $projectTransitions = [

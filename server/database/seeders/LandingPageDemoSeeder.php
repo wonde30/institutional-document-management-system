@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\AccreditationCycle;
 use App\Models\AccreditationEvidence;
+use App\Models\AccreditationFrameworkVersion;
 use App\Models\AccreditationReview;
 use App\Models\AccreditationStandard;
 use App\Models\CommunicationParty;
@@ -57,12 +58,13 @@ class LandingPageDemoSeeder extends Seeder
 
         $categories = DocumentCategory::pluck('id', 'code')->toArray();
         $confLevels = ConfidentialityLevel::pluck('id', 'code')->toArray();
+        
         $unitWu = OrganizationUnit::where('code', 'WU')->value('id') ?? 1;
-        $unitCote = OrganizationUnit::where('code', 'COTE')->value('id') ?? $unitWu;
         $unitReg = OrganizationUnit::where('code', 'REG')->value('id') ?? $unitWu;
         $unitQa = OrganizationUnit::where('code', 'QA')->value('id') ?? $unitWu;
         $unitIct = OrganizationUnit::where('code', 'ICT')->value('id') ?? $unitWu;
-        $unitSe = OrganizationUnit::where('code', 'SE')->value('id') ?? $unitWu;
+        $unitArc = OrganizationUnit::where('code', 'ARC')->value('id') ?? $unitWu;
+        $unitDisp = OrganizationUnit::where('code', 'DISP')->value('id') ?? $unitWu;
 
         $priorityNormal = Priority::where('code', 'normal')->value('id') ?? 1;
         $priorityUrgent = Priority::where('code', 'urgent')->value('id') ?? 1;
@@ -92,7 +94,7 @@ class LandingPageDemoSeeder extends Seeder
                     'summary' => 'Revised curriculum aligned with national higher education modernization directive and outcome-based engineering education frameworks.',
                     'cat' => 'academic',
                     'conf' => 'public',
-                    'unit' => $unitSe,
+                    'unit' => $unitIct,
                 ],
                 [
                     'title' => 'Institutional Research Grant Allocation & Ethical Review Protocol',
@@ -106,14 +108,14 @@ class LandingPageDemoSeeder extends Seeder
                     'summary' => 'Internal quality audit procedures, course evaluation methodologies, and departmental compliance review cycles for engineering faculties.',
                     'cat' => 'academic',
                     'conf' => 'internal',
-                    'unit' => $unitCote,
+                    'unit' => $unitQa,
                 ],
                 [
                     'title' => 'Administrative Directive on Digital Document Retention & Preservation',
                     'summary' => 'Mandatory schedules for digital filing, archival transfers, legal hold authorizations, and cryptographic document stamping.',
                     'cat' => 'legal',
                     'conf' => 'internal',
-                    'unit' => $unitWu,
+                    'unit' => $unitArc,
                 ],
                 [
                     'title' => 'Annual Institutional Performance and Audit Report 2025/2026',
@@ -148,7 +150,7 @@ class LandingPageDemoSeeder extends Seeder
                     'summary' => 'Complete compilation of course outlines, assessment rubrics, student performance analyses, and advisory committee feedback.',
                     'cat' => 'academic',
                     'conf' => 'internal',
-                    'unit' => $unitSe,
+                    'unit' => $unitIct,
                 ],
                 [
                     'title' => 'Central Registry Incoming Dispatch Protocol & Chain-of-Custody Standard',
@@ -215,84 +217,78 @@ class LandingPageDemoSeeder extends Seeder
             }
         }
 
-        // 2. Seed Correspondences and Movements if count < 5
-        if (Correspondence::count() < 5) {
-            $docs = Document::take(6)->get();
+        // 2. Seed Document Movements & Correspondences
+        if (DocumentMovement::count() < 10) {
+            $docs = Document::take(10)->get();
+            $destUnits = [$unitQa, $unitIct, $unitArc, $unitDisp];
+
             foreach ($docs as $idx => $doc) {
-                $typeId = ($idx % 3 === 0) ? $corrIncoming : (($idx % 3 === 1) ? $corrOutgoing : $corrMemo);
-                $priorityId = ($idx % 2 === 0) ? $priorityUrgent : $priorityNormal;
+                $targetUnit = $destUnits[$idx % count($destUnits)];
+                $sourceUnit = ($targetUnit === $unitReg) ? $unitWu : $unitReg;
 
-                $corr = Correspondence::firstOrCreate(
-                    ['document_id' => $doc->id],
-                    [
-                        'type_id' => $typeId,
-                        'priority_id' => $priorityId,
-                        'purpose_code' => 'administrative_directive',
-                        'external_reference' => 'MOE/HERQA/2026/' . rand(100, 999),
-                        'correspondence_date' => $now->toDateString(),
-                        'first_receiving_unit_id' => $unitReg,
-                        'received_at' => $now->subDays(rand(1, 10)),
-                        'requested_due_at' => $now->addDays(rand(5, 20)),
-                        'registered_by' => $registrar->id,
-                        'registered_at' => $now->subDays(rand(1, 10)),
-                    ]
-                );
-
-                // Add Document Movements
                 $movement = DocumentMovement::create([
                     'document_id' => $doc->id,
-                    'from_unit_id' => $unitReg,
-                    'to_unit_id' => ($idx % 2 === 0) ? $unitCote : $unitQa,
-                    'sent_by' => $registrar->id,
-                    'sent_at' => $now->subDays(rand(1, 5)),
-                    'instruction' => 'For review, action, and inclusion in institutional accreditation file.',
+                    'from_unit_id' => $sourceUnit,
+                    'to_unit_id' => $targetUnit,
+                    'sent_by' => $admin->id,
+                    'sent_at' => $now->subDays(rand(1, 15)),
+                    'instruction' => 'Official inter-office dispatch for compliance tracking and institutional filing.',
                     'due_at' => $now->addDays(7),
                     'idempotency_key' => Str::uuid()->toString(),
                 ]);
 
                 MovementReceipt::create([
                     'movement_id' => $movement->id,
-                    'acknowledged_by' => $dean->id,
-                    'acknowledged_at' => $now->subDays(rand(0, 2)),
+                    'acknowledged_by' => $admin->id,
+                    'acknowledged_at' => $now->subDays(rand(0, 5)),
                 ]);
             }
         }
 
-        // 3. Seed Accreditation Evidence & Reviews if count < 5
-        if (AccreditationEvidence::count() < 5) {
-            $cycle = AccreditationCycle::first();
-            $standards = AccreditationStandard::orderBy('code')->get();
-            $versions = DocumentVersion::with('document')->take(10)->get();
+        // 3. Ensure Accreditation Cycle and Evidence
+        $frameworkVer = AccreditationFrameworkVersion::first();
+        if ($frameworkVer) {
+            $cycle = AccreditationCycle::firstOrCreate(
+                ['framework_version_id' => $frameworkVer->id, 'unit_id' => $unitWu, 'name' => 'HERQA Institutional Quality Audit Cycle (2026-2027)'],
+                [
+                    'starts_on' => '2026-01-01',
+                    'ends_on' => '2027-12-31',
+                ]
+            );
 
-            if ($cycle && $standards->isNotEmpty() && $versions->isNotEmpty()) {
-                foreach ($standards->take(8) as $index => $standard) {
-                    $ver = $versions[$index % $versions->count()];
-                    
-                    $evidence = AccreditationEvidence::firstOrCreate(
-                        [
-                            'cycle_id' => $cycle->id,
-                            'standard_id' => $standard->id,
-                            'document_version_id' => $ver->id,
-                        ],
-                        [
-                            'submitted_by' => $qaDirector->id,
-                            'submitted_at' => $now->subDays(rand(5, 30)),
-                            'note' => 'Institutional documentation fulfilling requirement for ' . $standard->title,
-                        ]
-                    );
+            if (AccreditationEvidence::count() < 8) {
+                $standards = AccreditationStandard::orderBy('code')->get();
+                $versions = DocumentVersion::with('document')->take(10)->get();
 
-                    // Add Review
-                    AccreditationReview::firstOrCreate(
-                        ['evidence_id' => $evidence->id],
-                        [
-                            'reviewer_id' => $qaDirector->id,
-                            'decision' => ($index % 3 === 2) ? 'needs_revision' : 'accepted',
-                            'comment' => ($index % 3 === 2)
-                                ? 'Additional documentation required for Senate minute alignment.'
-                                : 'Verified and fully compliant with HERQA evaluation criteria.',
-                            'reviewed_at' => $now->subDays(rand(1, 10)),
-                        ]
-                    );
+                if ($standards->isNotEmpty() && $versions->isNotEmpty()) {
+                    foreach ($standards->take(8) as $index => $standard) {
+                        $ver = $versions[$index % $versions->count()];
+
+                        $evidence = AccreditationEvidence::firstOrCreate(
+                            [
+                                'cycle_id' => $cycle->id,
+                                'standard_id' => $standard->id,
+                                'document_version_id' => $ver->id,
+                            ],
+                            [
+                                'submitted_by' => $admin->id,
+                                'submitted_at' => $now->subDays(rand(5, 30)),
+                                'note' => 'Institutional documentation fulfilling requirement for ' . $standard->title,
+                            ]
+                        );
+
+                        AccreditationReview::firstOrCreate(
+                            ['evidence_id' => $evidence->id],
+                            [
+                                'reviewer_id' => $admin->id,
+                                'decision' => ($index === 3 || $index === 7) ? 'needs_revision' : 'accepted',
+                                'comment' => ($index === 3 || $index === 7)
+                                    ? 'Requires supplemental faculty workload verification annex.'
+                                    : 'Evidence dossier verified and compliant with HERQA accreditation standard.',
+                                'reviewed_at' => $now->subDays(rand(1, 10)),
+                            ]
+                        );
+                    }
                 }
             }
         }
