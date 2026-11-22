@@ -109,6 +109,7 @@ class DatabaseBackupService
                 "--defaults-extra-file={$tempCnf}",
                 '--single-transaction',
                 '--quick',
+                '--skip-add-locks',
                 '--routines',
                 '--triggers',
                 '--events',
@@ -245,6 +246,7 @@ class DatabaseBackupService
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
                 '--default-character-set=utf8mb4',
+                '--init-command=SET FOREIGN_KEY_CHECKS=0;',
                 $targetDatabase,
             ];
 
