@@ -645,20 +645,22 @@ class ArchiveController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $entry->document->update([
-            'lifecycle' => 'active',
-            'updated_at' => $now,
-        ]);
+        DB::transaction(function () use ($entry, $actor, $now) {
+            $entry->document->update([
+                'lifecycle' => 'active',
+                'updated_at' => $now,
+            ]);
 
-        \App\Models\AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'archive.document_restored',
-            'target_type' => 'document',
-            'target_id' => (string) $entry->document_id,
-            'request_id' => (string) \Illuminate\Support\Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => ['entry_id' => $entry->id],
-        ]);
+            \App\Models\AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'archive.document_restored',
+                'target_type' => 'document',
+                'target_id' => (string) $entry->document_id,
+                'request_id' => (string) \Illuminate\Support\Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => ['entry_id' => $entry->id],
+            ]);
+        });
 
         return response()->json([
             'success' => true,
