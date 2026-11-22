@@ -306,14 +306,24 @@ class PdfSignatureService
     private function getSourcePdfBytes(FileObject $fileObject, SignatureRequest $request): string
     {
         if ($fileObject->storage_key) {
+            $legacyPath = storage_path('app/' . $fileObject->storage_key);
             $disk = $fileObject->storage_disk ?: 'local';
+            $diskPath = Storage::disk($disk)->path($fileObject->storage_key);
+
+            if (File::exists($legacyPath) && (! File::exists($diskPath) || filemtime($legacyPath) >= filemtime($diskPath))) {
+                $content = File::get($legacyPath);
+                if (str_starts_with($content, '%PDF-')) {
+                    return $content;
+                }
+            }
+
             if (Storage::disk($disk)->exists($fileObject->storage_key)) {
                 $content = Storage::disk($disk)->get($fileObject->storage_key);
                 if (str_starts_with($content, '%PDF-')) {
                     return $content;
                 }
-            } elseif (File::exists(storage_path('app/' . $fileObject->storage_key))) {
-                $content = File::get(storage_path('app/' . $fileObject->storage_key));
+            } elseif (File::exists($legacyPath)) {
+                $content = File::get($legacyPath);
                 if (str_starts_with($content, '%PDF-')) {
                     return $content;
                 }
