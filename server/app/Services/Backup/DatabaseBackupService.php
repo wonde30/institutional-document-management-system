@@ -217,6 +217,29 @@ class DatabaseBackupService
             $createProc = new Process($createDbCmd);
             $createProc->mustRun();
 
+            // Clean any existing tables in target isolated database to prevent collision
+            $cleanDbTables = function () use ($dbConfig, $targetDatabase) {
+                $cleanConfig = $dbConfig;
+                $cleanConfig['database'] = $targetDatabase;
+                config(['database.connections.mysql_recovery_clean' => $cleanConfig]);
+                try {
+                    $existingTables = DB::connection('mysql_recovery_clean')->select('SHOW TABLES');
+                    if (!empty($existingTables)) {
+                        DB::connection('mysql_recovery_clean')->statement('SET FOREIGN_KEY_CHECKS = 0');
+                        foreach ($existingTables as $tRow) {
+                            $tblName = array_values((array) $tRow)[0];
+                            DB::connection('mysql_recovery_clean')->statement("DROP TABLE IF EXISTS `{$tblName}`");
+                        }
+                        DB::connection('mysql_recovery_clean')->statement('SET FOREIGN_KEY_CHECKS = 1');
+                    }
+                } catch (\Throwable) {
+                } finally {
+                    DB::disconnect('mysql_recovery_clean');
+                    DB::purge('mysql_recovery_clean');
+                }
+            };
+            $cleanDbTables();
+
             // Execute restore with retry on transient deadlock
             $restoreCmd = [
                 $this->mysqlPath,
@@ -244,8 +267,7 @@ class DatabaseBackupService
                     if ($attempt === $maxAttempts || (! str_contains($e->getMessage(), 'Deadlock') && ! str_contains($e->getMessage(), 'Lock wait timeout'))) {
                         throw $e;
                     }
-                    $createProc = new Process($createDbCmd);
-                    $createProc->run();
+                    $cleanDbTables();
                     usleep(500000);
                 }
             }
