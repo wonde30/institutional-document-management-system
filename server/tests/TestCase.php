@@ -41,6 +41,7 @@ abstract class TestCase extends BaseTestCase
         $excludeTransactions = [
             \Tests\Feature\ConcurrencyAndDeadlockTest::class,
             \Tests\Feature\DisasterRecoveryRestorationTest::class,
+            \Tests\Feature\RestoredApplicationWorkflowTest::class,
         ];
 
         if (! in_array(static::class, $excludeTransactions, true)
@@ -62,6 +63,7 @@ abstract class TestCase extends BaseTestCase
         $excludeTransactions = [
             \Tests\Feature\ConcurrencyAndDeadlockTest::class,
             \Tests\Feature\DisasterRecoveryRestorationTest::class,
+            \Tests\Feature\RestoredApplicationWorkflowTest::class,
         ];
 
         if (! in_array(static::class, $excludeTransactions, true)

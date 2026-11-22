@@ -289,10 +289,10 @@ class WorkflowEngineService
                 ->where('action_code', $actionCode)
                 ->first();
 
-            if (! $transition) {
-                if (WorkflowTransition::where('from_state_id', $task->state_id)->exists()) {
-                    throw new HttpException(422, "Invalid workflow transition: action '{$actionCode}' is not permitted from current state.");
-                }
+            $transitionsExist = WorkflowTransition::where('from_state_id', $task->state_id)->exists();
+
+            if (! $transition && $transitionsExist) {
+                throw new HttpException(422, "Invalid workflow transition: action '{$actionCode}' is not permitted from current state.");
             }
 
             // Anti-Self-Approval Enforcement (INV-04)
