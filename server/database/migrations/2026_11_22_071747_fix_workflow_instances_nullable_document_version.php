@@ -66,7 +66,8 @@ SQL
     {
         // Remove fork and join columns from workflow_transitions if they exist
         if (Schema::hasColumn('workflow_transitions', 'fork_state_ids')) {
-            DB::statement("ALTER TABLE `workflow_transitions` DROP CONSTRAINT IF EXISTS `workflow_transitions_ck_6`");
+            // MySQL syntax: DROP CHECK constraint by name
+            DB::statement("ALTER TABLE `workflow_transitions` DROP CHECK `workflow_transitions_ck_6`");
             DB::statement("ALTER TABLE `workflow_transitions` DROP COLUMN `join_policy`, DROP COLUMN `fork_state_ids`");
         }
 
