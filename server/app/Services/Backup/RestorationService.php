@@ -176,7 +176,7 @@ class RestorationService
                     ],
                 ]);
             } catch (\Throwable $e) {
-                // Non-blocking
+                \Illuminate\Support\Facades\Log::error('Restoration drill audit logging failed: ' . $e->getMessage(), ['exception' => $e]);
             }
 
             return [
