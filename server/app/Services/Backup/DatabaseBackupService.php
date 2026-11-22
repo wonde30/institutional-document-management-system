@@ -210,7 +210,7 @@ class DatabaseBackupService
             $createProc = new Process($createDbCmd);
             $createProc->mustRun();
 
-            // Execute restore
+            // Execute restore with retry on transient deadlock
             $restoreCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
@@ -218,10 +218,21 @@ class DatabaseBackupService
                 $targetDatabase,
             ];
 
-            $process = new Process($restoreCmd);
-            $process->setInput(fopen($sqlPath, 'rb'));
-            $process->setTimeout(600);
-            $process->mustRun();
+            $maxAttempts = 3;
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                try {
+                    $process = new Process($restoreCmd);
+                    $process->setInput(fopen($sqlPath, 'rb'));
+                    $process->setTimeout(600);
+                    $process->mustRun();
+                    break;
+                } catch (\Throwable $e) {
+                    if ($attempt === $maxAttempts || ! str_contains($e->getMessage(), 'Deadlock')) {
+                        throw $e;
+                    }
+                    usleep(500000);
+                }
+            }
 
             // Verify target database schema and table count
             $verifyConfig = $dbConfig;

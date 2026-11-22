@@ -63,7 +63,10 @@ class DocumentStorageBackupService
                     }
 
                     $relativePath = "storage/{$groupName}/" . str_replace('\\', '/', $file->getRelativePathname());
-                    $fullPath = $file->getRealPath();
+                    $fullPath = $file->getRealPath() ?: $file->getPathname();
+                    if (! $fullPath || ! File::exists($fullPath)) {
+                        continue;
+                    }
                     $sha256 = hash_file('sha256', $fullPath);
                     $size = $file->getSize();
                     $totalBytes += $size;

@@ -76,6 +76,21 @@ abstract class TestCase extends BaseTestCase
             }
         }
 
+        if (in_array(static::class, [
+            \Tests\Feature\DisasterRecoveryRestorationTest::class,
+            \Tests\Feature\RestoredApplicationWorkflowTest::class,
+        ], true)) {
+            try {
+                DB::disconnect('mysql_isolated_verify');
+                DB::purge('mysql_isolated_verify');
+                DB::disconnect('mysql_recovery_check');
+                DB::purge('mysql_recovery_check');
+                DB::disconnect('mysql_pitr_check');
+                DB::purge('mysql_pitr_check');
+            } catch (\Throwable) {
+            }
+        }
+
         if (isset($uses[\Illuminate\Foundation\Testing\DatabaseMigrations::class])) {
             $this->cleanUpAtomicityArtifacts();
             \Illuminate\Foundation\Testing\RefreshDatabaseState::$migrated = true;
