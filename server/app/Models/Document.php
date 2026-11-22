@@ -288,6 +288,28 @@ class Document extends Model
             return true;
         }
 
+        // 4. Archive management: when a document has an archive record or is retired,
+        // users holding authorized archive permissions in an authorized archive unit (or globally)
+        // have operational custody access for archive-domain operations.
+        if (str_starts_with($permission, 'archive.')) {
+            $isArchived = $this->archiveEntry()->exists() || $this->lifecycle === 'retired' || $this->status_code === 'archived';
+            if ($isArchived) {
+                $userUnitIds = $user->memberships()->pluck('unit_id')->filter()->all();
+                $hasArchivePerm = $user->hasPermission($permission, null)
+                    || collect($userUnitIds)->contains(fn ($uId) => $user->hasPermission($permission, (int) $uId));
+
+                if ($hasArchivePerm) {
+                    if (! $isHighConfidentiality) {
+                        return true;
+                    }
+
+                    if ($user->hasPermission('staff.view_sensitive') || $user->hasPermission('system.configure')) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         // SEC-002: Creator / Custodian intrinsic access applies ONLY to approved read operations
         $isReadOnlyOp = in_array($permission, ['documents.view', 'documents.download', 'documents.share'], true);
         if ($isReadOnlyOp && ($this->created_by === $user->id || $this->custodian_id === $user->id)) {
