@@ -108,6 +108,7 @@ class DatabaseBackupService
                 $this->mysqldumpPath,
                 "--defaults-extra-file={$tempCnf}",
                 '--single-transaction',
+                '--add-drop-table',
                 '--quick',
                 '--routines',
                 '--triggers',
@@ -200,12 +201,24 @@ class DatabaseBackupService
         File::put($tempCnf, $cnfContent);
 
         try {
-            // Create target isolated database if it doesn't exist
+            // Disconnect and terminate any previous connections before recreating target database
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
+            try {
+                $conns = DB::select("SELECT ID FROM information_schema.PROCESSLIST WHERE DB = '{$targetDatabase}'");
+                foreach ($conns as $c) {
+                    try {
+                        DB::statement("KILL {$c->ID}");
+                    } catch (\Throwable) {}
+                }
+            } catch (\Throwable) {}
+
+            // Recreate target isolated database
             $createDbCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
                 '-e',
-                "CREATE DATABASE IF NOT EXISTS `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+                "DROP DATABASE IF EXISTS `{$targetDatabase}`; CREATE DATABASE `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             ];
             $createProc = new Process($createDbCmd);
             $createProc->mustRun();
@@ -230,6 +243,9 @@ class DatabaseBackupService
 
             $tables = DB::connection('mysql_recovery_check')->select('SHOW TABLES');
             $tableCount = count($tables);
+
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
 
             DB::disconnect('mysql_recovery_check');
             DB::purge('mysql_recovery_check');
