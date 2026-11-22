@@ -19,6 +19,20 @@ class AuthorizationScope extends Model
         'unit_id',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (AuthorizationScope $scope) {
+            $existing = static::where('kind', $scope->kind)
+                ->where('unit_id', $scope->unit_id)
+                ->first();
+            if ($existing) {
+                $scope->id = $existing->id;
+                $scope->exists = true;
+                return false;
+            }
+        });
+    }
+
     public function unit(): BelongsTo
     {
         return $this->belongsTo(OrganizationUnit::class, 'unit_id');

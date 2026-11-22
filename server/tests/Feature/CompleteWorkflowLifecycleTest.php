@@ -48,6 +48,8 @@ class CompleteWorkflowLifecycleTest extends TestCase
         $this->seed(BaselineReferenceVocabularySeeder::class);
         $this->seed(WorkflowBaselineSeeder::class);
 
+        \App\Models\WorkflowTransition::where('action_code', 'approve')->update(['prohibit_self_approval' => true]);
+
         $unit = OrganizationUnit::first();
         $category = DocumentCategory::first();
         $conf = ConfidentialityLevel::first();

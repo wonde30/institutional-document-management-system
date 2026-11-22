@@ -38,7 +38,13 @@ abstract class TestCase extends BaseTestCase
 
         $uses = array_flip(class_uses_recursive(static::class));
 
-        if (! isset($uses[\Illuminate\Foundation\Testing\RefreshDatabase::class])
+        $excludeTransactions = [
+            \Tests\Feature\ConcurrencyAndDeadlockTest::class,
+            \Tests\Feature\DisasterRecoveryRestorationTest::class,
+        ];
+
+        if (! in_array(static::class, $excludeTransactions, true)
+            && ! isset($uses[\Illuminate\Foundation\Testing\RefreshDatabase::class])
             && ! isset($uses[\Illuminate\Foundation\Testing\DatabaseTransactions::class])
             && ! isset($uses[\Illuminate\Foundation\Testing\DatabaseMigrations::class])) {
             DB::beginTransaction();
@@ -53,7 +59,13 @@ abstract class TestCase extends BaseTestCase
     {
         $uses = array_flip(class_uses_recursive(static::class));
 
-        if (! isset($uses[\Illuminate\Foundation\Testing\RefreshDatabase::class])
+        $excludeTransactions = [
+            \Tests\Feature\ConcurrencyAndDeadlockTest::class,
+            \Tests\Feature\DisasterRecoveryRestorationTest::class,
+        ];
+
+        if (! in_array(static::class, $excludeTransactions, true)
+            && ! isset($uses[\Illuminate\Foundation\Testing\RefreshDatabase::class])
             && ! isset($uses[\Illuminate\Foundation\Testing\DatabaseTransactions::class])
             && ! isset($uses[\Illuminate\Foundation\Testing\DatabaseMigrations::class])) {
             try {
@@ -103,8 +115,6 @@ abstract class TestCase extends BaseTestCase
                 DB::table('authorization_scopes')->where('unit_id', $atomicityUnit->id)->delete();
                 DB::table('organization_units')->where('id', $atomicityUnit->id)->delete();
             }
-
-            DB::table('authorization_scopes')->where('kind', 'unit')->where('unit_id', 1)->delete();
 
             DB::statement('SET @dms_allow_version_mutation = 0');
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');

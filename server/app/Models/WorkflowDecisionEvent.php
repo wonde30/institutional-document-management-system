@@ -13,6 +13,7 @@ class WorkflowDecisionEvent extends Model
     protected $table = 'workflow_decision_events';
     public $timestamps = false;
     protected $primaryKey = 'decision_id';
+    public $incrementing = false;
 
     protected $fillable = [
         'decision_id',

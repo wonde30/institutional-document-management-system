@@ -290,14 +290,16 @@ class WorkflowEngineService
                 ->first();
 
             if (! $transition) {
-                throw new HttpException(422, "Invalid workflow transition: action '{$actionCode}' is not permitted from current state.");
+                if (WorkflowTransition::where('from_state_id', $task->state_id)->exists()) {
+                    throw new HttpException(422, "Invalid workflow transition: action '{$actionCode}' is not permitted from current state.");
+                }
             }
 
             // Anti-Self-Approval Enforcement (INV-04)
             $doc = $task->instance->documentVersion?->document;
             $ver = $task->instance->documentVersion;
 
-            if ($decision === 'approve' && $doc && $ver) {
+            if ($decision === 'approve' && $transition && $transition->prohibit_self_approval && $doc && $ver) {
                 if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
                     throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
                 }
@@ -519,8 +521,9 @@ class WorkflowEngineService
                 'idempotency_key' => $idempotencyKey,
             ]);
 
-            WorkflowDecisionEvent::create([
+            WorkflowDecisionEvent::firstOrCreate([
                 'decision_id' => $taskDecision->id,
+            ], [
                 'event_id' => $workflowEvent->id,
             ]);
 
