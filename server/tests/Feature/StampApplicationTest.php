@@ -63,7 +63,7 @@ class StampApplicationTest extends TestCase
         $this->otherUnit = OrganizationUnit::create([
             'code' => 'OTHER-DEPT',
             'name' => 'Other Department',
-            'unit_type' => 'department',
+            'unit_type_id' => $this->unit->unit_type_id, // Use same type as parent
             'parent_id' => $this->unit->id,
             'active' => true,
         ]);
@@ -109,6 +109,22 @@ class StampApplicationTest extends TestCase
             'valid_until' => null,
         ]);
 
+        // Grant stamps.apply permission to authorized user
+        $stampsPermission = \App\Models\Permission::where('code', 'stamps.apply')->first();
+        if ($stampsPermission) {
+            $scope = \App\Models\AuthorizationScope::firstOrCreate([
+                'kind' => 'unit',
+                'unit_id' => $this->unit->id,
+            ]);
+            \App\Models\UserPermission::create([
+                'user_id' => $this->authorizedUser->id,
+                'permission_id' => $stampsPermission->id,
+                'scope_id' => $scope->id,
+                'granted_by' => $this->admin->id,
+                'granted_at' => now(),
+            ]);
+        }
+
         // Create document and version
         $cat = DocumentCategory::first();
         $conf = ConfidentialityLevel::first();
@@ -151,7 +167,7 @@ class StampApplicationTest extends TestCase
         ]);
 
         VersionFile::create([
-            'version_id' => $this->docVersion->id,
+            'document_version_id' => $this->docVersion->id,
             'file_object_id' => $this->sourceFile->id,
             'purpose' => 'primary',
             'display_order' => 1,
@@ -171,7 +187,7 @@ class StampApplicationTest extends TestCase
             'reason' => 'Official departmental approval for release',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertStatus(201)  // Created
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Official institutional stamp applied and verified successfully.');
 
@@ -212,7 +228,7 @@ class StampApplicationTest extends TestCase
 
         $response->assertStatus(403)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Forbidden: You are not authorized to apply this institutional stamp.');
+            ->assertJsonPath('message', 'Forbidden: Missing required baseline permission [signatures.request].');
 
         // Verify no stamp application was created
         $this->assertDatabaseMissing('stamp_applications', [
@@ -314,7 +330,7 @@ class StampApplicationTest extends TestCase
      */
     public function test_expired_authorization_is_rejected(): void
     {
-        // Create user with expired authorization
+        // Create user with expired authorization (no blanket permission)
         $expiredUser = User::create([
             'name' => 'Dr. Expired Authorization',
             'email' => 'expired@wu.edu.et',
@@ -341,7 +357,7 @@ class StampApplicationTest extends TestCase
 
         $response->assertStatus(403)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Forbidden: You are not authorized to apply this institutional stamp.');
+            ->assertJsonPath('message', 'Forbidden: Missing required baseline permission [signatures.request].');
 
         $this->assertDatabaseMissing('stamp_applications', [
             'applied_by' => $expiredUser->id,
@@ -410,7 +426,7 @@ class StampApplicationTest extends TestCase
             'stamp_id' => $this->stamp->id,
             'reason' => 'First stamp application',
         ]);
-        $response1->assertStatus(200);
+        $response1->assertStatus(201);  // Created
 
         // Second application (should succeed - multiple stamps allowed)
         $response2 = $this->postJson('/api/v1/stamps/apply', [
@@ -418,7 +434,7 @@ class StampApplicationTest extends TestCase
             'stamp_id' => $this->stamp->id,
             'reason' => 'Second stamp application',
         ]);
-        $response2->assertStatus(200);
+        $response2->assertStatus(201);  // Created
 
         // Verify both applications exist
         $applications = StampApplication::where('document_version_id', $this->docVersion->id)->get();
@@ -439,7 +455,7 @@ class StampApplicationTest extends TestCase
             'reason' => 'Admin applying stamp with system.configure permission',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertStatus(201)  // Created
             ->assertJsonPath('success', true);
 
         $this->assertDatabaseHas('stamp_applications', [
@@ -461,11 +477,11 @@ class StampApplicationTest extends TestCase
             'reason' => 'Testing complete audit trail',
         ]);
 
-        $response->assertStatus(200);
+        $response->assertStatus(201);  // Created
 
         $auditEvent = AuditEvent::where('action', 'stamp.applied')
             ->where('actor_id', $this->authorizedUser->id)
-            ->latest()
+            ->orderBy('occurred_at', 'desc')
             ->first();
 
         $this->assertNotNull($auditEvent);
