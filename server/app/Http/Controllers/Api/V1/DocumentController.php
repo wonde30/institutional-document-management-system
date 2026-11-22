@@ -505,8 +505,10 @@ class DocumentController extends Controller
             } catch (\Throwable $e) {
                 // Log but don't fail the download
                 \Log::error('Failed to record confidential access audit', [
+                    'user_id' => $actor->id,
                     'document_id' => $doc->id,
                     'file_id' => $file->id,
+                    'action' => 'document.confidential_access',
                     'error' => $e->getMessage()
                 ]);
             }
@@ -528,8 +530,10 @@ class DocumentController extends Controller
             );
         } catch (\Throwable $e) {
             \Log::error('Failed to record download audit', [
+                'user_id' => $actor->id,
                 'document_id' => $doc->id,
                 'file_id' => $file->id,
+                'action' => 'documents.downloaded',
                 'error' => $e->getMessage()
             ]);
         }
