@@ -227,7 +227,7 @@ class WorkflowBaselineSeeder extends Seeder
 
             // Find Dr. EE Head (head.ee@wu.edu.et)
             $eeHead = User::where('email', 'head.ee@wu.edu.et')->first();
-            $eeHeadId = $eeHead ? $eeHead->id : 4;
+            $eeHeadId = $eeHead ? $eeHead->id : $adminId; // Fallback to admin instead of hardcoded 4
             $eeUnitId = 4; // Department of Electrical Engineering
 
             // Task 1: Assigned to Dr. EE Head directly (mine)

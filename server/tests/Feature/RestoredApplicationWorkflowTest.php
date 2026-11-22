@@ -26,6 +26,13 @@ class RestoredApplicationWorkflowTest extends TestCase
             File::deleteDirectory($this->isolatedStorageDir);
         }
 
+        // Ensure recovery database exists before restore
+        try {
+            DB::statement("CREATE DATABASE IF NOT EXISTS `{$this->isolatedDb}`");
+        } catch (\Throwable $e) {
+            // Best effort
+        }
+
         // 1. Generate full real backup
         $coordinator = app(BackupCoordinatorService::class);
         $backupResult = $coordinator->executeFullBackup(false);
