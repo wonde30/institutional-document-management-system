@@ -79,8 +79,8 @@ class DataLeakageAndQueryConfinementTest extends TestCase
         ]);
 
         // Create unit scopes
-        $scopeA = AuthorizationScope::create(['kind' => 'unit', 'unit_id' => $this->unitA->id]);
-        $scopeB = AuthorizationScope::create(['kind' => 'unit', 'unit_id' => $this->unitB->id]);
+        $scopeA = AuthorizationScope::firstOrCreate(['kind' => 'unit', 'unit_id' => $this->unitA->id]);
+        $scopeB = AuthorizationScope::firstOrCreate(['kind' => 'unit', 'unit_id' => $this->unitB->id]);
 
         // Grant documents.view, correspondence.view, and reports.view in Unit A to Staff A
         $viewPerm = Permission::where('code', 'documents.view')->first();

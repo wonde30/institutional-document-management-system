@@ -55,7 +55,7 @@ class UserEffectivePermissionsTest extends TestCase
 
         // Assign a scoped role to targetUser
         $role = Role::where('code', 'records_officer')->first();
-        $scopeUnitA = AuthorizationScope::create([
+        $scopeUnitA = AuthorizationScope::firstOrCreate([
             'kind' => 'unit',
             'unit_id' => $this->unitA->id,
         ]);
