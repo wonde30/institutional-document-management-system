@@ -121,6 +121,22 @@ class GapRemediationHardeningTest extends TestCase
             'target_type' => 'role',
             'target_id' => (string) $customRole->id,
         ]);
+
+        // 3. Unassigned custom role deletion succeeds -> 200 + role.deleted audit row
+        $unassignedRole = Role::create([
+            'code' => 'custom_unassigned_' . uniqid(),
+            'name' => 'Custom Unassigned Role',
+            'is_system' => false,
+            'active' => true,
+        ]);
+        $resDelete = $this->deleteJson("/api/v1/roles/{$unassignedRole->id}");
+        $resDelete->assertStatus(200);
+        $this->assertDatabaseMissing('roles', ['id' => $unassignedRole->id]);
+        $this->assertDatabaseHas('audit_events', [
+            'action' => 'role.deleted',
+            'target_type' => 'role',
+            'target_id' => (string) $unassignedRole->id,
+        ]);
     }
 
     public function test_sharing_cannot_exceed_sharer_access_and_respects_expiry_and_revoke(): void
@@ -185,6 +201,17 @@ class GapRemediationHardeningTest extends TestCase
         $resRevoke->assertStatus(200);
 
         // Staff can no longer view
+        $this->assertFalse($docPublic->allowsUser($this->staff, 'documents.view'));
+
+        // Expired grant does not grant access
+        DB::table('document_grants')->insert([
+            'document_id' => $docPublic->id,
+            'permission_id' => DB::table('permissions')->where('code', 'documents.view')->value('id'),
+            'user_id' => $this->staff->id,
+            'granted_by' => $this->admin->id,
+            'granted_at' => now()->subHours(2),
+            'expires_at' => now()->subHour(),
+        ]);
         $this->assertFalse($docPublic->allowsUser($this->staff, 'documents.view'));
     }
 
