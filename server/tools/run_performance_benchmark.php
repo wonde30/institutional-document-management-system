@@ -62,14 +62,20 @@ Artisan::call('migrate:fresh', [
     '--force' => true,
 ]);
 
-// Roll back the latest migration (DB-01: 2026_11_23_000001_wu_add_status_and_workflow_performance_indexes.php)
-$lastMigration = DB::connection('perf')->table('migrations')->orderByDesc('id')->first();
-echo "Rolling back last migration: {$lastMigration->migration}..." . PHP_EOL;
-Artisan::call('migrate:rollback', [
-    '--database' => 'perf',
-    '--step' => 1,
-    '--force' => true,
-]);
+// Roll back until DB-01 (wu_add_status_and_workflow_performance_indexes) is rolled back
+while (true) {
+    $hasDb01 = DB::connection('perf')->table('migrations')->where('migration', 'like', '%wu_add_status_and_workflow_performance_indexes%')->exists();
+    if (! $hasDb01) {
+        break;
+    }
+    $lastMig = DB::connection('perf')->table('migrations')->orderByDesc('id')->value('migration');
+    echo "Rolling back migration: {$lastMig}..." . PHP_EOL;
+    Artisan::call('migrate:rollback', [
+        '--database' => 'perf',
+        '--step' => 1,
+        '--force' => true,
+    ]);
+}
 
 $currentLast = DB::connection('perf')->table('migrations')->orderByDesc('id')->first();
 echo "Current last migration before DB-01: {$currentLast->migration}" . PHP_EOL;
