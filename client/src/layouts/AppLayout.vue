@@ -178,12 +178,12 @@ async function handleLogout() {
  <!-- Authorized Global Search (Notion-styled search box) -->
  <router-link
  to="/search"
- class="flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] text-xs bg-canvas-soft text-ink-muted hover:text-ink border border-hairline transition-colors"
+ class="flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] text-xs bg-canvas-soft text-ink-secondary hover:text-ink border border-hairline transition-colors"
  title="Search documents, letters, research"
  >
  <Search class="w-3.5 h-3.5" />
  <span class="hidden md:inline text-xs">Search records...</span>
- <kbd class="hidden md:inline text-xs bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-muted">{{ isMac ? '?K' : 'Ctrl K' }}</kbd>
+ <kbd class="hidden md:inline text-xs bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-secondary">{{ isMac ? '?K' : 'Ctrl K' }}</kbd>
  </router-link>
 
  <!-- Tri-Mode Theme Toggle (Light / Dark / System) -->
