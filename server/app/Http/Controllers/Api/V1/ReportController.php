@@ -82,4 +82,36 @@ class ReportController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Export institutional metrics summary as CSV.
+     */
+    public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $actor = $request->user();
+        $startDate = $request->get('from_date', now()->subMonths(6)->toDateString());
+        $endDate = $request->get('to_date', now()->toDateString());
+
+        $docAccessible = Document::accessibleBy($actor, 'reports.view');
+        $byCategory = (clone $docAccessible)
+            ->join('document_categories', 'documents.category_id', '=', 'document_categories.id')
+            ->whereBetween('documents.registered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->selectRaw('document_categories.name as category, count(*) as count')
+            ->groupBy('document_categories.name')
+            ->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="institutional_report_' . date('Ymd_His') . '.csv"',
+        ];
+
+        return response()->stream(function () use ($byCategory) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Category', 'Document Count']);
+            foreach ($byCategory as $row) {
+                fputcsv($handle, [$row->category, $row->count]);
+            }
+            fclose($handle);
+        }, 200, $headers);
+    }
 }

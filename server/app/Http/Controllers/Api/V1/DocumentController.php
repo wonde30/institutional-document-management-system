@@ -910,4 +910,56 @@ class DocumentController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Share a document by creating a discretionary grant in document_grants.
+     */
+    public function share(Request $request, int $id): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        $validated = $request->validate([
+            'target_user_id' => 'nullable|exists:users,id',
+            'target_unit_id' => 'nullable|exists:organization_units,id',
+            'permission_code' => 'required|string|in:documents.view,documents.download',
+            'expires_at' => 'nullable|date|after:now',
+        ]);
+
+        if (empty($validated['target_user_id']) && empty($validated['target_unit_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Either target_user_id or target_unit_id must be provided to share the document.',
+            ], 422);
+        }
+
+        $permId = DB::table('permissions')->where('code', $validated['permission_code'])->value('id');
+
+        $grantId = DB::transaction(function () use ($document, $validated, $permId, $request) {
+            $grantId = DB::table('document_grants')->insertGetId([
+                'document_id' => $document->id,
+                'permission_id' => $permId,
+                'user_id' => $validated['target_user_id'] ?? null,
+                'unit_id' => $validated['target_unit_id'] ?? null,
+                'granted_by' => $request->user()->id,
+                'granted_at' => now(),
+                'expires_at' => $validated['expires_at'] ?? null,
+            ]);
+
+            AuditService::recordDocumentEvent(
+                action: 'document.shared',
+                actorId: $request->user()->id,
+                documentId: $document->id,
+                details: $validated,
+                request: $request
+            );
+
+            return $grantId;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document access shared successfully.',
+            'data' => ['grant_id' => $grantId],
+        ], 201);
+    }
 }

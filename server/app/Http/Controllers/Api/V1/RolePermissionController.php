@@ -195,6 +195,48 @@ class RolePermissionController extends Controller
     }
 
     /**
+     * Delete role.
+     */
+    public function destroyRole(Request $request, int $id): JsonResponse
+    {
+        $role = Role::findOrFail($id);
+
+        if ($role->is_system || in_array($role->code, ['super_admin', 'admin', 'department_head', 'staff'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Security restriction: Protected system roles cannot be deleted.',
+            ], 422);
+        }
+
+        $assignedCount = DB::table('user_roles')->where('role_id', $role->id)->count();
+        if ($assignedCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Role cannot be deleted while assigned to {$assignedCount} user(s). Revoke all user assignments first.",
+            ], 422);
+        }
+
+        DB::transaction(function () use ($role, $request) {
+            $role->permissions()->detach();
+            $role->delete();
+
+            AuditService::log(
+                action: 'role.deleted',
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['code' => $role->code, 'name' => $role->name],
+                actorId: $request->user()?->id,
+                request: $request
+            );
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Role deleted successfully.',
+        ]);
+    }
+
+    /**
      * Sync permissions to role.
      */
     public function syncRolePermissions(Request $request, int $id): JsonResponse

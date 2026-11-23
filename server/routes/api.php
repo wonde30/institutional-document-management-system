@@ -122,6 +122,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:documents.view');
         Route::get('reports/summary', [ReportController::class, 'summary'])
             ->middleware('permission:reports.view');
+        Route::get('reports/export', [ReportController::class, 'export'])
+            ->middleware('permission:reports.export|reports.view');
 
         // Organization & Identity
         Route::get('unit-types', [OrganizationUnitController::class, 'unitTypes']);
@@ -165,6 +167,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:roles.view|system.configure');
         Route::put('roles/{id}', [RolePermissionController::class, 'updateRole'])
             ->middleware('permission:roles.update');
+        Route::delete('roles/{id}', [RolePermissionController::class, 'destroyRole'])
+            ->middleware('permission:roles.delete');
         Route::post('roles/{id}/permissions', [RolePermissionController::class, 'syncRolePermissions'])
             ->middleware('permission:roles.update');
         Route::get('permissions', [RolePermissionController::class, 'permissions'])
@@ -192,7 +196,9 @@ Route::prefix('v1')->group(function () {
         Route::put('documents/{id}', [DocumentController::class, 'update'])
             ->middleware('permission:documents.update');
         Route::post('documents/{id}/versions', [DocumentController::class, 'uploadVersion'])
-            ->middleware('permission:documents.version');
+            ->middleware('permission:documents.version|documents.upload');
+        Route::post('documents/{id}/share', [DocumentController::class, 'share'])
+            ->middleware('permission:documents.share');
         Route::get('files/{fileId}/download', [DocumentController::class, 'downloadFile'])
             ->middleware('permission:documents.download');
         Route::get('documents/{id}/timeline', [DocumentController::class, 'timeline'])
@@ -433,11 +439,11 @@ Route::prefix('v1')->group(function () {
         Route::post('signatures', [InstitutionalModuleController::class, 'storeSignatureRequest'])
             ->middleware('permission:signatures.request');
         Route::post('signatures/{id}/execute', [InstitutionalModuleController::class, 'executeSignature'])
-            ->middleware('permission:signatures.request');
+            ->middleware('permission:signatures.sign|signatures.request');
         Route::post('signatures/{id}/verify', [InstitutionalModuleController::class, 'verifySignature'])
-            ->middleware('permission:signatures.request');
+            ->middleware('permission:signatures.verify|signatures.request');
         Route::post('signatures/verify-file', [InstitutionalModuleController::class, 'verifyPdfFile'])
-            ->middleware('permission:signatures.request');
+            ->middleware('permission:signatures.verify|signatures.request');
         Route::get('signatures/identities', [InstitutionalModuleController::class, 'identities'])
             ->middleware('permission:signatures.request');
         Route::post('stamps/apply', [InstitutionalModuleController::class, 'applyStamp'])
@@ -541,20 +547,20 @@ Route::prefix('v1')->group(function () {
         // Enterprise Backups & Disaster Recovery Drills
         Route::prefix('admin/backups')->group(function () {
             Route::get('/', [BackupController::class, 'index'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:backups.manage|system.configure');
             Route::post('/', [BackupController::class, 'store'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:backups.manage|system.configure');
             Route::get('{id}', [BackupController::class, 'show'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:backups.manage|system.configure');
             Route::post('{id}/verify', [BackupController::class, 'verify'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:backups.manage|system.configure');
         });
 
         Route::prefix('admin/dr-drills')->group(function () {
             Route::get('/', [BackupController::class, 'drills'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:backups.restore|backups.manage|system.configure');
             Route::post('/', [BackupController::class, 'runDrill'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:backups.restore|backups.manage|system.configure');
         });
 
         // Dataset Import & Export

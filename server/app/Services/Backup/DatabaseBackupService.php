@@ -58,6 +58,21 @@ class DatabaseBackupService
     }
 
     /**
+     * Build process environment guaranteeing SystemRoot and PATH exist on Windows.
+     */
+    protected function buildProcessEnv(): array
+    {
+        $env = $_SERVER;
+        if (PHP_OS_FAMILY === 'Windows') {
+            $env['SystemRoot'] = getenv('SystemRoot') ?: 'C:\\Windows';
+            $env['WINDIR'] = getenv('WINDIR') ?: 'C:\\Windows';
+            $env['PATH'] = getenv('PATH') ?: '';
+        }
+
+        return $env;
+    }
+
+    /**
      * Generate consistent single-transaction logical InnoDB dump.
      */
     public function dump(string $outputSqlPath, ?string $database = null): array
@@ -96,7 +111,8 @@ class DatabaseBackupService
             . "user = \"{$user}\"\n"
             . "password = \"{$pass}\"\n"
             . "host = \"{$host}\"\n"
-            . "port = {$port}\n";
+            . "port = {$port}\n"
+            . "protocol = TCP\n";
 
         File::put($tempCnf, $cnfContent);
         if (PHP_OS_FAMILY !== 'Windows') {
@@ -107,6 +123,7 @@ class DatabaseBackupService
             $command = [
                 $this->mysqldumpPath,
                 "--defaults-extra-file={$tempCnf}",
+                '--protocol=tcp',
                 '--single-transaction',
                 '--quick',
                 '--skip-add-locks',
@@ -119,7 +136,7 @@ class DatabaseBackupService
                 $dbName,
             ];
 
-            $process = new Process($command);
+            $process = new Process($command, null, $this->buildProcessEnv());
             $process->setTimeout(300);
             
             // Stream output directly to file to prevent memory exhaustion
@@ -197,7 +214,7 @@ class DatabaseBackupService
         $pass = $dbConfig['password'] ?? '';
 
         $tempCnf = storage_path('app/pki/mysql_restore_' . bin2hex(random_bytes(8)) . '.cnf');
-        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\n";
+        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\nprotocol = TCP\n";
         File::put($tempCnf, $cnfContent);
 
         try {
@@ -212,10 +229,11 @@ class DatabaseBackupService
             $createDbCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
+                '--protocol=tcp',
                 '-e',
                 "CREATE DATABASE IF NOT EXISTS `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             ];
-            $createProc = new Process($createDbCmd);
+            $createProc = new Process($createDbCmd, null, $this->buildProcessEnv());
             $createProc->mustRun();
 
             // Clean any existing tables in target isolated database to prevent collision
@@ -245,6 +263,7 @@ class DatabaseBackupService
             $restoreCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
+                '--protocol=tcp',
                 '--default-character-set=utf8mb4',
                 '--init-command=SET FOREIGN_KEY_CHECKS=0;',
                 $targetDatabase,
@@ -254,7 +273,7 @@ class DatabaseBackupService
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                 $fileHandle = fopen($sqlPath, 'rb');
                 try {
-                    $process = new Process($restoreCmd);
+                    $process = new Process($restoreCmd, null, $this->buildProcessEnv());
                     $process->setInput($fileHandle);
                     $process->setTimeout(600);
                     $process->mustRun();
@@ -325,7 +344,7 @@ class DatabaseBackupService
         $pass = $dbConfig['password'] ?? '';
 
         $tempCnf = storage_path('app/pki/mysql_binlog_' . bin2hex(random_bytes(8)) . '.cnf');
-        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\n";
+        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\nprotocol = TCP\n";
         File::put($tempCnf, $cnfContent);
 
         try {
@@ -344,7 +363,7 @@ class DatabaseBackupService
 
             $binlogCmd[] = $binlogFilePath;
 
-            $binlogProcess = new Process($binlogCmd);
+            $binlogProcess = new Process($binlogCmd, null, $this->buildProcessEnv());
             $binlogProcess->setTimeout(300);
             $binlogProcess->mustRun();
             $sqlEvents = $binlogProcess->getOutput();
@@ -354,13 +373,14 @@ class DatabaseBackupService
                 $mysqlCmd = [
                     $this->mysqlPath,
                     "--defaults-extra-file={$tempCnf}",
+                    '--protocol=tcp',
                     $targetDatabase,
                 ];
 
                 $maxAttempts = 3;
                 for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                     try {
-                        $mysqlProcess = new Process($mysqlCmd);
+                        $mysqlProcess = new Process($mysqlCmd, null, $this->buildProcessEnv());
                         $mysqlProcess->setInput($sqlEvents);
                         $mysqlProcess->setTimeout(300);
                         $mysqlProcess->mustRun();
