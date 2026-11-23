@@ -46,15 +46,15 @@ foreach ($perms as $p) {
     echo "Assigned Roles: " . (empty($roles) ? 'NONE' : implode(', ', $roles)) . "\n";
 
     // Grep in server/app
-    $serverRefs = shell_exec("git grep -n \"$p\" app/");
+    $serverRefs = shell_exec("git grep -n \"$p\" server/app/");
     echo "Server refs:\n" . ($serverRefs ?: "  None\n");
 
     // Grep in server/routes
-    $routeRefs = shell_exec("git grep -n \"$p\" routes/");
+    $routeRefs = shell_exec("git grep -n \"$p\" server/routes/");
     echo "Route refs:\n" . ($routeRefs ?: "  None\n");
 
     // Grep in client/src
-    $clientRefs = shell_exec("git grep -n \"$p\" ../client/src/");
+    $clientRefs = shell_exec("git grep -n \"$p\" client/src/");
     echo "Client refs:\n" . ($clientRefs ?: "  None\n");
 
     echo "\n";
