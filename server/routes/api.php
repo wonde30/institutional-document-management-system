@@ -196,7 +196,7 @@ Route::prefix('v1')->group(function () {
         Route::put('documents/{id}', [DocumentController::class, 'update'])
             ->middleware('permission:documents.update');
         Route::post('documents/{id}/versions', [DocumentController::class, 'uploadVersion'])
-            ->middleware('permission:documents.version|documents.upload');
+            ->middleware('permission:documents.version');
         Route::post('documents/{id}/share', [DocumentController::class, 'share'])
             ->middleware('permission:documents.share');
         Route::get('files/{fileId}/download', [DocumentController::class, 'downloadFile'])
