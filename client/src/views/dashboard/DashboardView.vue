@@ -306,7 +306,7 @@ watch(() => authStore.activeUnitId, () => {
               </router-link>
             </div>
 
-            <div class="divide-y divide-hairline-subtle text-xs">
+            <div v-if="(metrics?.recent_documents || []).length > 0" class="divide-y divide-hairline-subtle text-xs">
               <div
                 v-for="doc in (metrics?.recent_documents || []).slice(0, 3)"
                 :key="doc.id"
@@ -321,6 +321,9 @@ watch(() => authStore.activeUnitId, () => {
                   {{ doc.lifecycle }}
                 </span>
               </div>
+            </div>
+            <div v-else class="py-6 text-center text-xs text-ink-faint">
+              <p>No recent document activity recorded in your department.</p>
             </div>
           </section>
         </div>
