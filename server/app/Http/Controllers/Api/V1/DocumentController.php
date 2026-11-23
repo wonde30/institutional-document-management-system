@@ -932,11 +932,34 @@ class DocumentController extends Controller
             'expires_at' => 'nullable|date|after:now',
         ]);
 
-        if (empty($validated['target_user_id']) && empty($validated['target_unit_id'])) {
+        $hasUser = ! empty($validated['target_user_id']);
+        $hasUnit = ! empty($validated['target_unit_id']);
+
+        if (($hasUser && $hasUnit) || (! $hasUser && ! $hasUnit)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Either target_user_id or target_unit_id must be provided to share the document.',
+                'message' => 'Validation error: Exactly one of target_user_id or target_unit_id must be provided to share the document.',
             ], 422);
+        }
+
+        // For confidential or restricted documents the TARGET must hold clearance (422 otherwise)
+        $confCode = $document->confidentiality?->code;
+        $isHighConf = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
+        if ($isHighConf) {
+            if ($hasUnit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unprocessable: Confidential and restricted documents cannot be shared to entire units; a cleared target user is required.',
+                ], 422);
+            }
+
+            $targetUser = \App\Models\User::find($validated['target_user_id']);
+            if (! $targetUser || ! $document->hasConfidentialClearance($targetUser, (int) $document->owner_unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unprocessable: Target user lacks mandatory security clearance for confidential records.',
+                ], 422);
+            }
         }
 
         if (! $document->allowsUser($request->user(), $validated['permission_code'])) {
@@ -947,6 +970,27 @@ class DocumentController extends Controller
         }
 
         $permId = DB::table('permissions')->where('code', $validated['permission_code'])->value('id');
+
+        // Reject duplicate active grants
+        $dupQuery = DB::table('document_grants')
+            ->where('document_id', $document->id)
+            ->where('permission_id', $permId)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
+
+        if ($hasUser) {
+            $dupQuery->where('user_id', $validated['target_user_id']);
+        } else {
+            $dupQuery->where('unit_id', $validated['target_unit_id']);
+        }
+
+        if ($dupQuery->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A matching active discretionary grant already exists for this document and target.',
+            ], 422);
+        }
 
         $grantId = DB::transaction(function () use ($document, $validated, $permId, $request) {
             $grantId = DB::table('document_grants')->insertGetId([
