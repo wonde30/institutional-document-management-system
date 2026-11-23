@@ -356,6 +356,15 @@ $newCorrRes = $roClient->postJson('/api/v1/correspondences', [
 ]);
 recordResult($results, 'records_officer', 'register correspondence', '/api/v1/correspondences', 201, $newCorrRes);
 
+$createdCorrId = $newCorrRes['body']['data']['id'] ?? null;
+if ($createdCorrId) {
+    // Correspondence closure
+    $closeRes = $roClient->postJson("/api/v1/correspondences/{$createdCorrId}/close", [
+        'reason' => 'Administrative matter successfully concluded and closed.',
+    ]);
+    recordResult($results, 'records_officer', 'close correspondence', "/api/v1/correspondences/{$createdCorrId}/close", 200, $closeRes);
+}
+
 // ----------------------------------------------------------------------------
 // 5. ARCHIVE & RETENTION VERIFICATION
 // ----------------------------------------------------------------------------
@@ -371,6 +380,20 @@ $archEntry = \App\Models\ArchiveEntry::first();
 if ($archEntry) {
     $dispEligRes = $archivistClient->getJson("/api/v1/archive/entries/{$archEntry->id}/disposal-eligibility");
     recordResult($results, 'archivist', 'disposal eligibility check', "/api/v1/archive/entries/{$archEntry->id}/disposal-eligibility", 200, $dispEligRes);
+
+    // Cross-unit disposal by unit-scoped archivist is blocked (Item 4 verification)
+    $reqDispRes = $archivistClient->postJson("/api/v1/archive/entries/{$archEntry->id}/request-disposal", [
+        'requested_action' => 'destroy_digital',
+        'justification' => 'Retention schedule elapsed, eligible for review and disposition.',
+    ]);
+    recordResult($results, 'archivist', 'cross-unit disposal blocked without unit scope', "/api/v1/archive/entries/{$archEntry->id}/request-disposal", 403, $reqDispRes);
+
+    // Authorized administrator initiates disposition request
+    $adminDispRes = $adminClient->postJson("/api/v1/archive/entries/{$archEntry->id}/request-disposal", [
+        'requested_action' => 'destroy_digital',
+        'justification' => 'Retention schedule elapsed, eligible for review and disposition.',
+    ]);
+    recordResult($results, 'admin', 'request archive disposal', "/api/v1/archive/entries/{$archEntry->id}/request-disposal", 201, $adminDispRes);
 }
 
 // ----------------------------------------------------------------------------
@@ -523,6 +546,10 @@ if ($resMonographId) {
     // Separate authorized approver (admin) approves
     $appRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/approve", ['remarks' => 'Final faculty approval granted']);
     recordResult($results, 'admin', 'approve finalized research', "/api/v1/research/outputs/{$resMonographId}/approve", 200, $appRes);
+
+    // Duplicate decision rejected -> BLOCKED 422
+    $dupAppRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/approve", ['remarks' => 'Duplicate approval attempt']);
+    recordResult($results, 'admin', 'duplicate decision rejected', "/api/v1/research/outputs/{$resMonographId}/approve", 422, $dupAppRes);
 }
 
 // B. Project Proposal Lifecycle: Submitter creates & submits, separate reviewer reviews, separate approver approves
@@ -555,6 +582,10 @@ if ($projPropId) {
     // Separate authorized approver approves
     $appProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/approve", ['remarks' => 'Project proposal funded & approved']);
     recordResult($results, 'admin', 'approve project proposal', "/api/v1/projects/{$projPropId}/approve", 200, $appProjRes);
+
+    // Duplicate decision rejected -> BLOCKED 422
+    $dupAppProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/approve", ['remarks' => 'Duplicate approval attempt']);
+    recordResult($results, 'admin', 'duplicate decision rejected', "/api/v1/projects/{$projPropId}/approve", 422, $dupAppProjRes);
 }
 
 // ----------------------------------------------------------------------------
