@@ -367,6 +367,16 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:research.update');
         Route::post('research/outputs/{id}/toggle-publication', [InstitutionalModuleController::class, 'toggleResearchPublication'])
             ->middleware('permission:research.publish');
+        Route::post('research/outputs/{id}/submit', [InstitutionalModuleController::class, 'submitResearch'])
+            ->middleware('permission:research.submit');
+        Route::post('research/outputs/{id}/review', [InstitutionalModuleController::class, 'reviewResearch'])
+            ->middleware('permission:research.review');
+        Route::post('research/outputs/{id}/approve', [InstitutionalModuleController::class, 'approveResearch'])
+            ->middleware('permission:research.approve');
+        Route::post('research/outputs/{id}/reject', [InstitutionalModuleController::class, 'rejectResearch'])
+            ->middleware('permission:research.reject');
+        Route::post('research/outputs/{id}/return', [InstitutionalModuleController::class, 'returnResearch'])
+            ->middleware('permission:research.review|research.approve');
 
         Route::get('staff/records', [InstitutionalModuleController::class, 'staffRecords'])
             ->middleware('permission:staff.view');
@@ -407,6 +417,16 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:projects.view');
         Route::post('projects', [InstitutionalModuleController::class, 'storeProject'])
             ->middleware('permission:projects.submit');
+        Route::post('projects/{id}/submit', [InstitutionalModuleController::class, 'submitProject'])
+            ->middleware('permission:projects.submit');
+        Route::post('projects/{id}/review', [InstitutionalModuleController::class, 'reviewProject'])
+            ->middleware('permission:projects.review');
+        Route::post('projects/{id}/approve', [InstitutionalModuleController::class, 'approveProject'])
+            ->middleware('permission:projects.approve');
+        Route::post('projects/{id}/reject', [InstitutionalModuleController::class, 'rejectProject'])
+            ->middleware('permission:projects.reject');
+        Route::post('projects/{id}/return', [InstitutionalModuleController::class, 'returnProject'])
+            ->middleware('permission:projects.review|projects.approve');
 
         Route::get('signatures', [InstitutionalModuleController::class, 'signatures'])
             ->middleware('permission:signatures.request');

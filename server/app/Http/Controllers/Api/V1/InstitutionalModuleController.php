@@ -428,6 +428,72 @@ class InstitutionalModuleController extends Controller
         ]);
     }
 
+    public function submitResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'submitted', ['draft', 'returned'], 'research.submitted', 'Research output submitted for departmental review.');
+    }
+
+    public function reviewResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'under_review', ['submitted'], 'research.reviewed', 'Research output moved to peer review.');
+    }
+
+    public function approveResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'approved', ['submitted', 'under_review'], 'research.approved', 'Research output approved.');
+    }
+
+    public function rejectResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'research.rejected', 'Research output rejected.');
+    }
+
+    public function returnResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'returned', ['submitted', 'under_review'], 'research.returned', 'Research output returned for revision.');
+    }
+
+    protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $auditAction, string $successMessage): JsonResponse
+    {
+        $record = ResearchRecord::with('document')->findOrFail($id);
+        $currentStatus = $record->workflow_status ?? 'draft';
+
+        if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+            ], 422);
+        }
+
+        $actor = $request->user();
+        $now = now()->format('Y-m-d H:i:s.u');
+        $remarks = $request->input('remarks');
+
+        DB::transaction(function () use ($record, $targetStatus, $actor, $now, $auditAction, $currentStatus, $remarks) {
+            $record->update(['workflow_status' => $targetStatus]);
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => $auditAction,
+                'target_type' => 'research_record',
+                'target_id' => (string) $record->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'previous_status' => $currentStatus,
+                    'new_status' => $targetStatus,
+                    'remarks' => $remarks,
+                ],
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $successMessage,
+            'data' => $record->fresh()->load(['document.ownerUnit', 'recordedBy']),
+        ]);
+    }
+
     /**
      * Staff & Physical Original Custody Module
      * A verified scan does NOT authorize destruction of physical original.
@@ -731,6 +797,72 @@ class InstitutionalModuleController extends Controller
             'message' => 'Project proposal registered.',
             'data' => $proposal->load(['projectType', 'document.ownerUnit', 'recordedBy']),
         ], 201);
+    }
+
+    public function submitProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'submitted', ['draft', 'returned'], 'projects.submitted', 'Project proposal submitted for departmental review.');
+    }
+
+    public function reviewProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'under_review', ['submitted'], 'projects.reviewed', 'Project proposal moved to review.');
+    }
+
+    public function approveProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'approved', ['submitted', 'under_review'], 'projects.approved', 'Project proposal approved.');
+    }
+
+    public function rejectProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'projects.rejected', 'Project proposal rejected.');
+    }
+
+    public function returnProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'returned', ['submitted', 'under_review'], 'projects.returned', 'Project proposal returned for revision.');
+    }
+
+    protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $auditAction, string $successMessage): JsonResponse
+    {
+        $proposal = ProjectProposal::with('document')->findOrFail($id);
+        $currentStatus = $proposal->workflow_status ?? 'draft';
+
+        if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+            ], 422);
+        }
+
+        $actor = $request->user();
+        $now = now()->format('Y-m-d H:i:s.u');
+        $remarks = $request->input('remarks');
+
+        DB::transaction(function () use ($proposal, $targetStatus, $actor, $now, $auditAction, $currentStatus, $remarks) {
+            $proposal->update(['workflow_status' => $targetStatus]);
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => $auditAction,
+                'target_type' => 'project_proposal',
+                'target_id' => (string) $proposal->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'previous_status' => $currentStatus,
+                    'new_status' => $targetStatus,
+                    'remarks' => $remarks,
+                ],
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $successMessage,
+            'data' => $proposal->fresh()->load(['projectType', 'document.ownerUnit', 'recordedBy']),
+        ]);
     }
 
     /**

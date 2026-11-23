@@ -144,6 +144,8 @@ class CheckBaselinePermission
                 return null;
             } elseif (str_contains($path, 'staff/records')) {
                 $targetUnitId = PhysicalOriginal::with('document')->find($id)?->document?->owner_unit_id;
+            } elseif (str_contains($path, 'projects')) {
+                $targetUnitId = \App\Models\ProjectProposal::with('document')->find($id)?->document?->owner_unit_id;
             } elseif (str_contains($path, 'workflows/tasks')) {
                 $task = WorkflowTask::with('instance.documentVersion.document')->find($id);
                 $targetUnitId = $task?->assigned_unit_id ?? $task?->instance?->documentVersion?->document?->owner_unit_id;

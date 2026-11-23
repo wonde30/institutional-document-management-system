@@ -156,6 +156,21 @@ class RouteScopeResolver
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
 
+        // 5b. Project proposals: the proposal references a document.
+        if (str_contains($path, 'projects/')) {
+            $proposal = \App\Models\ProjectProposal::find($id);
+
+            if (! $proposal) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $proposal->document()->with('confidentiality')->first();
+
+            return $document
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
         // 6. Archive records: entries, disposition requests, and archive files.
         if (str_contains($path, 'archive/entries')) {
             $entry = \App\Models\ArchiveEntry::find($id);

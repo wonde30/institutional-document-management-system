@@ -106,17 +106,24 @@ foreach ($paramRoutes as $r) {
     } elseif (str_contains($uri, 'accreditation/evidence/{id}')) {
         $handledInMiddleware = true;
         $resolverNote = 'RouteScopeResolver: AccreditationEvidence -> documentVersion.document';
-    } elseif (str_contains($uri, 'archive/')) {
-        // Let's check archive routes
-        $handledInMiddleware = false;
-        $resolverNote = 'MISSING from RouteScopeResolver / CheckBaselinePermission! Falls back to global-only scope!';
+    } elseif (str_contains($uri, 'archive/entries')) {
+        $handledInMiddleware = true;
+        $resolverNote = 'RouteScopeResolver: ArchiveEntry -> document -> doc->allowsUser';
+    } elseif (str_contains($uri, 'archive/disposition-requests')) {
+        $handledInMiddleware = true;
+        $resolverNote = 'RouteScopeResolver: DispositionRequest -> archiveEntry.document -> doc->allowsUser';
+    } elseif (str_contains($uri, 'archive/files')) {
+        $handledInMiddleware = true;
+        $resolverNote = 'RouteScopeResolver: Document::resolveForFile -> doc->allowsUser';
     } elseif (str_contains($uri, 'workflows/instances/{id}')) {
-        $handledInMiddleware = false;
-        $resolverNote = 'Workflow instance routes {id} NOT explicitly resolved in RouteScopeResolver or CheckBaselinePermission!';
+        $handledInMiddleware = true;
+        $resolverNote = 'RouteScopeResolver: WorkflowInstance -> documentVersion.document -> doc->allowsUser';
+    } elseif (str_contains($uri, 'archive/legal-holds/{id}')) {
+        $handledInMiddleware = true;
+        $resolverNote = 'CheckBaselinePermission: Legal hold administrative management (archive.manage_retention)';
     } elseif (str_contains($uri, 'documents/{documentId}/versions/{versionId}')) {
-        // Check if versions routes have custom parameter names
-        $handledInMiddleware = false;
-        $resolverNote = 'CheckBaselinePermission only checks route("id") or route("fileId"). Route params {documentId} or {versionId} not inspected!';
+        $handledInMiddleware = true;
+        $resolverNote = 'CheckBaselinePermission: Document::with(confidentiality) -> doc->allowsUser';
     }
     
     echo sprintf("[%s] %-50s\n  Resolver: %s\n  Action: %s\n\n",
