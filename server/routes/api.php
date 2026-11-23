@@ -123,7 +123,7 @@ Route::prefix('v1')->group(function () {
         Route::get('reports/summary', [ReportController::class, 'summary'])
             ->middleware('permission:reports.view');
         Route::get('reports/export', [ReportController::class, 'export'])
-            ->middleware('permission:reports.export|reports.view');
+            ->middleware('permission:reports.export');
 
         // Organization & Identity
         Route::get('unit-types', [OrganizationUnitController::class, 'unitTypes']);

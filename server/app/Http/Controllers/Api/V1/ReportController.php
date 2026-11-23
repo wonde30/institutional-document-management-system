@@ -92,7 +92,7 @@ class ReportController extends Controller
         $startDate = $request->get('from_date', now()->subMonths(6)->toDateString());
         $endDate = $request->get('to_date', now()->toDateString());
 
-        $docAccessible = Document::accessibleBy($actor, 'reports.view');
+        $docAccessible = Document::accessibleBy($actor, 'reports.export');
         $byCategory = (clone $docAccessible)
             ->join('document_categories', 'documents.category_id', '=', 'document_categories.id')
             ->whereBetween('documents.registered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
