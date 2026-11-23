@@ -201,7 +201,7 @@ class RolePermissionController extends Controller
     {
         $role = Role::findOrFail($id);
 
-        if ($role->is_system || in_array($role->code, ['super_admin', 'admin', 'department_head', 'staff'], true)) {
+        if ($role->is_system) {
             AuditService::log(
                 action: 'role.deletion_rejected',
                 targetType: 'role',
@@ -217,25 +217,45 @@ class RolePermissionController extends Controller
             ], 422);
         }
 
-        $assignedCount = DB::table('user_roles')->where('role_id', $role->id)->count();
-        if ($assignedCount > 0) {
-            AuditService::log(
-                action: 'role.deletion_rejected',
-                targetType: 'role',
-                targetId: (string) $role->id,
-                details: ['reason' => 'assigned_users_exist', 'assigned_count' => $assignedCount, 'code' => $role->code],
-                actorId: $request->user()?->id,
-                request: $request
-            );
+        // Query information_schema for EVERY foreign key referencing roles.id
+        $dbName = DB::connection()->getDatabaseName();
+        $referencingFks = DB::select("
+            SELECT TABLE_NAME, COLUMN_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = ?
+              AND REFERENCED_TABLE_NAME = 'roles'
+              AND REFERENCED_COLUMN_NAME = 'id'
+        ", [$dbName]);
 
-            return response()->json([
-                'success' => false,
-                'message' => "Role cannot be deleted while assigned to {$assignedCount} user(s). Revoke all user assignments first.",
-            ], 422);
+        foreach ($referencingFks as $fk) {
+            $table = $fk->TABLE_NAME;
+            $column = $fk->COLUMN_NAME;
+            $count = DB::table($table)->where($column, $role->id)->count();
+
+            if ($count > 0) {
+                AuditService::log(
+                    action: 'role.deletion_rejected',
+                    targetType: 'role',
+                    targetId: (string) $role->id,
+                    details: [
+                        'reason' => 'foreign_key_referenced',
+                        'table' => $table,
+                        'column' => $column,
+                        'count' => $count,
+                        'code' => $role->code,
+                    ],
+                    actorId: $request->user()?->id,
+                    request: $request
+                );
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Role cannot be deleted because it is referenced in {$table} ({$count} record(s)).",
+                ], 422);
+            }
         }
 
         DB::transaction(function () use ($role, $request) {
-            $role->permissions()->detach();
             $role->delete();
 
             AuditService::log(
