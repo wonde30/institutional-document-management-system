@@ -104,12 +104,20 @@ class ReportController extends Controller
             $query->whereIn('documents.owner_unit_id', $permittedUnitIds);
         }
 
-        $rowCap = 10000;
-        $byCategory = $query
+        $rowCap = (int) $request->get('limit', 10000);
+        if ($rowCap <= 0 || $rowCap > 10000) {
+            $rowCap = 10000;
+        }
+
+        // Fetch rowCap + 1 to detect truncation without executing full unbounded count
+        $rows = (clone $query)
             ->selectRaw('document_categories.name as category, count(*) as count')
             ->groupBy('document_categories.name')
-            ->limit($rowCap)
+            ->limit($rowCap + 1)
             ->get();
+
+        $isCapHit = $rows->count() > $rowCap;
+        $byCategory = $rows->take($rowCap);
 
         AuditService::log(
             action: 'report.exported',
@@ -120,6 +128,7 @@ class ReportController extends Controller
                 'to_date' => $endDate,
                 'categories_count' => $byCategory->count(),
                 'row_cap' => $rowCap,
+                'row_cap_hit' => $isCapHit,
             ],
             actorId: $actor->id,
             request: $request
@@ -128,9 +137,16 @@ class ReportController extends Controller
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="institutional_report_' . date('Ymd_His') . '.csv"',
+            'X-Row-Cap' => (string) $rowCap,
+            'X-Row-Count' => (string) $byCategory->count(),
+            'X-Row-Cap-Hit' => $isCapHit ? 'true' : 'false',
         ];
 
-        return response()->stream(function () use ($byCategory) {
+        if ($isCapHit) {
+            $headers['X-Warning'] = "Report row cap of {$rowCap} reached; results truncated.";
+        }
+
+        return response()->stream(function () use ($byCategory, $isCapHit, $rowCap) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Category', 'Document Count']);
 
@@ -145,6 +161,11 @@ class ReportController extends Controller
             foreach ($byCategory as $row) {
                 fputcsv($handle, [$escapeFormula($row->category), $row->count]);
             }
+
+            if ($isCapHit) {
+                fputcsv($handle, ["NOTICE: Truncated at row cap of {$rowCap} categories", '']);
+            }
+
             fclose($handle);
         }, 200, $headers);
     }
