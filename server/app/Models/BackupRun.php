@@ -5,6 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $provider_job_reference
+ * @property \Carbon\Carbon|null $started_at
+ * @property \Carbon\Carbon|null $completed_at
+ * @property string $status
+ * @property string|null $manifest_reference
+ * @property string $verification_status
+ */
 class BackupRun extends Model
 {
     use HasFactory;

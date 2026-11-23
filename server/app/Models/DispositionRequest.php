@@ -6,6 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $archive_entry_id
+ * @property int $requested_by
+ * @property string $requested_action
+ * @property \Carbon\Carbon|null $requested_at
+ * @property string|null $justification
+ * @property \App\Models\ArchiveEntry $archiveEntry
+ * @property \App\Models\User $requestedBy
+ * @property \App\Models\DispositionDecision|null $decision
+ * @property \App\Models\DispositionExecution|null $execution
+ */
 class DispositionRequest extends Model
 {
     use HasFactory;

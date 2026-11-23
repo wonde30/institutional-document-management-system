@@ -111,6 +111,7 @@ class ReportController extends Controller
 
         // Fetch rowCap + 1 to detect truncation without executing full unbounded count
         $rows = (clone $query)
+            ->toBase()
             ->selectRaw('document_categories.name as category, count(*) as count')
             ->groupBy('document_categories.name')
             ->limit($rowCap + 1)

@@ -22,7 +22,7 @@ class BackupController extends Controller
      */
     public function index(): JsonResponse
     {
-        $runs = BackupRun::orderByDesc('id')->get()->map(function (BackupRun $run) {
+        $runs = BackupRun::orderByDesc('id')->get()->map(function (BackupRun $run): array {
             $manifest = null;
             if ($run->manifest_reference && File::exists($run->manifest_reference)) {
                 try {

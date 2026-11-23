@@ -67,8 +67,9 @@ class WorkflowController extends Controller
                   ->orWhereHas('participants', fn ($pq) => $pq->where('user_id', $actor->id)->where('status', 'pending'));
             });
         } else {
+            $primaryUnitId = $actor->getPrimaryUnitId();
             $filterUnits = in_array($scope, ['office', 'all'], true)
-                ? ($permittedUnitIds ?? ($actor->primary_membership ? [$actor->primary_membership->unit_id] : []))
+                ? ($permittedUnitIds ?? ($primaryUnitId ? [$primaryUnitId] : []))
                 : $permittedUnitIds;
 
             if ($filterUnits !== null && ! empty($filterUnits)) {
