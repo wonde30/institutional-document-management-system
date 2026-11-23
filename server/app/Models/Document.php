@@ -228,6 +228,15 @@ class Document extends Model
     }
 
     /**
+     * Check whether a user possesses elevated security clearance for high-confidentiality records.
+     */
+    protected function hasConfidentialClearance(User $user, int $ownerUnitId): bool
+    {
+        return $user->hasPermission('staff.view_sensitive', $ownerUnitId)
+            || $user->hasPermission('documents.delete', $ownerUnitId);
+    }
+
+    /**
      * Determine whether a user is authorized to perform an operation on this document.
      */
     public function allowsUser(?User $user, string $permission): bool
@@ -252,16 +261,7 @@ class Document extends Model
 
         // 2. Owner unit check
         if ($user->hasPermission($permission, $ownerUnitId)) {
-            if (! $isHighConfidentiality) {
-                return true;
-            }
-
-            // High confidentiality documents require elevated clearance
-            $hasElevatedClearance = $user->hasPermission('staff.view_sensitive', $ownerUnitId)
-                || $user->hasPermission('documents.delete', $ownerUnitId)
-                || $user->hasPermission('system.configure');
-
-            if ($hasElevatedClearance) {
+            if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
                 return true;
             }
         }
@@ -289,21 +289,17 @@ class Document extends Model
         }
 
         // 4. Archive management: when a document has an archive record or is retired,
-        // users holding authorized archive permissions in an authorized archive unit (or globally)
-        // have operational custody access for archive-domain operations.
-        if (str_starts_with($permission, 'archive.')) {
+        // users holding authorized 'archive.view' permission (cross-unit read) can view non-confidential
+        // archived records, or high-confidentiality records if holding clearance.
+        // Transfer, retention, and disposal operations are NOT cross-unit and must be checked against the owning unit.
+        if ($permission === 'archive.view') {
             $isArchived = $this->archiveEntry()->exists() || $this->lifecycle === 'retired' || $this->status_code === 'archived';
             if ($isArchived) {
-                $userUnitIds = $user->memberships()->pluck('unit_id')->filter()->all();
-                $hasArchivePerm = $user->hasPermission($permission, null)
-                    || collect($userUnitIds)->contains(fn ($uId) => $user->hasPermission($permission, (int) $uId));
+                $permittedUnits = $user->getPermittedUnitIds('archive.view');
+                $hasArchivePerm = ($permittedUnits === null) || ! empty($permittedUnits);
 
                 if ($hasArchivePerm) {
-                    if (! $isHighConfidentiality) {
-                        return true;
-                    }
-
-                    if ($user->hasPermission('staff.view_sensitive') || $user->hasPermission('system.configure')) {
+                    if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
                         return true;
                     }
                 }
