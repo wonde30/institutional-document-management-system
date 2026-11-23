@@ -441,11 +441,11 @@ Route::prefix('v1')->group(function () {
         Route::post('signatures', [InstitutionalModuleController::class, 'storeSignatureRequest'])
             ->middleware('permission:signatures.request');
         Route::post('signatures/{id}/execute', [InstitutionalModuleController::class, 'executeSignature'])
-            ->middleware('permission:signatures.sign|signatures.request');
+            ->middleware('permission:signatures.request');
         Route::post('signatures/{id}/verify', [InstitutionalModuleController::class, 'verifySignature'])
-            ->middleware('permission:signatures.verify|signatures.request');
+            ->middleware('permission:signatures.request');
         Route::post('signatures/verify-file', [InstitutionalModuleController::class, 'verifyPdfFile'])
-            ->middleware('permission:signatures.verify|signatures.request');
+            ->middleware('permission:signatures.request');
         Route::get('signatures/identities', [InstitutionalModuleController::class, 'identities'])
             ->middleware('permission:signatures.request');
         Route::post('stamps/apply', [InstitutionalModuleController::class, 'applyStamp'])
@@ -549,20 +549,20 @@ Route::prefix('v1')->group(function () {
         // Enterprise Backups & Disaster Recovery Drills
         Route::prefix('admin/backups')->group(function () {
             Route::get('/', [BackupController::class, 'index'])
-                ->middleware('permission:backups.manage|system.configure');
+                ->middleware('permission:system.configure');
             Route::post('/', [BackupController::class, 'store'])
-                ->middleware('permission:backups.manage|system.configure');
+                ->middleware('permission:system.configure');
             Route::get('{id}', [BackupController::class, 'show'])
-                ->middleware('permission:backups.manage|system.configure');
+                ->middleware('permission:system.configure');
             Route::post('{id}/verify', [BackupController::class, 'verify'])
-                ->middleware('permission:backups.manage|system.configure');
+                ->middleware('permission:system.configure');
         });
 
         Route::prefix('admin/dr-drills')->group(function () {
             Route::get('/', [BackupController::class, 'drills'])
-                ->middleware('permission:backups.restore|backups.manage|system.configure');
+                ->middleware('permission:system.configure');
             Route::post('/', [BackupController::class, 'runDrill'])
-                ->middleware('permission:backups.restore|backups.manage|system.configure');
+                ->middleware('permission:system.configure');
         });
 
         // Dataset Import & Export
