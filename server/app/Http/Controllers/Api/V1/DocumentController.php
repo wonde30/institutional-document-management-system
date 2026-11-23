@@ -918,6 +918,13 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
 
+        if (! $document->allowsUser($request->user(), 'documents.share')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to share this document.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'target_user_id' => 'nullable|exists:users,id',
             'target_unit_id' => 'nullable|exists:organization_units,id',
@@ -930,6 +937,13 @@ class DocumentController extends Controller
                 'success' => false,
                 'message' => 'Either target_user_id or target_unit_id must be provided to share the document.',
             ], 422);
+        }
+
+        if (! $document->allowsUser($request->user(), $validated['permission_code'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: You cannot grant permission '{$validated['permission_code']}' which you do not hold on this document.",
+            ], 403);
         }
 
         $permId = DB::table('permissions')->where('code', $validated['permission_code'])->value('id');
@@ -961,5 +975,45 @@ class DocumentController extends Controller
             'message' => 'Document access shared successfully.',
             'data' => ['grant_id' => $grantId],
         ], 201);
+    }
+
+    /**
+     * Revoke a discretionary document share grant.
+     */
+    public function revokeShare(Request $request, int $id, int $grantId): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        if (! $document->allowsUser($request->user(), 'documents.share')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to manage shares on this document.',
+            ], 403);
+        }
+
+        $deleted = DB::table('document_grants')
+            ->where('id', $grantId)
+            ->where('document_id', $document->id)
+            ->delete();
+
+        if (! $deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Discretionary grant not found on this document.',
+            ], 404);
+        }
+
+        AuditService::recordDocumentEvent(
+            action: 'document.share_revoked',
+            actorId: $request->user()->id,
+            documentId: $document->id,
+            details: ['grant_id' => $grantId],
+            request: $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document share grant revoked successfully.',
+        ]);
     }
 }

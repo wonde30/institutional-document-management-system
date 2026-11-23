@@ -8,6 +8,7 @@ use App\Models\Correspondence;
 use App\Models\Document;
 use App\Models\DocumentMovement;
 use App\Models\OrganizationUnit;
+use App\Services\AuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,12 +94,36 @@ class ReportController extends Controller
         $endDate = $request->get('to_date', now()->toDateString());
 
         $docAccessible = Document::accessibleBy($actor, 'reports.export');
-        $byCategory = (clone $docAccessible)
+        $permittedUnitIds = $actor->getPermittedUnitIds('reports.export');
+
+        $query = (clone $docAccessible)
             ->join('document_categories', 'documents.category_id', '=', 'document_categories.id')
-            ->whereBetween('documents.registered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->whereBetween('documents.registered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if ($permittedUnitIds !== null) {
+            $query->whereIn('documents.owner_unit_id', $permittedUnitIds);
+        }
+
+        $rowCap = 10000;
+        $byCategory = $query
             ->selectRaw('document_categories.name as category, count(*) as count')
             ->groupBy('document_categories.name')
+            ->limit($rowCap)
             ->get();
+
+        AuditService::log(
+            action: 'report.exported',
+            targetType: 'report',
+            targetId: 'documents_by_category',
+            details: [
+                'from_date' => $startDate,
+                'to_date' => $endDate,
+                'categories_count' => $byCategory->count(),
+                'row_cap' => $rowCap,
+            ],
+            actorId: $actor->id,
+            request: $request
+        );
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -108,8 +133,17 @@ class ReportController extends Controller
         return response()->stream(function () use ($byCategory) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Category', 'Document Count']);
+
+            $escapeFormula = function ($val): string {
+                $str = (string) $val;
+                if ($str !== '' && in_array($str[0], ['=', '+', '-', '@', "\t"], true)) {
+                    return "'" . $str;
+                }
+                return $str;
+            };
+
             foreach ($byCategory as $row) {
-                fputcsv($handle, [$row->category, $row->count]);
+                fputcsv($handle, [$escapeFormula($row->category), $row->count]);
             }
             fclose($handle);
         }, 200, $headers);

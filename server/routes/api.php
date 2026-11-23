@@ -199,6 +199,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:documents.version');
         Route::post('documents/{id}/share', [DocumentController::class, 'share'])
             ->middleware('permission:documents.share');
+        Route::delete('documents/{id}/share/{grantId}', [DocumentController::class, 'revokeShare'])
+            ->middleware('permission:documents.share');
         Route::get('files/{fileId}/download', [DocumentController::class, 'downloadFile'])
             ->middleware('permission:documents.download');
         Route::get('documents/{id}/timeline', [DocumentController::class, 'timeline'])

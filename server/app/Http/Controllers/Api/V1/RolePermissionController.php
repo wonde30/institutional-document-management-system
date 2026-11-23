@@ -202,6 +202,15 @@ class RolePermissionController extends Controller
         $role = Role::findOrFail($id);
 
         if ($role->is_system || in_array($role->code, ['super_admin', 'admin', 'department_head', 'staff'], true)) {
+            AuditService::log(
+                action: 'role.deletion_rejected',
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['reason' => 'system_role_protected', 'code' => $role->code],
+                actorId: $request->user()?->id,
+                request: $request
+            );
+
             return response()->json([
                 'success' => false,
                 'message' => 'Security restriction: Protected system roles cannot be deleted.',
@@ -210,6 +219,15 @@ class RolePermissionController extends Controller
 
         $assignedCount = DB::table('user_roles')->where('role_id', $role->id)->count();
         if ($assignedCount > 0) {
+            AuditService::log(
+                action: 'role.deletion_rejected',
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['reason' => 'assigned_users_exist', 'assigned_count' => $assignedCount, 'code' => $role->code],
+                actorId: $request->user()?->id,
+                request: $request
+            );
+
             return response()->json([
                 'success' => false,
                 'message' => "Role cannot be deleted while assigned to {$assignedCount} user(s). Revoke all user assignments first.",
