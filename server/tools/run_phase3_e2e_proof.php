@@ -379,8 +379,35 @@ echo "\n--- 6. SIGNATURES & STAMPS PROOFS ---\n";
 $sigListRes = $adminClient->getJson('/api/v1/signatures');
 recordResult($results, 'admin', 'list signatures & stamps', '/api/v1/signatures', 200, $sigListRes);
 
+// Dispatch digital signature request
+$adminUser = User::where('email', 'admin@wu.edu.et')->first();
+$docDetailRes = $adminClient->getJson("/api/v1/documents/{$createdDocId}");
+$docVersionId = $docDetailRes['body']['data']['versions'][0]['id'] ?? 1;
+
+$sigReqRes = $adminClient->postJson('/api/v1/signatures', [
+    'document_version_id' => $docVersionId,
+    'signer_id' => $adminUser->id,
+    'purpose' => 'Presidential Endorsement of Institutional Policy',
+    'expires_at' => now()->addDays(7)->format('Y-m-d H:i:s'),
+]);
+recordResult($results, 'admin', 'dispatch signature request', '/api/v1/signatures', 201, $sigReqRes);
+
+$sigRequestId = $sigReqRes['body']['data']['id'] ?? null;
+if ($sigRequestId) {
+    // Execute digital signature
+    $sigExecRes = $adminClient->postJson("/api/v1/signatures/{$sigRequestId}/execute");
+    recordResult($results, 'admin', 'execute digital signature PKI', "/api/v1/signatures/{$sigRequestId}/execute", 200, $sigExecRes);
+    
+    $sigId = $sigExecRes['body']['data']['id'] ?? null;
+    if ($sigId) {
+        // Verify digital signature
+        $sigVerifyRes = $adminClient->postJson("/api/v1/signatures/{$sigId}/verify");
+        recordResult($results, 'admin', 'verify cryptographic signature', "/api/v1/signatures/{$sigId}/verify", 200, $sigVerifyRes);
+    }
+}
+
 // ----------------------------------------------------------------------------
-// 7. REPORTS, EXPORT & BACKUP VERIFICATION
+// 7. REPORTS, EXPORT & ENTERPRISE BACKUP / DR VERIFICATION
 // ----------------------------------------------------------------------------
 echo "\n--- 7. REPORTS & DATA TRANSFER PROOFS ---\n";
 $repRes = $adminClient->getJson('/api/v1/reports/summary');
@@ -390,6 +417,29 @@ $expRes = $adminClient->postJson('/api/v1/data/exports', [
     'dataset' => 'document_catalog',
 ]);
 recordResult($results, 'admin', 'dataset export operation', '/api/v1/data/exports', 201, $expRes);
+
+// Coordinated Enterprise Backup
+$backupRes = $adminClient->postJson('/api/v1/admin/backups', [
+    'encrypt' => false,
+]);
+recordResult($results, 'admin', 'trigger enterprise full backup', '/api/v1/admin/backups', 201, $backupRes);
+
+$backupId = $backupRes['body']['data']['backup_id'] ?? null;
+$backupRunId = $backupRes['body']['data']['run_id'] ?? null;
+
+if ($backupRunId) {
+    // Re-verify SHA-256 integrity against manifest
+    $backupVerifyRes = $adminClient->postJson("/api/v1/admin/backups/{$backupRunId}/verify");
+    recordResult($results, 'admin', 'verify backup SHA-256 integrity', "/api/v1/admin/backups/{$backupRunId}/verify", 200, $backupVerifyRes);
+}
+
+if ($backupId) {
+    // Isolated DR Restoration Drill into wu_dms_recovery_test
+    $drDrillRes = $adminClient->postJson('/api/v1/admin/dr-drills', [
+        'backup_id' => $backupId,
+    ]);
+    recordResult($results, 'admin', 'disaster recovery isolated drill', '/api/v1/admin/dr-drills', 200, $drDrillRes);
+}
 
 // ----------------------------------------------------------------------------
 // 8. AUDIT INTEGRITY: UPDATE & DELETE REJECTION
@@ -434,9 +484,86 @@ recordResult($results, 'system', 'audit event SQL DELETE blocked by trigger', 'd
 ]);
 
 // ----------------------------------------------------------------------------
-// 9. ADMIN SCREENS ENDPOINTS
+// 9. INSTITUTIONAL WORKFLOWS: RESEARCH & PROJECT LIFECYCLES
 // ----------------------------------------------------------------------------
-echo "\n--- 9. ADMIN SCREENS PROOFS ---\n";
+echo "\n--- 9. INSTITUTIONAL MODULE WORKFLOW PROOFS ---\n";
+
+// A. Research Monograph Lifecycle: Create -> Submit -> Review -> Approve
+$resMonograph = $adminClient->postJson('/api/v1/research/outputs', [
+    'title' => 'E2E Research Monograph ' . uniqid(),
+    'office_id' => 1,
+    'completion_date' => now()->toDateString(),
+    'research_type' => 'faculty_monograph',
+    'notes' => 'E2E verified research monograph lifecycle',
+]);
+recordResult($results, 'admin', 'create research output', '/api/v1/research/outputs', 201, $resMonograph);
+$resMonographId = $resMonograph['body']['data']['id'] ?? null;
+
+if ($resMonographId) {
+    // Submit
+    $subRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/submit");
+    recordResult($results, 'admin', 'submit research for review', "/api/v1/research/outputs/{$resMonographId}/submit", 200, $subRes);
+
+    // Review
+    $revRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/review", ['comments' => 'Peer review passed']);
+    recordResult($results, 'admin', 'departmental review of research', "/api/v1/research/outputs/{$resMonographId}/review", 200, $revRes);
+
+    // Approve
+    $appRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/approve", ['comments' => 'Final faculty approval granted']);
+    recordResult($results, 'admin', 'approve finalized research', "/api/v1/research/outputs/{$resMonographId}/approve", 200, $appRes);
+}
+
+// B. Project Proposal Lifecycle: Create -> Submit -> Review -> Approve
+$projProp = $adminClient->postJson('/api/v1/projects', [
+    'title' => 'E2E Institutional Project Proposal ' . uniqid(),
+    'office_id' => 1,
+    'project_type_id' => 1,
+    'summary' => 'E2E verified institutional project proposal lifecycle',
+]);
+recordResult($results, 'admin', 'create project proposal', '/api/v1/projects', 201, $projProp);
+$projPropId = $projProp['body']['data']['id'] ?? null;
+
+if ($projPropId) {
+    // Submit
+    $subProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/submit");
+    recordResult($results, 'admin', 'submit project for review', "/api/v1/projects/{$projPropId}/submit", 200, $subProjRes);
+
+    // Review
+    $revProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/review", ['comments' => 'Feasibility review passed']);
+    recordResult($results, 'admin', 'review project proposal', "/api/v1/projects/{$projPropId}/review", 200, $revProjRes);
+
+    // Approve
+    $appProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/approve", ['comments' => 'Project proposal funded & approved']);
+    recordResult($results, 'admin', 'approve project proposal', "/api/v1/projects/{$projPropId}/approve", 200, $appProjRes);
+}
+
+// ----------------------------------------------------------------------------
+// 10. CONFIDENTIALITY ISOLATION & IDOR DEFENSE
+// ----------------------------------------------------------------------------
+echo "\n--- 10. CONFIDENTIALITY ISOLATION & IDOR PROOFS ---\n";
+// Create high confidentiality document
+$confDocRes = $adminClient->postMultipart('/api/v1/documents', [
+    'title' => 'Executive Confidential Strategic Plan ' . uniqid(),
+    'category_id' => 1,
+    'confidentiality_id' => 3, // confidential
+    'owner_unit_id' => 1,
+    'document_date' => now()->toDateString(),
+    'summary' => 'Strictly confidential executive record.',
+], ['file' => $tempPdf]);
+recordResult($results, 'admin', 'create confidential document', '/api/v1/documents', 201, $confDocRes);
+$confDocId = $confDocRes['body']['data']['id'] ?? null;
+
+if ($confDocId) {
+    // Unprivileged user access attempt -> 403 Forbidden
+    $unprivilegedClient = $sessions['unprivileged'];
+    $unauthConfAccess = $unprivilegedClient->getJson("/api/v1/documents/{$confDocId}");
+    recordResult($results, 'unprivileged', 'confidential document access blocked', "/api/v1/documents/{$confDocId}", 403, $unauthConfAccess);
+}
+
+// ----------------------------------------------------------------------------
+// 11. ADMIN SCREENS ENDPOINTS
+// ----------------------------------------------------------------------------
+echo "\n--- 11. ADMIN SCREENS PROOFS ---\n";
 $usersRes = $adminClient->getJson('/api/v1/users');
 recordResult($results, 'admin', 'admin users screen', '/api/v1/users', 200, $usersRes);
 
@@ -451,6 +578,25 @@ recordResult($results, 'admin', 'admin units tree', '/api/v1/organization-units/
 
 $settingsRes = $adminClient->getJson('/api/v1/settings');
 recordResult($results, 'admin', 'admin settings screen', '/api/v1/settings', 200, $settingsRes);
+
+// ----------------------------------------------------------------------------
+// 12. LOGOUT & SESSION INVALIDATION
+// ----------------------------------------------------------------------------
+echo "\n--- 12. LOGOUT & SESSION INVALIDATION PROOFS ---\n";
+// Create separate session to verify logout
+$logoutTestClient = new SanctumHttpClient();
+$logoutTestClient->getCsrfCookie();
+$logoutLoginRes = $logoutTestClient->postJson('/api/v1/auth/login', [
+    'email' => 'staff.tech@wu.edu.et',
+    'password' => 'Password123!',
+]);
+recordResult($results, 'staff.tech', 'login before logout', '/api/v1/auth/login', 200, $logoutLoginRes);
+
+$logoutRes = $logoutTestClient->postJson('/api/v1/auth/logout');
+recordResult($results, 'staff.tech', 'logout session termination', '/api/v1/auth/logout', 200, $logoutRes);
+
+$meAfterLogout = $logoutTestClient->getJson('/api/v1/auth/me');
+recordResult($results, 'staff.tech', 'subsequent request rejected after logout', '/api/v1/auth/me', 401, $meAfterLogout);
 
 // Clean up temp files
 @unlink($tempPdf);
