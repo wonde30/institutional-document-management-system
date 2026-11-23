@@ -312,14 +312,7 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
         $nextVersion = ($record->document->versions()->max('version_number') ?? 0) + 1;
 
-        $version = DocumentVersion::create([
-            'document_id' => $record->document_id,
-            'version_number' => $nextVersion,
-            'created_by' => $actor->id,
-            'created_at' => $now,
-            'change_note' => $validated['change_note'],
-        ]);
-
+        $fileObject = null;
         if ($request->hasFile('file') && $request->file('file')->isValid()) {
             $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
                 $request->file('file'),
@@ -327,24 +320,46 @@ class InstitutionalModuleController extends Controller
                 $actor->id,
                 'primary'
             );
-
-            \App\Models\VersionFile::create([
-                'version_id' => $version->id,
-                'file_object_id' => $fileObject->id,
-                'purpose' => 'primary',
-                'display_order' => 1,
-            ]);
         }
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'research.version_uploaded',
-            'target_type' => 'document_version',
-            'target_id' => (string) $version->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => ['research_id' => $record->id, 'version' => $nextVersion],
-        ]);
+        try {
+            $version = DB::transaction(function () use ($record, $nextVersion, $actor, $now, $validated, $fileObject) {
+                $version = DocumentVersion::create([
+                    'document_id' => $record->document_id,
+                    'version_number' => $nextVersion,
+                    'created_by' => $actor->id,
+                    'created_at' => $now,
+                    'change_note' => $validated['change_note'],
+                ]);
+
+                if ($fileObject) {
+                    \App\Models\VersionFile::create([
+                        'document_version_id' => $version->id,
+                        'file_object_id' => $fileObject->id,
+                        'purpose' => 'primary',
+                        'display_order' => 1,
+                    ]);
+                }
+
+                AuditEvent::create([
+                    'actor_id' => $actor->id,
+                    'action' => 'research.version_uploaded',
+                    'target_type' => 'document_version',
+                    'target_id' => (string) $version->id,
+                    'request_id' => (string) Str::uuid(),
+                    'occurred_at' => $now,
+                    'details_json' => ['research_id' => $record->id, 'version' => $nextVersion],
+                ]);
+
+                return $version;
+            });
+        } catch (\Throwable $e) {
+            if ($fileObject) {
+                \Illuminate\Support\Facades\Storage::disk($fileObject->storage_disk)->delete($fileObject->storage_key);
+                $fileObject->delete();
+            }
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
@@ -982,35 +997,37 @@ class InstitutionalModuleController extends Controller
         // Perform immediate independent cryptographic verification of the signed PDF
         $verifyResult = $verifier->verifyPdf($signResult['signed_pdf_path']);
 
-        $verification = SignatureVerification::create([
-            'signature_id' => $digitalSignature->id,
-            'verified_at' => $now,
-            'outcome' => $verifyResult['outcome'] ?? 'valid',
-            'certificate_status' => $verifyResult['certificate_status'] ?? 'trusted_valid',
-            'timestamp_status' => $verifyResult['timestamp_status'] ?? 'trusted_rfc3161',
-            'details_json' => array_merge($verifyResult['details'] ?? [], [
-                'signature_format' => $digitalSignature->signature_format,
-                'signed_file_id' => $signedFile->id,
-                'signed_sha256' => $signedFile->sha256,
-                'verification_timestamp' => $now,
-            ]),
-        ]);
+        $verification = DB::transaction(function () use ($digitalSignature, $now, $verifyResult, $signedFile, $actor) {
+            $verification = SignatureVerification::create([
+                'signature_id' => $digitalSignature->id,
+                'verified_at' => $now,
+                'outcome' => $verifyResult['outcome'] ?? 'valid',
+                'certificate_status' => $verifyResult['certificate_status'] ?? 'trusted_valid',
+                'timestamp_status' => $verifyResult['timestamp_status'] ?? 'trusted_rfc3161',
+                'details_json' => array_merge($verifyResult['details'] ?? [], [
+                    'signature_format' => $digitalSignature->signature_format,
+                    'signed_file_id' => $signedFile->id,
+                    'signed_sha256' => $signedFile->sha256,
+                    'verification_timestamp' => $now,
+                ]),
+            ]);
 
-        // In DigitalSignature, signed_file_id and source_file_id link the exact artifacts
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'signature.executed_and_verified',
+                'target_type' => 'digital_signature',
+                'target_id' => (string) $digitalSignature->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'outcome' => $verification->outcome,
+                    'signed_sha256' => $signedFile->sha256,
+                    'format' => $digitalSignature->signature_format,
+                ],
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'signature.executed_and_verified',
-            'target_type' => 'digital_signature',
-            'target_id' => (string) $digitalSignature->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => [
-                'outcome' => $verification->outcome,
-                'signed_sha256' => $signedFile->sha256,
-                'format' => $digitalSignature->signature_format,
-            ],
-        ]);
+            return $verification;
+        });
 
         return response()->json([
             'success' => true,
