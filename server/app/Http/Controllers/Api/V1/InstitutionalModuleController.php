@@ -565,8 +565,23 @@ class InstitutionalModuleController extends Controller
             $updateData = ['workflow_status' => $targetStatus];
             if ($targetStatus === 'submitted') {
                 $updateData['submitted_by'] = $actor->id;
+                $updateData['submitted_at'] = $now;
             } elseif ($targetStatus === 'under_review') {
                 $updateData['reviewed_by'] = $actor->id;
+            } elseif ($targetStatus === 'approved') {
+                $updateData['approved_by'] = $actor->id;
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
+            } elseif ($targetStatus === 'rejected') {
+                $updateData['rejected_by'] = $actor->id;
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
+            } elseif ($targetStatus === 'returned') {
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
             }
             $locked->update($updateData);
 
@@ -1082,8 +1097,23 @@ class InstitutionalModuleController extends Controller
             $updateData = ['workflow_status' => $targetStatus];
             if ($targetStatus === 'submitted') {
                 $updateData['submitted_by'] = $actor->id;
+                $updateData['submitted_at'] = $now;
             } elseif ($targetStatus === 'under_review') {
                 $updateData['reviewed_by'] = $actor->id;
+            } elseif ($targetStatus === 'approved') {
+                $updateData['approved_by'] = $actor->id;
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
+            } elseif ($targetStatus === 'rejected') {
+                $updateData['rejected_by'] = $actor->id;
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
+            } elseif ($targetStatus === 'returned') {
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
             }
             $locked->update($updateData);
 

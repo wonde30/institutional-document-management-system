@@ -19,6 +19,10 @@ class ProjectProposal extends Model
         'workflow_status',
         'submitted_by',
         'reviewed_by',
+        'approved_by',
+        'rejected_by',
+        'submitted_at',
+        'decision_remarks',
         'recorded_by',
         'recorded_at',
     ];
@@ -27,6 +31,7 @@ class ProjectProposal extends Model
     {
         return [
             'recorded_at' => 'datetime',
+            'submitted_at' => 'datetime',
         ];
     }
     public function document(): BelongsTo
@@ -52,5 +57,15 @@ class ProjectProposal extends Model
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 }
