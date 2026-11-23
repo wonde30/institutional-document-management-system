@@ -353,6 +353,10 @@ class DatabaseBackupService
                 "--start-position={$startPosition}",
             ];
 
+            if ($sourceDb) {
+                $binlogCmd[] = "--database={$sourceDb}";
+            }
+
             if ($sourceDb !== $targetDatabase) {
                 $binlogCmd[] = "--rewrite-db={$sourceDb}->{$targetDatabase}";
             }
