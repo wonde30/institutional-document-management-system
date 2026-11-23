@@ -583,19 +583,12 @@ recordResult($results, 'admin', 'admin settings screen', '/api/v1/settings', 200
 // 12. LOGOUT & SESSION INVALIDATION
 // ----------------------------------------------------------------------------
 echo "\n--- 12. LOGOUT & SESSION INVALIDATION PROOFS ---\n";
-// Create separate session to verify logout
-$logoutTestClient = new SanctumHttpClient();
-$logoutTestClient->getCsrfCookie();
-$logoutLoginRes = $logoutTestClient->postJson('/api/v1/auth/login', [
-    'email' => 'staff.tech@wu.edu.et',
-    'password' => 'Password123!',
-]);
-recordResult($results, 'staff.tech', 'login before logout', '/api/v1/auth/login', 200, $logoutLoginRes);
-
-$logoutRes = $logoutTestClient->postJson('/api/v1/auth/logout');
+// Use existing authenticated session to verify logout and session termination
+$logoutClient = $sessions['staff.tech'];
+$logoutRes = $logoutClient->postJson('/api/v1/auth/logout');
 recordResult($results, 'staff.tech', 'logout session termination', '/api/v1/auth/logout', 200, $logoutRes);
 
-$meAfterLogout = $logoutTestClient->getJson('/api/v1/auth/me');
+$meAfterLogout = $logoutClient->getJson('/api/v1/auth/me');
 recordResult($results, 'staff.tech', 'subsequent request rejected after logout', '/api/v1/auth/me', 401, $meAfterLogout);
 
 // Clean up temp files
