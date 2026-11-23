@@ -353,10 +353,6 @@ class DatabaseBackupService
                 "--start-position={$startPosition}",
             ];
 
-            if ($sourceDb) {
-                $binlogCmd[] = "--database={$sourceDb}";
-            }
-
             if ($sourceDb !== $targetDatabase) {
                 $binlogCmd[] = "--rewrite-db={$sourceDb}->{$targetDatabase}";
             }
@@ -378,6 +374,8 @@ class DatabaseBackupService
                     $this->mysqlPath,
                     "--defaults-extra-file={$tempCnf}",
                     '--protocol=tcp',
+                    '--force',
+                    '--init-command=SET FOREIGN_KEY_CHECKS=0;',
                     $targetDatabase,
                 ];
 
