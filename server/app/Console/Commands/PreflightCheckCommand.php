@@ -55,20 +55,6 @@ class PreflightCheckCommand extends Command
             }
         }
 
-        $recommendedExtensions = [
-            'intl' => 'Number::format and localized calendar calculations',
-            'gd' => 'Dynamic stamp and thumbnail rendering',
-        ];
-
-        foreach ($recommendedExtensions as $ext => $purpose) {
-            if (extension_loaded($ext)) {
-                $this->line("  <fg=green>✓</> Optional extension '{$ext}' is loaded ({$purpose})");
-            } else {
-                $this->line("  <fg=yellow>!</> Optional extension '{$ext}' is not loaded ({$purpose})");
-                $warnings[] = "Optional PHP extension not loaded: {$ext} ({$purpose})";
-            }
-        }
-
         // 2. Required Environment Configuration Keys
         $this->line(PHP_EOL . '<fg=cyan>2. Checking Environment Configuration...</>');
         $requiredEnvKeys = [
@@ -81,7 +67,11 @@ class PreflightCheckCommand extends Command
         foreach ($requiredEnvKeys as $configKey => $envName) {
             $val = config($configKey);
             if (!empty($val)) {
-                $this->line("  <fg=green>✓</> {$envName} is configured ({$val})");
+                if ($envName === 'APP_KEY' || str_contains($envName, 'SECRET') || str_contains($envName, 'PASSWORD')) {
+                    $this->line("  <fg=green>✓</> {$envName} is configured (masked)");
+                } else {
+                    $this->line("  <fg=green>✓</> {$envName} is configured ({$val})");
+                }
             } else {
                 $this->line("  <fg=red>✗</> {$envName} is empty or unconfigured");
                 $failures[] = "Environment configuration missing: {$envName}";
@@ -157,10 +147,20 @@ class PreflightCheckCommand extends Command
             }
         }
 
+        $isLocalOrTesting = in_array(app()->environment(), ['local', 'testing'], true);
+        if (! $isLocalOrTesting && $queueConn === 'database') {
+            $this->line("  <fg=yellow>!</> Warning: Queue connection is 'database'; ensure artisan queue:work daemon is active in production.");
+            $warnings[] = "Queue connection is 'database'; ensure artisan queue:work is running in production.";
+        }
+
         // 6. Mail Driver
         $this->line(PHP_EOL . '<fg=cyan>6. Checking Mail Driver Configuration...</>');
         $mailDriver = config('mail.default');
         $this->line("  <fg=green>✓</> Mail default transport: {$mailDriver}");
+        if (! $isLocalOrTesting && $mailDriver === 'log') {
+            $this->line("  <fg=yellow>!</> Warning: Mail transport is 'log' in non-local environment.");
+            $warnings[] = "Mail transport is 'log' in production; outgoing institutional alerts will not be delivered via SMTP.";
+        }
 
         // 7. CORS and Sanctum Security
         $this->line(PHP_EOL . '<fg=cyan>7. Checking CORS and Sanctum SPA Consistency...</>');

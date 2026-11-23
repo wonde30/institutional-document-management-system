@@ -30,4 +30,15 @@ class PreflightCheckCommandTest extends TestCase
             ->expectsOutputToContain('Database target is isolated')
             ->assertExitCode(0);
     }
+
+    public function test_preflight_masks_app_key_and_secrets(): void
+    {
+        $rawAppKey = config('app.key');
+        $this->assertNotEmpty($rawAppKey);
+
+        $this->artisan('wu:preflight')
+            ->doesntExpectOutputToContain($rawAppKey)
+            ->expectsOutputToContain('APP_KEY is configured (masked)')
+            ->assertExitCode(0);
+    }
 }
