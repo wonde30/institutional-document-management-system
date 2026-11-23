@@ -43,6 +43,9 @@ class SignatureRequest extends Model
         return $this->belongsTo(User::class, 'requested_by');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function signer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'signer_id');
