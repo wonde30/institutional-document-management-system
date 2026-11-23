@@ -32,11 +32,17 @@ class CorrespondenceDispatch extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<CorrespondenceParticipant, $this>
+     */
     public function participant(): BelongsTo
     {
         return $this->belongsTo(CorrespondenceParticipant::class, 'participant_id');
     }
 
+    /**
+     * @return BelongsTo<DocumentVersion, $this>
+     */
     public function documentVersion(): BelongsTo
     {
         return $this->belongsTo(DocumentVersion::class, 'document_version_id');
