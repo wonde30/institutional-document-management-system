@@ -44,14 +44,23 @@ class PreflightCheckCommand extends Command
             'openssl' => 'Cryptographic signing, token generation, and encryption',
             'pdo_mysql' => 'MySQL database connectivity',
             'zip' => 'Package compression and document archiving',
+            'intl' => 'Internationalization, collation, and Unicode normalization',
+            'gd' => 'Image processing, document thumbnails, and rendering',
         ];
+
+        $iniPath = php_ini_loaded_file() ?: 'php.ini';
 
         foreach ($requiredExtensions as $ext => $purpose) {
             if (extension_loaded($ext)) {
                 $this->line("  <fg=green>✓</> Required extension '{$ext}' is loaded ({$purpose})");
             } else {
                 $this->line("  <fg=red>✗</> Required extension '{$ext}' is NOT loaded ({$purpose})");
-                $failures[] = "Missing required PHP extension: {$ext} ({$purpose})";
+                $this->line("     <fg=yellow>Windows configuration instructions:</>");
+                $this->line("     <fg=yellow>  1. Open your active php.ini: {$iniPath}</>");
+                $this->line("     <fg=yellow>  2. Enable the extension line: extension={$ext}</>");
+                $this->line("     <fg=yellow>  3. Verify extension_dir is set to your PHP extensions directory</>");
+                $this->line("     <fg=yellow>  4. Restart your web server / CLI session</>");
+                $failures[] = "Missing required PHP extension '{$ext}' ({$purpose}). Enable 'extension={$ext}' in {$iniPath}";
             }
         }
 
