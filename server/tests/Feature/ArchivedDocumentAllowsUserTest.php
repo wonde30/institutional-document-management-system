@@ -131,4 +131,43 @@ class ArchivedDocumentAllowsUserTest extends TestCase
         // Plain staff lacks archive.view -> MUST BE BLOCKED
         $this->assertFalse($doc->allowsUser($this->plainStaff, 'archive.view'));
     }
+
+    public function test_archive_view_accessible_by_parity_with_allows_user(): void
+    {
+        // 1. Non-confidential archived document of Unit A:
+        // Opens by ID (allowsUser) AND appears in archive list (accessibleBy) for archivist in Unit B
+        $publicDoc = $this->createArchivedDocument($this->unitA, $this->publicConf);
+        $this->assertTrue($publicDoc->allowsUser($this->archivistUnitB, 'archive.view'));
+        $this->assertTrue(Document::accessibleBy($this->archivistUnitB, 'archive.view')->where('documents.id', $publicDoc->id)->exists());
+
+        $listRes = $this->actingAs($this->archivistUnitB)->getJson('/api/v1/archive/entries');
+        $listRes->assertStatus(200);
+        $docIds = collect($listRes->json('data'))->pluck('document_id')->all();
+        $this->assertContains($publicDoc->id, $docIds);
+
+        // 2. Restricted archived document of Unit A without clearance:
+        // Does NOT open by ID (allowsUser = false) AND does NOT appear in archive list (accessibleBy = false)
+        $restrictedDoc = $this->createArchivedDocument($this->unitA, $this->restrictedConf);
+        $this->assertFalse($restrictedDoc->allowsUser($this->archivistUnitB, 'archive.view'));
+        $this->assertFalse(Document::accessibleBy($this->archivistUnitB, 'archive.view')->where('documents.id', $restrictedDoc->id)->exists());
+
+        $listRes2 = $this->actingAs($this->archivistUnitB)->getJson('/api/v1/archive/entries');
+        $docIds2 = collect($listRes2->json('data'))->pluck('document_id')->all();
+        $this->assertNotContains($restrictedDoc->id, $docIds2);
+
+        // 3. Grant staff.view_sensitive clearance in Unit A to archivist:
+        // Now opens by ID AND appears in archive list
+        $this->grantPermissionToUser($this->archivistUnitB, 'staff.view_sensitive', 'unit', $this->unitA->id);
+        $this->assertTrue($restrictedDoc->allowsUser($this->archivistUnitB, 'archive.view'));
+        $this->assertTrue(Document::accessibleBy($this->archivistUnitB, 'archive.view')->where('documents.id', $restrictedDoc->id)->exists());
+
+        $listRes3 = $this->actingAs($this->archivistUnitB)->getJson('/api/v1/archive/entries');
+        $docIds3 = collect($listRes3->json('data'))->pluck('document_id')->all();
+        $this->assertContains($restrictedDoc->id, $docIds3);
+
+        // 4. Plain staff user (no archive.view):
+        // Does NOT open by ID and does NOT appear in list
+        $this->assertFalse($publicDoc->allowsUser($this->plainStaff, 'archive.view'));
+        $this->assertFalse(Document::accessibleBy($this->plainStaff, 'archive.view')->where('documents.id', $publicDoc->id)->exists());
+    }
 }
