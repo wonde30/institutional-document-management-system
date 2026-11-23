@@ -136,7 +136,7 @@ class ReportController extends Controller
 
             $escapeFormula = function ($val): string {
                 $str = (string) $val;
-                if ($str !== '' && in_array($str[0], ['=', '+', '-', '@', "\t"], true)) {
+                if ($str !== '' && in_array($str[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
                     return "'" . $str;
                 }
                 return $str;
