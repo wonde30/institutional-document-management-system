@@ -23,6 +23,7 @@ class InstitutionalWorkflowHardeningTest extends TestCase
 
     protected User $authorUser;
     protected User $reviewerUser;
+    protected User $approverUser;
     protected User $otherUnitUser;
     protected OrganizationUnit $unitSE;
     protected OrganizationUnit $unitEE;
@@ -74,7 +75,20 @@ class InstitutionalWorkflowHardeningTest extends TestCase
         $this->grantPermissionToUser($this->reviewerUser, 'projects.approve', 'unit', $this->unitSE->id);
         $this->grantPermissionToUser($this->reviewerUser, 'projects.reject', 'unit', $this->unitSE->id);
 
-        // 3. User in different unit (unitEE)
+        // 3. Separate Approver user (in unitSE)
+        $this->approverUser = User::create([
+            'name' => 'Department Dean Approver',
+            'email' => 'approver.' . Str::random(6) . '@wu.edu.et',
+            'password' => bcrypt('Password123!'),
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+        $this->grantPermissionToUser($this->approverUser, 'research.approve', 'unit', $this->unitSE->id);
+        $this->grantPermissionToUser($this->approverUser, 'research.reject', 'unit', $this->unitSE->id);
+        $this->grantPermissionToUser($this->approverUser, 'projects.approve', 'unit', $this->unitSE->id);
+        $this->grantPermissionToUser($this->approverUser, 'projects.reject', 'unit', $this->unitSE->id);
+
+        // 4. User in different unit (unitEE)
         $this->otherUnitUser = User::create([
             'name' => 'Other Department Staff',
             'email' => 'other.' . Str::random(6) . '@wu.edu.et',
@@ -198,7 +212,15 @@ class InstitutionalWorkflowHardeningTest extends TestCase
         $revRes->assertStatus(200);
         $this->assertEquals('under_review', $research->fresh()->workflow_status);
 
-        // Different user approves
+        // Same reviewer attempts to approve -> MUST FAIL 422
+        $sameAppRes = $this->postJson("/api/v1/research/outputs/{$research->id}/approve", [
+            'remarks' => 'Reviewer attempting self-approval',
+        ]);
+        $sameAppRes->assertStatus(422);
+        $this->assertEquals('under_review', $research->fresh()->workflow_status);
+
+        // Separate approver user approves
+        $this->authenticateAs($this->approverUser);
         $appRes = $this->postJson("/api/v1/research/outputs/{$research->id}/approve", [
             'remarks' => 'Institutional approval granted',
         ]);

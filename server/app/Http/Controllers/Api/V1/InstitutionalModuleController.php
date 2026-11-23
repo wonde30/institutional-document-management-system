@@ -35,7 +35,13 @@ use App\Models\StampAuthorization;
 use App\Models\StampDefinition;
 use App\Models\StampVersion;
 use App\Models\VersionFile;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowInstance;
+use App\Models\WorkflowState;
+use App\Models\WorkflowTask;
+use App\Models\WorkflowTaskDecision;
 use App\Services\FileSecurityService;
+use App\Services\WorkflowEngineService;
 use App\Services\Pki\CertificateService;
 use App\Services\Pki\PdfSignatureService;
 use App\Services\Pki\PdfSignatureVerificationService;
@@ -455,7 +461,7 @@ class InstitutionalModuleController extends Controller
 
     public function approveResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'approved', ['submitted', 'under_review'], 'research.approve', 'research.approved', 'Research output approved.');
+        return $this->transitionResearchStatus($id, $request, 'approved', ['under_review'], 'research.approve', 'research.approved', 'Research output approved.');
     }
 
     public function rejectResearch(int $id, Request $request): JsonResponse
@@ -470,34 +476,60 @@ class InstitutionalModuleController extends Controller
 
     protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
     {
-        $record = ResearchRecord::with('document')->findOrFail($id);
         $actor = $request->user();
-        $ownerUnitId = (int) ($record->document?->owner_unit_id ?? 0);
-
-        // (a) Enforce unit scoping: actor must hold required permission in document's owning unit
-        if (! $actor->hasPermission($requiredPermission, $ownerUnitId)) {
-            return response()->json([
-                'success' => false,
-                'message' => "Forbidden: You do not have permission [{$requiredPermission}] for department ID {$ownerUnitId}.",
-            ], 403);
+        if (! $actor) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
         }
 
-        $currentStatus = $record->workflow_status ?? 'draft';
+        // (a) Load record scoped to user's permitted units so missing and out-of-scope look the same (404)
+        $permittedUnitIds = $actor->getPermittedUnitIds($requiredPermission);
+        $query = ResearchRecord::with(['document', 'authors.staff']);
+        if ($permittedUnitIds !== null) {
+            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+        }
 
-        // (b) & (d) Check current status allows action and reject duplicate/invalid decision
-        if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+        $record = $query->find($id);
+        if (! $record) {
             return response()->json([
                 'success' => false,
-                'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+                'message' => 'Research output not found.',
+            ], 404);
+        }
+
+        $doc = $record->document;
+        $ownerUnitId = (int) ($doc?->owner_unit_id ?? 0);
+
+        // Submitter & author checks
+        $submitterId = (int) ($record->submitted_by ?? $record->recorded_by ?? $doc?->created_by ?? 0);
+        $staffId = $actor->staffProfile?->id;
+        $isAuthor = ((int) $doc?->created_by === (int) $actor->id)
+            || ((int) $record->recorded_by === (int) $actor->id)
+            || ($staffId && $record->authors()->where('staff_id', $staffId)->exists());
+
+        // (c) Block submitter & authors from reviewing, approving, rejecting, or returning
+        if (in_array($targetStatus, ['under_review', 'approved', 'rejected', 'returned'], true)) {
+            if ((int) $actor->id === $submitterId || $isAuthor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Prohibited: Submitter and authors cannot review, approve, reject, or return their own research output.',
+                ], 422);
+            }
+        }
+
+        // A null submitted_by must block approval (422), not skip the check
+        if ($targetStatus === 'approved' && is_null($record->submitted_by)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Cannot approve research output with unrecorded or null submitted_by.',
             ], 422);
         }
 
-        // (c) Block submitter from acting as reviewer or approver on their own item
-        $submitterId = (int) ($record->recorded_by ?? $record->document?->created_by ?? 0);
-        if (in_array($targetStatus, ['under_review', 'approved'], true) && (int) $actor->id === $submitterId) {
+        // Block reviewer from approving the same item
+        $reviewerId = (int) ($record->reviewed_by ?? 0);
+        if ($targetStatus === 'approved' && $reviewerId && (int) $actor->id === $reviewerId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Prohibited: Submitter cannot act as reviewer or approver for their own research output.',
+                'message' => 'Prohibited: Reviewer cannot approve the same research output.',
             ], 422);
         }
 
@@ -512,30 +544,121 @@ class InstitutionalModuleController extends Controller
 
         $now = now()->format('Y-m-d H:i:s.u');
 
-        // (f) Write state change and audit row atomically in same DB::transaction
-        DB::transaction(function () use ($record, $targetStatus, $actor, $now, $auditAction, $currentStatus, $remarks) {
-            $record->update(['workflow_status' => $targetStatus]);
+        // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId) {
+            $locked = ResearchRecord::where('id', $id)->lockForUpdate()->first();
+            if (! $locked) {
+                return response()->json(['success' => false, 'message' => 'Research output not found.'], 404);
+            }
+
+            $currentStatus = $locked->workflow_status ?? 'draft';
+
+            // Validate status transition
+            if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+                ], 422);
+            }
+
+            // Update status and tracking columns
+            $updateData = ['workflow_status' => $targetStatus];
+            if ($targetStatus === 'submitted') {
+                $updateData['submitted_by'] = $actor->id;
+            } elseif ($targetStatus === 'under_review') {
+                $updateData['reviewed_by'] = $actor->id;
+            }
+            $locked->update($updateData);
+
+            // Integrate with WorkflowEngineService & seeded definitions
+            $definition = WorkflowDefinition::where('code', 'research_departmental_review')->first();
+            if ($definition && $doc) {
+                $version = $doc->latestVersion;
+                if (! $version) {
+                    $version = DocumentVersion::firstOrCreate(
+                        ['document_id' => $doc->id, 'version_number' => 1],
+                        ['created_by' => $doc->created_by, 'change_note' => 'Initial submission']
+                    );
+                }
+
+                $instance = WorkflowInstance::where('document_version_id', $version->id)
+                    ->whereHas('workflowVersion', fn ($vq) => $vq->where('definition_id', $definition->id))
+                    ->first();
+
+                if (! $instance) {
+                    $instance = app(WorkflowEngineService::class)->startInstance(
+                        $definition->id,
+                        $version->id,
+                        null,
+                        $actor
+                    );
+                }
+
+                // Manage workflow task lifecycle
+                $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+                if ($activeTask) {
+                    $activeTask->update(['closed_at' => $now]);
+                    if (in_array($targetStatus, ['approved', 'rejected', 'returned'], true)) {
+                        $dec = match ($targetStatus) {
+                            'approved' => 'approve',
+                            'rejected' => 'reject',
+                            'returned' => 'return',
+                            default => 'approve',
+                        };
+                        WorkflowTaskDecision::create([
+                            'task_id' => $activeTask->id,
+                            'decided_by' => $actor->id,
+                            'decision' => $dec,
+                            'reason' => $remarks ?: 'Decided in departmental review',
+                            'decided_at' => $now,
+                        ]);
+                    }
+                }
+
+                // Create task for next state if non-terminal
+                if (in_array($targetStatus, ['submitted', 'under_review', 'returned'], true)) {
+                    $targetStateCode = $targetStatus;
+                    $targetState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
+                        ->where('code', $targetStateCode)
+                        ->first();
+
+                    if ($targetState && ! $targetState->is_terminal) {
+                        $assignedUser = ($targetStatus === 'under_review') ? $actor->id : null;
+                        WorkflowTask::create([
+                            'instance_id' => $instance->id,
+                            'state_id' => $targetState->id,
+                            'assigned_user_id' => $assignedUser,
+                            'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
+                            'required_role_id' => $targetState->assigned_role_id,
+                            'created_at' => $now,
+                            'due_at' => now()->addHours((int) ($targetState->sla_hours ?? 72))->format('Y-m-d H:i:s.u'),
+                        ]);
+                    }
+                }
+            }
 
             AuditEvent::create([
                 'actor_id' => $actor->id,
                 'action' => $auditAction,
                 'target_type' => 'research_record',
-                'target_id' => (string) $record->id,
+                'target_id' => (string) $locked->id,
                 'request_id' => (string) Str::uuid(),
                 'occurred_at' => $now,
                 'details_json' => [
                     'previous_status' => $currentStatus,
                     'new_status' => $targetStatus,
                     'remarks' => $remarks ?: null,
+                    'submitted_by' => $locked->submitted_by,
+                    'reviewed_by' => $locked->reviewed_by,
                 ],
             ]);
-        });
 
-        return response()->json([
-            'success' => true,
-            'message' => $successMessage,
-            'data' => $record->fresh()->load(['document.ownerUnit', 'recordedBy']),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => $successMessage,
+                'data' => $locked->fresh()->load(['document.ownerUnit', 'recordedBy', 'submittedBy', 'reviewedBy']),
+            ]);
+        });
     }
 
     /**
@@ -870,34 +993,60 @@ class InstitutionalModuleController extends Controller
 
     protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
     {
-        $proposal = ProjectProposal::with('document')->findOrFail($id);
         $actor = $request->user();
-        $ownerUnitId = (int) ($proposal->document?->owner_unit_id ?? 0);
-
-        // (a) Enforce unit scoping: actor must hold required permission in project's owning unit
-        if (! $actor->hasPermission($requiredPermission, $ownerUnitId)) {
-            return response()->json([
-                'success' => false,
-                'message' => "Forbidden: You do not have permission [{$requiredPermission}] for department ID {$ownerUnitId}.",
-            ], 403);
+        if (! $actor) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
         }
 
-        $currentStatus = $proposal->workflow_status ?? 'draft';
+        // (a) Load record scoped to user's permitted units so missing and out-of-scope look the same (404)
+        $permittedUnitIds = $actor->getPermittedUnitIds($requiredPermission);
+        $query = ProjectProposal::with(['document', 'projectType']);
+        if ($permittedUnitIds !== null) {
+            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+        }
 
-        // (b) & (d) Check current status allows action and reject duplicate/invalid decision
-        if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+        $proposal = $query->find($id);
+        if (! $proposal) {
             return response()->json([
                 'success' => false,
-                'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+                'message' => 'Project proposal not found.',
+            ], 404);
+        }
+
+        $doc = $proposal->document;
+        $ownerUnitId = (int) ($doc?->owner_unit_id ?? 0);
+
+        // Submitter & PI / creator checks
+        $submitterId = (int) ($proposal->submitted_by ?? $proposal->recorded_by ?? $doc?->created_by ?? 0);
+        $staffId = $actor->staffProfile?->id;
+        $isAuthor = ((int) $doc?->created_by === (int) $actor->id)
+            || ((int) $proposal->recorded_by === (int) $actor->id)
+            || ($staffId && DB::table('project_proposal_members')->where('proposal_id', $proposal->id)->where('staff_id', $staffId)->exists());
+
+        // (c) Block submitter & authors from reviewing, approving, rejecting, or returning
+        if (in_array($targetStatus, ['under_review', 'approved', 'rejected', 'returned'], true)) {
+            if ((int) $actor->id === $submitterId || $isAuthor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Prohibited: Submitter and proposal members cannot review, approve, reject, or return their own proposal.',
+                ], 422);
+            }
+        }
+
+        // A null submitted_by must block approval (422), not skip the check
+        if ($targetStatus === 'approved' && is_null($proposal->submitted_by)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Cannot approve project proposal with unrecorded or null submitted_by.',
             ], 422);
         }
 
-        // (c) Block submitter from acting as reviewer or approver on their own proposal
-        $submitterId = (int) ($proposal->recorded_by ?? $proposal->document?->created_by ?? 0);
-        if (in_array($targetStatus, ['under_review', 'approved'], true) && (int) $actor->id === $submitterId) {
+        // Block reviewer from approving the same item
+        $reviewerId = (int) ($proposal->reviewed_by ?? 0);
+        if ($targetStatus === 'approved' && $reviewerId && (int) $actor->id === $reviewerId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Prohibited: Submitter cannot act as reviewer or approver for their own proposal.',
+                'message' => 'Prohibited: Reviewer cannot approve the same project proposal.',
             ], 422);
         }
 
@@ -912,30 +1061,127 @@ class InstitutionalModuleController extends Controller
 
         $now = now()->format('Y-m-d H:i:s.u');
 
-        // (f) Write state change and audit row atomically in same DB::transaction
-        DB::transaction(function () use ($proposal, $targetStatus, $actor, $now, $auditAction, $currentStatus, $remarks) {
-            $proposal->update(['workflow_status' => $targetStatus]);
+        // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId) {
+            $locked = ProjectProposal::where('id', $id)->lockForUpdate()->first();
+            if (! $locked) {
+                return response()->json(['success' => false, 'message' => 'Project proposal not found.'], 404);
+            }
+
+            $currentStatus = $locked->workflow_status ?? 'draft';
+
+            // Validate status transition
+            if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+                ], 422);
+            }
+
+            // Update status and tracking columns
+            $updateData = ['workflow_status' => $targetStatus];
+            if ($targetStatus === 'submitted') {
+                $updateData['submitted_by'] = $actor->id;
+            } elseif ($targetStatus === 'under_review') {
+                $updateData['reviewed_by'] = $actor->id;
+            }
+            $locked->update($updateData);
+
+            // Integrate with WorkflowEngineService & seeded definitions
+            $definition = WorkflowDefinition::where('code', 'project_approval')->first();
+            if ($definition && $doc) {
+                $version = $doc->latestVersion;
+                if (! $version) {
+                    $version = DocumentVersion::firstOrCreate(
+                        ['document_id' => $doc->id, 'version_number' => 1],
+                        ['created_by' => $doc->created_by, 'change_note' => 'Initial proposal']
+                    );
+                }
+
+                $instance = WorkflowInstance::where('document_version_id', $version->id)
+                    ->whereHas('workflowVersion', fn ($vq) => $vq->where('definition_id', $definition->id))
+                    ->first();
+
+                if (! $instance) {
+                    $instance = app(WorkflowEngineService::class)->startInstance(
+                        $definition->id,
+                        $version->id,
+                        null,
+                        $actor
+                    );
+                }
+
+                // Link to project_proposal_workflows
+                DB::table('project_proposal_workflows')->updateOrInsert(
+                    ['proposal_id' => $locked->id],
+                    ['workflow_instance_id' => $instance->id]
+                );
+
+                // Manage workflow task lifecycle
+                $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+                if ($activeTask) {
+                    $activeTask->update(['closed_at' => $now]);
+                    if (in_array($targetStatus, ['approved', 'rejected', 'returned'], true)) {
+                        $dec = match ($targetStatus) {
+                            'approved' => 'approve',
+                            'rejected' => 'reject',
+                            'returned' => 'return',
+                            default => 'approve',
+                        };
+                        WorkflowTaskDecision::create([
+                            'task_id' => $activeTask->id,
+                            'decided_by' => $actor->id,
+                            'decision' => $dec,
+                            'reason' => $remarks ?: 'Decided in project approval workflow',
+                            'decided_at' => $now,
+                        ]);
+                    }
+                }
+
+                // Create task for next state if non-terminal
+                if (in_array($targetStatus, ['submitted', 'under_review', 'returned'], true)) {
+                    $targetStateCode = $targetStatus;
+                    $targetState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
+                        ->where('code', $targetStateCode)
+                        ->first();
+
+                    if ($targetState && ! $targetState->is_terminal) {
+                        $assignedUser = ($targetStatus === 'under_review') ? $actor->id : null;
+                        WorkflowTask::create([
+                            'instance_id' => $instance->id,
+                            'state_id' => $targetState->id,
+                            'assigned_user_id' => $assignedUser,
+                            'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
+                            'required_role_id' => $targetState->assigned_role_id,
+                            'created_at' => $now,
+                            'due_at' => now()->addHours((int) ($targetState->sla_hours ?? 72))->format('Y-m-d H:i:s.u'),
+                        ]);
+                    }
+                }
+            }
 
             AuditEvent::create([
                 'actor_id' => $actor->id,
                 'action' => $auditAction,
                 'target_type' => 'project_proposal',
-                'target_id' => (string) $proposal->id,
+                'target_id' => (string) $locked->id,
                 'request_id' => (string) Str::uuid(),
                 'occurred_at' => $now,
                 'details_json' => [
                     'previous_status' => $currentStatus,
                     'new_status' => $targetStatus,
                     'remarks' => $remarks ?: null,
+                    'submitted_by' => $locked->submitted_by,
+                    'reviewed_by' => $locked->reviewed_by,
                 ],
             ]);
-        });
 
-        return response()->json([
-            'success' => true,
-            'message' => $successMessage,
-            'data' => $proposal->fresh()->load(['projectType', 'document.ownerUnit', 'recordedBy']),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => $successMessage,
+                'data' => $locked->fresh()->load(['projectType', 'document.ownerUnit', 'recordedBy', 'submittedBy', 'reviewedBy']),
+            ]);
+        });
     }
 
     /**

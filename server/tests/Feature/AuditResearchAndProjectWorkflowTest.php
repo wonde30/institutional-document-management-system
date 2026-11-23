@@ -25,6 +25,7 @@ class AuditResearchAndProjectWorkflowTest extends TestCase
     use RefreshDatabase;
 
     protected User $departmentHead;
+    protected User $dean;
     protected User $staff;
     protected OrganizationUnit $unit;
     protected DocumentCategory $category;
@@ -67,15 +68,26 @@ class AuditResearchAndProjectWorkflowTest extends TestCase
         ]);
         $this->grantPerms($this->staff, ['research.view', 'research.submit', 'projects.view', 'projects.submit']);
 
-        // Department head
+        // Department head (Reviewer)
         $this->departmentHead = User::factory()->create([
             'email' => 'head.research@wu.edu.et',
             'status' => 'active',
             'authz_version' => 1,
         ]);
         $this->grantPerms($this->departmentHead, [
-            'research.view', 'research.review', 'research.approve', 'research.reject',
-            'projects.view', 'projects.review', 'projects.approve', 'projects.reject',
+            'research.view', 'research.review', 'research.reject',
+            'projects.view', 'projects.review', 'projects.reject',
+        ]);
+
+        // Dean (Distinct Approver)
+        $this->dean = User::factory()->create([
+            'email' => 'dean.research@wu.edu.et',
+            'status' => 'active',
+            'authz_version' => 1,
+        ]);
+        $this->grantPerms($this->dean, [
+            'research.view', 'research.approve', 'research.reject',
+            'projects.view', 'projects.approve', 'projects.reject',
         ]);
     }
 
@@ -136,8 +148,8 @@ class AuditResearchAndProjectWorkflowTest extends TestCase
         $reviewRes->assertStatus(200)
             ->assertJsonPath('data.workflow_status', 'under_review');
 
-        // 4. Department Head approves research (under_review -> approved)
-        $approveRes = $this->actingAs($this->departmentHead)
+        // 4. Dean approves research (under_review -> approved)
+        $approveRes = $this->actingAs($this->dean)
             ->postJson("/api/v1/research/outputs/{$research->id}/approve", [
                 'remarks' => 'Peer review passed with distinction.',
             ]);
@@ -192,8 +204,8 @@ class AuditResearchAndProjectWorkflowTest extends TestCase
         $submitRes->assertStatus(200)
             ->assertJsonPath('data.workflow_status', 'submitted');
 
-        // 3. Department head approves project (submitted -> approved)
-        $approveRes = $this->actingAs($this->departmentHead)
+        // 3. Dean approves project (submitted -> approved)
+        $approveRes = $this->actingAs($this->dean)
             ->postJson("/api/v1/projects/{$project->id}/approve", [
                 'remarks' => 'Proposal approved for institution funding.',
             ]);

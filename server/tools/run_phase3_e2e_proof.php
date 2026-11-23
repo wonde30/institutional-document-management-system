@@ -230,6 +230,7 @@ $rolesToLogin = [
     'records_officer' => 'registrar@wu.edu.et',
     'archivist' => 'archivist@wu.edu.et',
     'head.se' => 'head.se@wu.edu.et',
+    'dean.tech' => 'dean.technology@wu.edu.et',
     'staff.tech' => 'staff.tech@wu.edu.et',
     'unprivileged' => 'auditor.direct@wu.edu.et',
 ];
@@ -488,9 +489,10 @@ recordResult($results, 'system', 'audit event SQL DELETE blocked by trigger', 'd
 // ----------------------------------------------------------------------------
 echo "\n--- 9. INSTITUTIONAL MODULE WORKFLOW PROOFS ---\n";
 $headClient = $sessions['head.se'];
+$deanClient = $sessions['dean.tech'];
 $seUnitId = OrganizationUnit::where('code', 'SE')->value('id') ?? 2;
 
-// A. Research Monograph Lifecycle: Submitter creates & submits, separate approver reviews & approves
+// A. Research Monograph Lifecycle: Submitter creates & submits, separate reviewer reviews, separate approver approves
 $resMonograph = $headClient->postJson('/api/v1/research/outputs', [
     'title' => 'E2E Research Monograph ' . uniqid(),
     'office_id' => $seUnitId,
@@ -510,16 +512,20 @@ if ($resMonographId) {
     $selfApproveRes = $headClient->postJson("/api/v1/research/outputs/{$resMonographId}/approve", ['remarks' => 'Self approval attempt']);
     recordResult($results, 'head.se', 'submitter self-approval blocked', "/api/v1/research/outputs/{$resMonographId}/approve", 422, $selfApproveRes);
 
-    // Separate authorized reviewer reviews
-    $revRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/review", ['remarks' => 'Peer review passed']);
-    recordResult($results, 'admin', 'departmental review of research', "/api/v1/research/outputs/{$resMonographId}/review", 200, $revRes);
+    // Separate authorized reviewer (dean.technology) reviews
+    $revRes = $deanClient->postJson("/api/v1/research/outputs/{$resMonographId}/review", ['remarks' => 'Peer review passed']);
+    recordResult($results, 'dean.tech', 'departmental review of research', "/api/v1/research/outputs/{$resMonographId}/review", 200, $revRes);
 
-    // Separate authorized approver approves
+    // Reviewer attempts self-approval -> BLOCKED 422
+    $reviewerApproveRes = $deanClient->postJson("/api/v1/research/outputs/{$resMonographId}/approve", ['remarks' => 'Reviewer approval attempt']);
+    recordResult($results, 'dean.tech', 'reviewer self-approval blocked', "/api/v1/research/outputs/{$resMonographId}/approve", 422, $reviewerApproveRes);
+
+    // Separate authorized approver (admin) approves
     $appRes = $adminClient->postJson("/api/v1/research/outputs/{$resMonographId}/approve", ['remarks' => 'Final faculty approval granted']);
     recordResult($results, 'admin', 'approve finalized research', "/api/v1/research/outputs/{$resMonographId}/approve", 200, $appRes);
 }
 
-// B. Project Proposal Lifecycle: Submitter creates & submits, separate approver reviews & approves
+// B. Project Proposal Lifecycle: Submitter creates & submits, separate reviewer reviews, separate approver approves
 $projProp = $headClient->postJson('/api/v1/projects', [
     'title' => 'E2E Institutional Project Proposal ' . uniqid(),
     'office_id' => $seUnitId,
@@ -539,8 +545,12 @@ if ($projPropId) {
     recordResult($results, 'head.se', 'submitter self-approval blocked', "/api/v1/projects/{$projPropId}/approve", 422, $selfApproveProjRes);
 
     // Separate authorized reviewer reviews
-    $revProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/review", ['remarks' => 'Feasibility review passed']);
-    recordResult($results, 'admin', 'review project proposal', "/api/v1/projects/{$projPropId}/review", 200, $revProjRes);
+    $revProjRes = $deanClient->postJson("/api/v1/projects/{$projPropId}/review", ['remarks' => 'Feasibility review passed']);
+    recordResult($results, 'dean.tech', 'review project proposal', "/api/v1/projects/{$projPropId}/review", 200, $revProjRes);
+
+    // Reviewer attempts self-approval -> BLOCKED 422
+    $revSelfApproveProjRes = $deanClient->postJson("/api/v1/projects/{$projPropId}/approve", ['remarks' => 'Reviewer self-approval attempt']);
+    recordResult($results, 'dean.tech', 'reviewer self-approval blocked', "/api/v1/projects/{$projPropId}/approve", 422, $revSelfApproveProjRes);
 
     // Separate authorized approver approves
     $appProjRes = $adminClient->postJson("/api/v1/projects/{$projPropId}/approve", ['remarks' => 'Project proposal funded & approved']);

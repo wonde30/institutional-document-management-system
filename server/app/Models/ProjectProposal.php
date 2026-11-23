@@ -17,6 +17,8 @@ class ProjectProposal extends Model
         'document_id',
         'project_type_id',
         'workflow_status',
+        'submitted_by',
+        'reviewed_by',
         'recorded_by',
         'recorded_at',
     ];
@@ -40,5 +42,15 @@ class ProjectProposal extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 }

@@ -21,6 +21,8 @@ class ResearchRecord extends Model
         'completed_on',
         'external_selection_reference',
         'workflow_status',
+        'submitted_by',
+        'reviewed_by',
         'recorded_by',
         'recorded_at',
     ];
@@ -41,6 +43,16 @@ class ResearchRecord extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function authors(): HasMany
