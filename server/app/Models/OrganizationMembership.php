@@ -6,6 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $unit_id
+ * @property string $position_title
+ * @property \Carbon\Carbon|null $starts_at
+ * @property \Carbon\Carbon|null $ends_at
+ * @property int|null $created_by
+ * @property \Carbon\Carbon|null $created_at
+ * @property \App\Models\OrganizationUnit|null $unit
+ * @property \App\Models\User|null $user
+ */
 class OrganizationMembership extends Model
 {
     use HasFactory;

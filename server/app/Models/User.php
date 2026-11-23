@@ -97,6 +97,9 @@ class User extends Authenticatable
     /**
      * Active primary membership.
      */
+    /**
+     * @return HasOne<PrimaryMembership, $this>
+     */
     public function primaryMembershipRecord(): HasOne
     {
         return $this->hasOne(PrimaryMembership::class, 'user_id');

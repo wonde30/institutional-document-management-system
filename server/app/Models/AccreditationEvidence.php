@@ -40,6 +40,9 @@ class AccreditationEvidence extends Model
         return $this->belongsTo(AccreditationStandard::class, 'standard_id');
     }
 
+    /**
+     * @return BelongsTo<DocumentVersion, $this>
+     */
     public function documentVersion(): BelongsTo
     {
         return $this->belongsTo(DocumentVersion::class, 'document_version_id');

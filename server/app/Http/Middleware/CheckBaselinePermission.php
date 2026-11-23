@@ -80,7 +80,7 @@ class CheckBaselinePermission
             }
 
             if (! $doc->allowsUser($user, $permission)) {
-                $confLevel = $doc->confidentiality?->code ?? 'internal';
+                $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'internal';
                 $message = in_array($confLevel, ['confidential', 'restricted', 'secret', 'top_secret'], true)
                     ? 'Forbidden: High confidentiality document file download restricted.'
                     : "Forbidden: Missing required baseline permission [{$permission}].";
@@ -148,7 +148,7 @@ class CheckBaselinePermission
                 $targetUnitId = \App\Models\ProjectProposal::with('document')->find($id)?->document?->owner_unit_id;
             } elseif (str_contains($path, 'workflows/tasks')) {
                 $task = WorkflowTask::with('instance.documentVersion.document')->find($id);
-                $targetUnitId = $task?->assigned_unit_id ?? $task?->instance?->documentVersion?->document?->owner_unit_id;
+                $targetUnitId = $task ? ($task->assigned_unit_id ?? $task->instance?->documentVersion?->document?->owner_unit_id) : null;
             } elseif (str_contains($path, 'templates')) {
                 if (str_contains($path, 'render') || str_contains($path, 'generate-document')) {
                     $payloadUnitId = $request->input('owner_unit_id');
@@ -265,7 +265,7 @@ class CheckBaselinePermission
      */
     protected function forbiddenDocumentResponse(Document $doc, string $permission): Response
     {
-        $confLevel = $doc->confidentiality?->code ?? 'internal';
+        $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'internal';
         $message = in_array($confLevel, ['confidential', 'restricted', 'secret', 'top_secret'], true)
             ? 'Forbidden: High confidentiality document access restricted.'
             : "Forbidden: Missing required baseline permission [{$permission}].";

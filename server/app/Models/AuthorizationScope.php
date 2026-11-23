@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $kind
+ * @property int|null $unit_id
+ * @property \App\Models\OrganizationUnit|null $unit
+ */
 class AuthorizationScope extends Model
 {
     use HasFactory;

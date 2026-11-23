@@ -54,6 +54,9 @@ class DocumentTextExtraction extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<DocumentVersion, $this>
+     */
     public function documentVersion(): BelongsTo
     {
         return $this->belongsTo(DocumentVersion::class, 'document_version_id');

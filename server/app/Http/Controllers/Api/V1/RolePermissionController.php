@@ -91,8 +91,10 @@ class RolePermissionController extends Controller
             ->with(['user.primaryMembershipRecord.membership.unit', 'scope.unit', 'grantedBy'])
             ->get();
 
-        $data = $userRoles->map(function ($ur) {
+        $data = $userRoles->map(function (UserRole $ur): array {
             $isExpired = $ur->expires_at && $ur->expires_at->isPast();
+            $scope = $ur->scope;
+            $unit = $scope?->unit;
             return [
                 'user_id' => $ur->user_id,
                 'name' => $ur->user?->name,
@@ -100,9 +102,9 @@ class RolePermissionController extends Controller
                 'status' => $ur->user?->status,
                 'primary_unit' => $ur->user?->primaryMembershipRecord?->membership?->unit?->name,
                 'scope_id' => $ur->scope_id,
-                'scope_kind' => $ur->scope?->kind,
-                'scope_unit_id' => $ur->scope?->unit_id,
-                'scope_unit_name' => $ur->scope?->unit?->name ?? ($ur->scope?->kind === 'global' ? 'Global Scope' : null),
+                'scope_kind' => $scope?->kind,
+                'scope_unit_id' => $scope?->unit_id,
+                'scope_unit_name' => $unit ? $unit->name : ($scope?->kind === 'global' ? 'Global Scope' : null),
                 'granted_by_name' => $ur->grantedBy?->name,
                 'granted_at' => $ur->granted_at?->toIso8601String(),
                 'expires_at' => $ur->expires_at?->toIso8601String(),
@@ -396,7 +398,7 @@ class RolePermissionController extends Controller
                 'message' => 'Forbidden: Only an existing Super Administrator can assign the super_admin role.',
             ], 403);
         }
-        $hasProtectedPerm = $targetRole->is_protected || $targetRole->permissions->contains(fn ($p) => in_array($p->code, ['system.configure', 'roles.assign', 'roles.create'], true) || (bool) $p->is_protected);
+        $hasProtectedPerm = $targetRole->is_system || $targetRole->permissions->contains(fn (Permission $p) => in_array($p->code, ['system.configure', 'roles.assign', 'roles.create'], true) || (bool) $p->is_protected);
         if ($hasProtectedPerm && ! $actor->hasPermission('system.configure')) {
             return response()->json([
                 'success' => false,
@@ -462,7 +464,7 @@ class RolePermissionController extends Controller
         $targetRole = Role::with('permissions')->findOrFail($validated['role_id']);
         $carriesAdminCapability = $targetRole->is_system
             || $targetRole->code === 'super_admin'
-            || $targetRole->permissions->contains(fn ($p) => $p->code === 'system.configure');
+            || $targetRole->permissions->contains(fn (Permission $p) => $p->code === 'system.configure');
 
         if ($carriesAdminCapability) {
             if (! $request->user()->hasPermission('system.configure')) {

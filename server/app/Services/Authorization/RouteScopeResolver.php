@@ -86,7 +86,7 @@ class RouteScopeResolver
 
             $document = $movement->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -106,7 +106,7 @@ class RouteScopeResolver
 
             $document = $assignment->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -121,7 +121,7 @@ class RouteScopeResolver
 
             $document = $extraction->documentVersion?->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -136,7 +136,7 @@ class RouteScopeResolver
 
             $document = $signature->documentVersion?->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -151,7 +151,7 @@ class RouteScopeResolver
 
             $document = $evidence->documentVersion?->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -166,7 +166,7 @@ class RouteScopeResolver
 
             $document = $proposal->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -181,7 +181,7 @@ class RouteScopeResolver
 
             $document = $entry->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -193,17 +193,13 @@ class RouteScopeResolver
                 return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
             }
 
-            $document = $disp->archiveEntry?->document;
-
-            return $document
-                ? RouteAuthorizationTarget::forDocument($document)
-                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            return RouteAuthorizationTarget::forDocument($disp->archiveEntry->document);
         }
 
         if (str_contains($path, 'archive/files')) {
             $document = Document::resolveForFile($id);
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -218,7 +214,7 @@ class RouteScopeResolver
 
             $document = $instance->documentVersion?->document;
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }

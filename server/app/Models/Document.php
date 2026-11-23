@@ -11,6 +11,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @property int $id
+ * @property string $reference_number
+ * @property string $title
+ * @property string|null $summary
+ * @property int|null $category_id
+ * @property int|null $confidentiality_id
+ * @property int $owner_unit_id
+ * @property int|null $custodian_id
+ * @property int|null $created_by
+ * @property string|null $document_date
+ * @property \Carbon\Carbon|null $registered_at
+ * @property string $lifecycle
+ * @property int $lock_version
+ * @property \App\Models\ConfidentialityLevel|null $confidentiality
+ * @property \App\Models\OrganizationUnit|null $ownerUnit
+ * @property \App\Models\User|null $creator
+ * @property \App\Models\DocumentVersion|null $latestVersion
+ */
 class Document extends Model
 {
     use HasFactory;
@@ -49,6 +68,9 @@ class Document extends Model
         return $this->belongsTo(DocumentCategory::class, 'category_id');
     }
 
+    /**
+     * @return BelongsTo<ConfidentialityLevel, $this>
+     */
     public function confidentiality(): BelongsTo
     {
         return $this->belongsTo(ConfidentialityLevel::class, 'confidentiality_id');

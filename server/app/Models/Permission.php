@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $code
+ * @property string $name
+ * @property string|null $description
+ * @property bool $active
+ * @property bool $is_protected
+ */
 class Permission extends Model
 {
     public $timestamps = false;

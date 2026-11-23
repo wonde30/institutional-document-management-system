@@ -30,6 +30,9 @@ class SignatureRequest extends Model
             'expires_at' => 'datetime',
         ];
     }
+    /**
+     * @return BelongsTo<DocumentVersion, $this>
+     */
     public function documentVersion(): BelongsTo
     {
         return $this->belongsTo(DocumentVersion::class, 'document_version_id');
@@ -45,6 +48,9 @@ class SignatureRequest extends Model
         return $this->belongsTo(User::class, 'signer_id');
     }
 
+    /**
+     * @return HasOne<DigitalSignature, $this>
+     */
     public function digitalSignature(): HasOne
     {
         return $this->hasOne(DigitalSignature::class, 'request_id');
