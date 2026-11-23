@@ -445,34 +445,46 @@ class InstitutionalModuleController extends Controller
 
     public function submitResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'submitted', ['draft', 'returned'], 'research.submitted', 'Research output submitted for departmental review.');
+        return $this->transitionResearchStatus($id, $request, 'submitted', ['draft', 'returned'], 'research.submit', 'research.submitted', 'Research output submitted for departmental review.');
     }
 
     public function reviewResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'under_review', ['submitted'], 'research.reviewed', 'Research output moved to peer review.');
+        return $this->transitionResearchStatus($id, $request, 'under_review', ['submitted'], 'research.review', 'research.reviewed', 'Research output moved to peer review.');
     }
 
     public function approveResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'approved', ['submitted', 'under_review'], 'research.approved', 'Research output approved.');
+        return $this->transitionResearchStatus($id, $request, 'approved', ['submitted', 'under_review'], 'research.approve', 'research.approved', 'Research output approved.');
     }
 
     public function rejectResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'research.rejected', 'Research output rejected.');
+        return $this->transitionResearchStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'research.reject', 'research.rejected', 'Research output rejected.');
     }
 
     public function returnResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'returned', ['submitted', 'under_review'], 'research.returned', 'Research output returned for revision.');
+        return $this->transitionResearchStatus($id, $request, 'returned', ['submitted', 'under_review'], 'research.review', 'research.returned', 'Research output returned for revision.');
     }
 
-    protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $auditAction, string $successMessage): JsonResponse
+    protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
     {
         $record = ResearchRecord::with('document')->findOrFail($id);
+        $actor = $request->user();
+        $ownerUnitId = (int) ($record->document?->owner_unit_id ?? 0);
+
+        // (a) Enforce unit scoping: actor must hold required permission in document's owning unit
+        if (! $actor->hasPermission($requiredPermission, $ownerUnitId)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: You do not have permission [{$requiredPermission}] for department ID {$ownerUnitId}.",
+            ], 403);
+        }
+
         $currentStatus = $record->workflow_status ?? 'draft';
 
+        // (b) & (d) Check current status allows action and reject duplicate/invalid decision
         if (! in_array($currentStatus, $allowedFromStatuses, true)) {
             return response()->json([
                 'success' => false,
@@ -480,10 +492,27 @@ class InstitutionalModuleController extends Controller
             ], 422);
         }
 
-        $actor = $request->user();
-        $now = now()->format('Y-m-d H:i:s.u');
-        $remarks = $request->input('remarks');
+        // (c) Block submitter from acting as reviewer or approver on their own item
+        $submitterId = (int) ($record->recorded_by ?? $record->document?->created_by ?? 0);
+        if (in_array($targetStatus, ['under_review', 'approved'], true) && (int) $actor->id === $submitterId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Submitter cannot act as reviewer or approver for their own research output.',
+            ], 422);
+        }
 
+        // (e) Require reason/remarks on reject and return
+        $remarks = trim((string) ($request->input('remarks') ?? $request->input('reason') ?? $request->input('comments') ?? ''));
+        if (in_array($targetStatus, ['rejected', 'returned'], true) && empty($remarks)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A valid reason or remarks must be provided when rejecting or returning research.',
+            ], 422);
+        }
+
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        // (f) Write state change and audit row atomically in same DB::transaction
         DB::transaction(function () use ($record, $targetStatus, $actor, $now, $auditAction, $currentStatus, $remarks) {
             $record->update(['workflow_status' => $targetStatus]);
 
@@ -497,7 +526,7 @@ class InstitutionalModuleController extends Controller
                 'details_json' => [
                     'previous_status' => $currentStatus,
                     'new_status' => $targetStatus,
-                    'remarks' => $remarks,
+                    'remarks' => $remarks ?: null,
                 ],
             ]);
         });
@@ -816,34 +845,46 @@ class InstitutionalModuleController extends Controller
 
     public function submitProject(int $id, Request $request): JsonResponse
     {
-        return $this->transitionProjectStatus($id, $request, 'submitted', ['draft', 'returned'], 'projects.submitted', 'Project proposal submitted for departmental review.');
+        return $this->transitionProjectStatus($id, $request, 'submitted', ['draft', 'returned'], 'projects.submit', 'projects.submitted', 'Project proposal submitted for departmental review.');
     }
 
     public function reviewProject(int $id, Request $request): JsonResponse
     {
-        return $this->transitionProjectStatus($id, $request, 'under_review', ['submitted'], 'projects.reviewed', 'Project proposal moved to review.');
+        return $this->transitionProjectStatus($id, $request, 'under_review', ['submitted'], 'projects.review', 'projects.reviewed', 'Project proposal moved to review.');
     }
 
     public function approveProject(int $id, Request $request): JsonResponse
     {
-        return $this->transitionProjectStatus($id, $request, 'approved', ['submitted', 'under_review'], 'projects.approved', 'Project proposal approved.');
+        return $this->transitionProjectStatus($id, $request, 'approved', ['submitted', 'under_review'], 'projects.approve', 'projects.approved', 'Project proposal approved.');
     }
 
     public function rejectProject(int $id, Request $request): JsonResponse
     {
-        return $this->transitionProjectStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'projects.rejected', 'Project proposal rejected.');
+        return $this->transitionProjectStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'projects.reject', 'projects.rejected', 'Project proposal rejected.');
     }
 
     public function returnProject(int $id, Request $request): JsonResponse
     {
-        return $this->transitionProjectStatus($id, $request, 'returned', ['submitted', 'under_review'], 'projects.returned', 'Project proposal returned for revision.');
+        return $this->transitionProjectStatus($id, $request, 'returned', ['submitted', 'under_review'], 'projects.review', 'projects.returned', 'Project proposal returned for revision.');
     }
 
-    protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $auditAction, string $successMessage): JsonResponse
+    protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
     {
         $proposal = ProjectProposal::with('document')->findOrFail($id);
+        $actor = $request->user();
+        $ownerUnitId = (int) ($proposal->document?->owner_unit_id ?? 0);
+
+        // (a) Enforce unit scoping: actor must hold required permission in project's owning unit
+        if (! $actor->hasPermission($requiredPermission, $ownerUnitId)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: You do not have permission [{$requiredPermission}] for department ID {$ownerUnitId}.",
+            ], 403);
+        }
+
         $currentStatus = $proposal->workflow_status ?? 'draft';
 
+        // (b) & (d) Check current status allows action and reject duplicate/invalid decision
         if (! in_array($currentStatus, $allowedFromStatuses, true)) {
             return response()->json([
                 'success' => false,
@@ -851,10 +892,27 @@ class InstitutionalModuleController extends Controller
             ], 422);
         }
 
-        $actor = $request->user();
-        $now = now()->format('Y-m-d H:i:s.u');
-        $remarks = $request->input('remarks');
+        // (c) Block submitter from acting as reviewer or approver on their own proposal
+        $submitterId = (int) ($proposal->recorded_by ?? $proposal->document?->created_by ?? 0);
+        if (in_array($targetStatus, ['under_review', 'approved'], true) && (int) $actor->id === $submitterId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Submitter cannot act as reviewer or approver for their own proposal.',
+            ], 422);
+        }
 
+        // (e) Require reason/remarks on reject and return
+        $remarks = trim((string) ($request->input('remarks') ?? $request->input('reason') ?? $request->input('comments') ?? ''));
+        if (in_array($targetStatus, ['rejected', 'returned'], true) && empty($remarks)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A valid reason or remarks must be provided when rejecting or returning a project proposal.',
+            ], 422);
+        }
+
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        // (f) Write state change and audit row atomically in same DB::transaction
         DB::transaction(function () use ($proposal, $targetStatus, $actor, $now, $auditAction, $currentStatus, $remarks) {
             $proposal->update(['workflow_status' => $targetStatus]);
 
@@ -868,7 +926,7 @@ class InstitutionalModuleController extends Controller
                 'details_json' => [
                     'previous_status' => $currentStatus,
                     'new_status' => $targetStatus,
-                    'remarks' => $remarks,
+                    'remarks' => $remarks ?: null,
                 ],
             ]);
         });
