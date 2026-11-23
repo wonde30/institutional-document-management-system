@@ -9,6 +9,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $document_id
+ * @property int $version_number
+ * @property string $ingestion_method
+ * @property int|null $template_version_id
+ * @property array<string, mixed>|null $template_data
+ * @property int|null $created_by
+ * @property string|null $change_note
+ * @property \Carbon\Carbon|null $created_at
+ * @property \App\Models\Document $document
+ * @property \App\Models\TemplateVersion|null $templateVersion
+ * @property \App\Models\User|null $createdBy
+ * @property \Illuminate\Database\Eloquent\Collection<int, \App\Models\VersionFile> $versionFiles
+ */
 class DocumentVersion extends Model
 {
     use HasFactory, GuardsVersionImmutability;
@@ -57,16 +72,25 @@ class DocumentVersion extends Model
         return $this->belongsTo(Document::class, 'document_id');
     }
 
+    /**
+     * @return BelongsTo<TemplateVersion, $this>
+     */
     public function templateVersion(): BelongsTo
     {
         return $this->belongsTo(TemplateVersion::class, 'template_version_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * @return HasMany<VersionFile, $this>
+     */
     public function versionFiles(): HasMany
     {
         return $this->hasMany(VersionFile::class, 'document_version_id');

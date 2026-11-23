@@ -133,6 +133,9 @@ class User extends Authenticatable
     /**
      * Associated staff profile.
      */
+    /**
+     * @return HasOne<StaffProfile, $this>
+     */
     public function staffProfile(): HasOne
     {
         return $this->hasOne(StaffProfile::class, 'user_id');

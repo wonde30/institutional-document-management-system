@@ -245,7 +245,7 @@ class DocumentController extends Controller
             }
 
             // 4. Start workflow instance if applicable
-            if ($workflowDef && $version) {
+            if ($workflowDef) {
                 app(\App\Services\WorkflowEngineService::class)->startInstance(
                     $workflowDef->id,
                     $version->id,
@@ -461,7 +461,7 @@ class DocumentController extends Controller
         }
 
         if (! $hasDocDownload && ! $hasCorrAccess) {
-            $confLevel = $doc->confidentiality?->code ?? 'internal';
+            $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'internal';
             $message = in_array($confLevel, ['confidential', 'secret', 'top_secret'], true)
                 ? 'Forbidden: High confidentiality document file download restricted.'
                 : 'Forbidden: Missing required baseline permission [documents.download].';
@@ -485,7 +485,7 @@ class DocumentController extends Controller
             $doc->load('confidentiality');
         }
         
-        $confLevel = $doc->confidentiality?->code ?? 'public';
+        $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'public';
         if ($confLevel !== 'public') {
             try {
                 AuditService::recordDocumentEvent(
@@ -723,7 +723,7 @@ class DocumentController extends Controller
             ->where('id', $validated['version_b'])
             ->firstOrFail();
 
-        $filesA = $versionA->versionFiles->map(fn ($vf) => [
+        $filesA = $versionA->versionFiles->map(fn (VersionFile $vf): array => [
             'id' => $vf->file_object_id,
             'filename' => $vf->fileObject?->original_filename,
             'byte_size' => $vf->fileObject?->byte_size,
@@ -732,7 +732,7 @@ class DocumentController extends Controller
             'purpose' => $vf->purpose,
         ]);
 
-        $filesB = $versionB->versionFiles->map(fn ($vf) => [
+        $filesB = $versionB->versionFiles->map(fn (VersionFile $vf): array => [
             'id' => $vf->file_object_id,
             'filename' => $vf->fileObject?->original_filename,
             'byte_size' => $vf->fileObject?->byte_size,

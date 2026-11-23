@@ -150,7 +150,7 @@ class CorrespondenceController extends Controller
             }
         }
 
-        $correspondence = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $receivingUnitId, $request) {
+        $correspondence = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request) {
             // 1. Generate reference number atomically
             $seq = DB::table('reference_sequences')
                 ->where('sequence_key', 'CORR')

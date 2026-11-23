@@ -6,6 +6,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $participant_id
+ * @property int $document_version_id
+ * @property int|null $method_id
+ * @property int|null $dispatched_by
+ * @property \Carbon\Carbon|null $dispatched_at
+ * @property string|null $tracking_reference
+ * @property int|null $evidence_file_id
+ * @property string|null $idempotency_key
+ * @property \App\Models\FileObject|null $evidenceFile
+ * @property \App\Models\DocumentVersion|null $documentVersion
+ * @property \App\Models\CorrespondenceParticipant|null $participant
+ */
 class CorrespondenceDispatch extends Model
 {
     use HasFactory;
@@ -58,6 +72,9 @@ class CorrespondenceDispatch extends Model
         return $this->belongsTo(User::class, 'dispatched_by');
     }
 
+    /**
+     * @return BelongsTo<FileObject, $this>
+     */
     public function evidenceFile(): BelongsTo
     {
         return $this->belongsTo(FileObject::class, 'evidence_file_id');

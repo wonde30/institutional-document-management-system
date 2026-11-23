@@ -39,6 +39,9 @@ class SigningIdentity extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /**
+     * @return BelongsTo<FileObject, $this>
+     */
     public function publicCertificateFile(): BelongsTo
     {
         return $this->belongsTo(FileObject::class, 'public_certificate_file_id');

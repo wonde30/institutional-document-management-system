@@ -497,12 +497,12 @@ class InstitutionalModuleController extends Controller
         }
 
         $doc = $record->document;
-        $ownerUnitId = (int) ($doc?->owner_unit_id ?? 0);
+        $ownerUnitId = (int) $doc->owner_unit_id;
 
         // Submitter & author checks
-        $submitterId = (int) ($record->submitted_by ?? $record->recorded_by ?? $doc?->created_by ?? 0);
+        $submitterId = (int) ($record->submitted_by ?? $record->recorded_by ?? $doc->created_by ?? 0);
         $staffId = $actor->staffProfile?->id;
-        $isAuthor = ((int) $doc?->created_by === (int) $actor->id)
+        $isAuthor = ((int) $doc->created_by === (int) $actor->id)
             || ((int) $record->recorded_by === (int) $actor->id)
             || ($staffId && $record->authors()->where('staff_id', $staffId)->exists());
 
@@ -575,13 +575,9 @@ class InstitutionalModuleController extends Controller
                 }
             } elseif ($targetStatus === 'rejected') {
                 $updateData['rejected_by'] = $actor->id;
-                if ($remarks) {
-                    $updateData['decision_remarks'] = $remarks;
-                }
+                $updateData['decision_remarks'] = $remarks;
             } elseif ($targetStatus === 'returned') {
-                if ($remarks) {
-                    $updateData['decision_remarks'] = $remarks;
-                }
+                $updateData['decision_remarks'] = $remarks;
             }
             $locked->update($updateData);
 
@@ -617,8 +613,7 @@ class InstitutionalModuleController extends Controller
                         $dec = match ($targetStatus) {
                             'approved' => 'approve',
                             'rejected' => 'reject',
-                            'returned' => 'return',
-                            default => 'approve',
+                            default => 'return',
                         };
                         WorkflowTaskDecision::create([
                             'task_id' => $activeTask->id,
@@ -1029,12 +1024,12 @@ class InstitutionalModuleController extends Controller
         }
 
         $doc = $proposal->document;
-        $ownerUnitId = (int) ($doc?->owner_unit_id ?? 0);
+        $ownerUnitId = (int) $doc->owner_unit_id;
 
         // Submitter & PI / creator checks
-        $submitterId = (int) ($proposal->submitted_by ?? $proposal->recorded_by ?? $doc?->created_by ?? 0);
+        $submitterId = (int) ($proposal->submitted_by ?? $proposal->recorded_by ?? $doc->created_by ?? 0);
         $staffId = $actor->staffProfile?->id;
-        $isAuthor = ((int) $doc?->created_by === (int) $actor->id)
+        $isAuthor = ((int) $doc->created_by === (int) $actor->id)
             || ((int) $proposal->recorded_by === (int) $actor->id)
             || ($staffId && DB::table('project_proposal_members')->where('proposal_id', $proposal->id)->where('staff_id', $staffId)->exists());
 
@@ -1107,13 +1102,9 @@ class InstitutionalModuleController extends Controller
                 }
             } elseif ($targetStatus === 'rejected') {
                 $updateData['rejected_by'] = $actor->id;
-                if ($remarks) {
-                    $updateData['decision_remarks'] = $remarks;
-                }
+                $updateData['decision_remarks'] = $remarks;
             } elseif ($targetStatus === 'returned') {
-                if ($remarks) {
-                    $updateData['decision_remarks'] = $remarks;
-                }
+                $updateData['decision_remarks'] = $remarks;
             }
             $locked->update($updateData);
 
@@ -1155,8 +1146,7 @@ class InstitutionalModuleController extends Controller
                         $dec = match ($targetStatus) {
                             'approved' => 'approve',
                             'rejected' => 'reject',
-                            'returned' => 'return',
-                            default => 'approve',
+                            default => 'return',
                         };
                         WorkflowTaskDecision::create([
                             'task_id' => $activeTask->id,
@@ -1545,9 +1535,15 @@ class InstitutionalModuleController extends Controller
 
         // 4. Asset must be institutionally controlled
         $imageFile = $stampVersion->imageFile;
-        $storageKey = $imageFile?->storage_key ?? $imageFile?->storage_path;
-        $diskName = $imageFile?->storage_disk ?? 'local';
-        if (! $imageFile || empty($storageKey) || ! Storage::disk($diskName)->exists($storageKey)) {
+        if (! $imageFile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stamp image asset is not available in controlled institutional storage.',
+            ], 422);
+        }
+        $storageKey = $imageFile->storage_key ?? $imageFile->storage_path;
+        $diskName = $imageFile->storage_disk ?? 'local';
+        if (empty($storageKey) || ! Storage::disk($diskName)->exists($storageKey)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stamp image asset is not available in controlled institutional storage.',
@@ -1649,7 +1645,7 @@ class InstitutionalModuleController extends Controller
         $identities = SigningIdentity::with(['user', 'publicCertificateFile'])
             ->orderByDesc('id')
             ->get()
-            ->map(function ($id) use ($certService) {
+            ->map(function (SigningIdentity $id) use ($certService): array {
                 $certParsed = null;
                 if ($id->publicCertificateFile) {
                     $certPath = storage_path('app/'.$id->publicCertificateFile->storage_key);

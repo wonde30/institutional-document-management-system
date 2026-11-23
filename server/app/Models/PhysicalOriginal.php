@@ -53,6 +53,9 @@ class PhysicalOriginal extends Model
         return $this->hasMany(PhysicalCustodyEvent::class, 'physical_original_id')->orderByDesc('occurred_at');
     }
 
+    /**
+     * @return HasMany<DigitizationRecord, $this>
+     */
     public function digitizationRecords(): HasMany
     {
         return $this->hasMany(DigitizationRecord::class, 'physical_original_id');

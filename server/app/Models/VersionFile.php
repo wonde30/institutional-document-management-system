@@ -8,6 +8,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $document_version_id
+ * @property int $file_object_id
+ * @property string|null $purpose
+ * @property int|null $display_order
+ * @property int|null $primary_slot
+ * @property \App\Models\DocumentVersion $documentVersion
+ * @property \App\Models\FileObject|null $fileObject
+ */
 class VersionFile extends Model
 {
     use HasFactory, HasCompositePrimaryKey, GuardsVersionImmutability;
@@ -48,6 +57,9 @@ class VersionFile extends Model
         return $this->belongsTo(DocumentVersion::class, 'document_version_id');
     }
 
+    /**
+     * @return BelongsTo<FileObject, $this>
+     */
     public function fileObject(): BelongsTo
     {
         return $this->belongsTo(FileObject::class, 'file_object_id');
