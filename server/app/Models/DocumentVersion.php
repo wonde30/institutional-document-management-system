@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \App\Models\TemplateVersion|null $templateVersion
  * @property \App\Models\User|null $createdBy
  * @property \Illuminate\Database\Eloquent\Collection<int, \App\Models\VersionFile> $versionFiles
+ * @property \Illuminate\Database\Eloquent\Collection<int, \App\Models\VersionFile> $files
  */
 class DocumentVersion extends Model
 {
@@ -94,6 +95,16 @@ class DocumentVersion extends Model
     public function versionFiles(): HasMany
     {
         return $this->hasMany(VersionFile::class, 'document_version_id');
+    }
+
+    /**
+     * Alias for versionFiles to support relation queries referencing files.
+     *
+     * @return HasMany<VersionFile, $this>
+     */
+    public function files(): HasMany
+    {
+        return $this->versionFiles();
     }
 
     public function fileObjects(): BelongsToMany
