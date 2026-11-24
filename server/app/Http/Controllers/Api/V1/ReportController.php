@@ -85,7 +85,9 @@ class ReportController extends Controller
     }
 
     /**
-     * Export institutional metrics summary as CSV.
+     * Export institutional documents report as CSV with chunked streaming,
+     * strict formula injection escaping on every text column, row cap,
+     * truncation header, and audit logging after export completion.
      */
     public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
@@ -97,7 +99,7 @@ class ReportController extends Controller
         $permittedUnitIds = $actor->getPermittedUnitIds('reports.export');
 
         $query = (clone $docAccessible)
-            ->join('document_categories', 'documents.category_id', '=', 'document_categories.id')
+            ->with(['category', 'ownerUnit'])
             ->whereBetween('documents.registered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
         if ($permittedUnitIds !== null) {
@@ -109,63 +111,77 @@ class ReportController extends Controller
             $rowCap = 10000;
         }
 
-        // Fetch rowCap + 1 to detect truncation without executing full unbounded count
-        $rows = (clone $query)
-            ->toBase()
-            ->selectRaw('document_categories.name as category, count(*) as count')
-            ->groupBy('document_categories.name')
-            ->limit($rowCap + 1)
-            ->get();
-
-        $isCapHit = $rows->count() > $rowCap;
-        $byCategory = $rows->take($rowCap);
-
-        AuditService::log(
-            action: 'report.exported',
-            targetType: 'report',
-            targetId: 'documents_by_category',
-            details: [
-                'from_date' => $startDate,
-                'to_date' => $endDate,
-                'categories_count' => $byCategory->count(),
-                'row_cap' => $rowCap,
-                'row_cap_hit' => $isCapHit,
-            ],
-            actorId: $actor->id,
-            request: $request
-        );
+        $totalMatching = (clone $query)->count();
+        $isTruncated = $totalMatching > $rowCap;
+        $exportCount = min($totalMatching, $rowCap);
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="institutional_report_' . date('Ymd_His') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="institutional_documents_report_' . date('Ymd_His') . '.csv"',
             'X-Row-Cap' => (string) $rowCap,
-            'X-Row-Count' => (string) $byCategory->count(),
-            'X-Row-Cap-Hit' => $isCapHit ? 'true' : 'false',
+            'X-Row-Count' => (string) $exportCount,
+            'X-Row-Cap-Hit' => $isTruncated ? 'true' : 'false',
+            'X-Report-Truncated' => $isTruncated ? 'true' : 'false',
         ];
 
-        if ($isCapHit) {
+        if ($isTruncated) {
             $headers['X-Warning'] = "Report row cap of {$rowCap} reached; results truncated.";
         }
 
-        return response()->stream(function () use ($byCategory, $isCapHit, $rowCap) {
+        $escapeFormula = function (?string $val): string {
+            $str = (string) ($val ?? '');
+            if ($str !== '' && in_array($str[0], ['=', '+', '-', '@', "\t", "\r", "\n"], true)) {
+                return "'" . $str;
+            }
+            return $str;
+        };
+
+        return response()->stream(function () use ($query, $rowCap, $isTruncated, $totalMatching, $escapeFormula, $startDate, $endDate, $actor, $request) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Category', 'Document Count']);
+            fputcsv($handle, ['Reference Number', 'Title', 'Category', 'Owner Unit', 'Document Date']);
 
-            $escapeFormula = function ($val): string {
-                $str = (string) $val;
-                if ($str !== '' && in_array($str[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
-                    return "'" . $str;
-                }
-                return $str;
-            };
+            $exportedCount = 0;
 
-            foreach ($byCategory as $row) {
-                fputcsv($handle, [$escapeFormula($row->category), $row->count]);
+            // Stream in chunks of 500 records up to rowCap
+            $query->orderBy('documents.id', 'asc')
+                ->chunk(500, function ($documents) use ($handle, $escapeFormula, &$exportedCount, $rowCap) {
+                    foreach ($documents as $doc) {
+                        if ($exportedCount >= $rowCap) {
+                            return false; // Break chunking
+                        }
+
+                        $ref = $escapeFormula($doc->reference_number);
+                        $title = $escapeFormula($doc->title);
+                        $category = $escapeFormula($doc->category?->name);
+                        $ownerUnit = $escapeFormula($doc->ownerUnit?->name);
+                        $docDate = (string) ($doc->document_date ?? $doc->registered_at);
+
+                        fputcsv($handle, [$ref, $title, $category, $ownerUnit, $docDate]);
+                        $exportedCount++;
+                    }
+                });
+
+            if ($isTruncated) {
+                fputcsv($handle, ["NOTICE: Truncated at row cap of {$rowCap} records", '', '', '', '']);
             }
 
-            if ($isCapHit) {
-                fputcsv($handle, ["NOTICE: Truncated at row cap of {$rowCap} categories", '']);
-            }
+            // Write audit row after export succeeds, recording the outcome
+            AuditService::log(
+                action: 'report.exported',
+                targetType: 'report',
+                targetId: 'documents_export',
+                details: [
+                    'from_date' => $startDate,
+                    'to_date' => $endDate,
+                    'rows_exported' => $exportedCount,
+                    'total_matched' => $totalMatching,
+                    'row_cap' => $rowCap,
+                    'truncated' => $isTruncated,
+                    'outcome' => 'success',
+                ],
+                actorId: $actor->id,
+                request: $request
+            );
 
             fclose($handle);
         }, 200, $headers);

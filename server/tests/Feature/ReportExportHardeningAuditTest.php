@@ -156,6 +156,8 @@ class ReportExportHardeningAuditTest extends TestCase
         $res->assertHeader('X-Row-Cap-Hit', 'true');
         $this->assertTrue($res->headers->has('X-Warning'));
 
+        $res->streamedContent(); // Consume stream to complete export and write audit row
+
         $this->assertDatabaseHas('audit_events', [
             'action' => 'report.exported',
             'target_type' => 'report',
