@@ -629,7 +629,7 @@ class InstitutionalModuleController extends Controller
 
                 if ($activeTask) {
                     $engineDecision = match ($targetStatus) {
-                        'submitted' => 'submit',
+                        'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
                         'under_review' => 'start_review',
                         'approved' => 'approve',
                         'rejected' => 'reject',
@@ -1158,7 +1158,7 @@ class InstitutionalModuleController extends Controller
 
                 if ($activeTask) {
                     $engineDecision = match ($targetStatus) {
-                        'submitted' => 'submit',
+                        'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
                         'under_review' => 'start_review',
                         'approved' => 'approve',
                         'rejected' => 'reject',

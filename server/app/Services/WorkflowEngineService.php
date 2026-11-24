@@ -284,7 +284,8 @@ class WorkflowEngineService
                 'approve' => 'approve',
                 'reject' => 'reject',
                 'return' => 'return',
-                'submit', 'resubmit' => 'submit',
+                'submit' => 'submit',
+                'resubmit' => 'resubmit',
                 'review', 'start_review' => 'start_review',
                 default => 'cancel',
             };
