@@ -34,6 +34,32 @@ class Document extends Model
 {
     use HasFactory;
 
+    public static function getHighConfidentialityIds(): array
+    {
+        $request = app()->bound('request') ? app('request') : null;
+        if ($request && $request instanceof \Illuminate\Http\Request && $request->attributes->has('__high_conf_ids')) {
+            return $request->attributes->get('__high_conf_ids');
+        }
+
+        $ids = DB::table('confidentiality_levels')
+            ->whereIn('code', ['confidential', 'restricted', 'secret', 'top_secret'])
+            ->pluck('id')
+            ->all();
+
+        if ($request && $request instanceof \Illuminate\Http\Request) {
+            $request->attributes->set('__high_conf_ids', $ids);
+        }
+
+        return $ids;
+    }
+
+    public static function clearConfidentialityCache(): void
+    {
+        if (app()->bound('request') && ($req = app('request')) && $req instanceof \Illuminate\Http\Request) {
+            $req->attributes->remove('__high_conf_ids');
+        }
+    }
+
     protected $table = 'documents';
     protected $dateFormat = 'Y-m-d H:i:s.u';
 
@@ -447,10 +473,7 @@ class Document extends Model
         $hasGlobalSensitive = ($sensitiveUnitIds === null);
         $sensitiveUnitIds = $sensitiveUnitIds ?? [];
 
-        $highConfIds = DB::table('confidentiality_levels')
-            ->whereIn('code', ['confidential', 'restricted', 'secret', 'top_secret'])
-            ->pluck('id')
-            ->all();
+        $highConfIds = static::getHighConfidentialityIds();
 
         // Parity rule for archive.view: cross-unit read for archived records with clearance boundary
         if ($permission === 'archive.view') {

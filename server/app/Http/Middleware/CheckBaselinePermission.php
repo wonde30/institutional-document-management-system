@@ -230,14 +230,9 @@ class CheckBaselinePermission
         if (! $user->hasPermission($permission, $targetUnitId)) {
             // If request had no specific unit constraint, check if user holds this permission in any active scope
             if (! $isResourceSpecific && $targetUnitId === null) {
-                $hasActiveGrant = $user->userPermissions()
-                    ->whereHas('permission', fn ($q) => $q->where('code', $permission)->where('active', 1))
-                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->exists()
-                    || $user->userRoles()
-                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->whereHas('role', fn ($rq) => $rq->where('active', 1)->whereHas('permissions', fn ($pq) => $pq->where('code', $permission)->where('active', 1)))
-                    ->exists();
+                $grants = $user->loadActiveGrants();
+                $hasActiveGrant = $grants['direct']->contains(fn ($up) => $up->permission && $up->permission->code === $permission && $up->permission->active)
+                    || $grants['roles']->contains(fn ($ur) => $ur->role && $ur->role->active && $ur->role->permissions->contains(fn ($p) => $p->code === $permission && $p->active));
 
                 if ($hasActiveGrant) {
                     return null;

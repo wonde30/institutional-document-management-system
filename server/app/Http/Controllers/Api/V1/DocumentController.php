@@ -76,7 +76,7 @@ class DocumentController extends Controller
     {
         $actor = $request->user();
         $query = Document::accessibleBy($actor, 'documents.view')
-            ->with(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian', 'currentVersion'])
+            ->with(['category:id,code,name', 'confidentiality:id,code,name', 'ownerUnit:id,code,name', 'creator:id,name', 'custodian:id,name,email', 'currentVersion'])
             ->withCount('versions');
 
         // Departmental Scope Isolation: Restrict to permitted units unless globally authorized

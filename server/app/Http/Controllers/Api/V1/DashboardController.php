@@ -41,8 +41,8 @@ class DashboardController extends Controller
             ->groupBy('correspondence_types.code')
             ->pluck('count', 'correspondence_types.code');
 
-        $totalDocuments = (clone $docBase)->count();
-        $totalCorrespondences = (clone $corrBase)->count();
+        $totalDocuments = (int) $docCounts->sum();
+        $totalCorrespondences = (int) $corrCounts->sum();
 
         $movementsQuery = DocumentMovement::query();
         $pendingAssignmentsQuery = DocumentAssignment::query();
@@ -64,8 +64,12 @@ class DashboardController extends Controller
         $archivedRecords = ArchiveEntry::count();
 
         // Operational workflow tasks query (scoped to user assignments and authorized units)
-        $pendingWorkflowTasksQuery = WorkflowTask::with(['instance.documentVersion.document', 'state', 'assignedUser', 'assignedUnit'])
-            ->whereNull('closed_at');
+        $pendingWorkflowTasksQuery = WorkflowTask::with([
+            'instance.documentVersion.document:id,title,reference_number,owner_unit_id,category_id,confidentiality_id',
+            'state:id,code,name,is_terminal',
+            'assignedUser:id,name,email',
+            'assignedUnit:id,code,name',
+        ])->whereNull('closed_at');
         if ($permittedDocUnits !== null) {
             $pendingWorkflowTasksQuery->where(function ($q) use ($permittedDocUnits, $actor) {
                 $q->where('assigned_user_id', $actor ? $actor->id : 0)
@@ -83,7 +87,11 @@ class DashboardController extends Controller
             ->whereDoesntHave('dispatches');
         $outgoingAwaitingDispatchCount = (clone $outgoingAwaitingDispatchQuery)->count();
         $outgoingAwaitingDispatch = (clone $outgoingAwaitingDispatchQuery)
-            ->with(['document', 'type', 'priority'])
+            ->with([
+                'document:id,title,reference_number,owner_unit_id',
+                'type:id,code,name',
+                'priority:id,code,name',
+            ])
             ->orderByDesc('registered_at')
             ->limit(5)
             ->get();
@@ -96,14 +104,20 @@ class DashboardController extends Controller
             });
         $docsRequiringActionCount = (clone $docsRequiringActionQuery)->count();
         $docsRequiringAction = (clone $docsRequiringActionQuery)
-            ->with(['category', 'ownerUnit'])
+            ->with([
+                'category:id,code,name',
+                'ownerUnit:id,code,name',
+            ])
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();
 
         // Recently completed decisions by user or within user scope
-        $recentDecisionsQuery = WorkflowTaskDecision::with(['task.instance.documentVersion.document', 'decidedBy'])
-            ->orderByDesc('decided_at');
+        $recentDecisionsQuery = WorkflowTaskDecision::with([
+            'task.instance.documentVersion.document:id,title,reference_number',
+            'task.state:id,code,name',
+            'decidedBy:id,name',
+        ])->orderByDesc('decided_at');
         if ($permittedDocUnits !== null) {
             $recentDecisionsQuery->where(function ($q) use ($permittedDocUnits, $actor) {
                 $q->where('decided_by', $actor ? $actor->id : 0)
@@ -113,13 +127,21 @@ class DashboardController extends Controller
         $recentDecisions = (clone $recentDecisionsQuery)->limit(5)->get();
 
         $recentDocuments = (clone $docBase)
-            ->with(['category', 'ownerUnit', 'creator'])
+            ->with([
+                'category:id,code,name',
+                'ownerUnit:id,code,name',
+                'creator:id,name',
+            ])
             ->orderByDesc('registered_at')
             ->limit(5)
             ->get();
 
         $recentCorrespondences = (clone $corrBase)
-            ->with(['document', 'type', 'priority'])
+            ->with([
+                'document:id,title,reference_number',
+                'type:id,code,name',
+                'priority:id,code,name',
+            ])
             ->orderByDesc('registered_at')
             ->limit(5)
             ->get();

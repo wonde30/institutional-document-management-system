@@ -599,7 +599,7 @@ class InstitutionalModuleController extends Controller
 
             // Integrate with WorkflowEngineService & seeded definitions
             // Stop fabricating DocumentVersion rows: use record's real linked version or null
-            $version = $doc->latestVersion;
+            $version = $doc->currentVersion ?? $doc->versions()->orderByDesc('version_number')->first();
             $documentVersionId = $version?->id;
 
             $instance = null;
@@ -633,6 +633,17 @@ class InstitutionalModuleController extends Controller
                     'occurred_at' => $now,
                     'idempotency_key' => (string) Str::uuid(),
                 ]);
+
+                // If record was already submitted prior to this transition, advance draft task to submitted
+                if ($currentStatus === 'submitted') {
+                    $initialDraftTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+                    if ($initialDraftTask) {
+                        app(WorkflowEngineService::class)->processDecision($initialDraftTask, [
+                            'decision' => 'submit',
+                            'reason' => 'Auto-advancing initial task to match pre-existing submitted record status',
+                        ], $submitterUser);
+                    }
+                }
             }
 
             // Manage workflow task lifecycle through WorkflowEngineService:
@@ -1132,7 +1143,7 @@ class InstitutionalModuleController extends Controller
 
             // Integrate with WorkflowEngineService & seeded definitions
             // Stop fabricating DocumentVersion rows: use record's real linked version or null
-            $version = $doc->latestVersion;
+            $version = $doc->currentVersion ?? $doc->versions()->orderByDesc('version_number')->first();
             $documentVersionId = $version?->id;
 
             $instanceId = DB::table('project_proposal_workflows')->where('proposal_id', $locked->id)->value('workflow_instance_id');
@@ -1153,6 +1164,17 @@ class InstitutionalModuleController extends Controller
                     $submitterUser,
                     $ownerUnitId
                 );
+
+                // If record was already submitted prior to this transition, advance draft task to submitted
+                if ($currentStatus === 'submitted') {
+                    $initialDraftTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+                    if ($initialDraftTask) {
+                        app(WorkflowEngineService::class)->processDecision($initialDraftTask, [
+                            'decision' => 'submit',
+                            'reason' => 'Auto-advancing initial task to match pre-existing submitted record status',
+                        ], $submitterUser);
+                    }
+                }
             }
 
             // Link to project_proposal_workflows

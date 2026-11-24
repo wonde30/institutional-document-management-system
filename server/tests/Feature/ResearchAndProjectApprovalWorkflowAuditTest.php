@@ -103,6 +103,12 @@ class ResearchAndProjectApprovalWorkflowAuditTest extends TestCase
             'lock_version' => 0,
         ]);
 
+        \App\Models\DocumentVersion::create([
+            'document_id' => $doc->id,
+            'version_number' => 1,
+            'created_by' => $this->author->id,
+        ]);
+
         $research = ResearchRecord::create([
             'document_id' => $doc->id,
             'research_type' => 'academic_monograph',
@@ -231,6 +237,12 @@ class ResearchAndProjectApprovalWorkflowAuditTest extends TestCase
             'registered_at' => now(),
             'lifecycle' => 'active',
             'lock_version' => 0,
+        ]);
+
+        \App\Models\DocumentVersion::create([
+            'document_id' => $doc->id,
+            'version_number' => 1,
+            'created_by' => $this->author->id,
         ]);
 
         $research = ResearchRecord::create([
@@ -393,15 +405,22 @@ class ResearchAndProjectApprovalWorkflowAuditTest extends TestCase
             'lock_version' => 0,
         ]);
 
+        \App\Models\DocumentVersion::create([
+            'document_id' => $doc->id,
+            'version_number' => 1,
+            'created_by' => $this->author->id,
+        ]);
+
         $research = ResearchRecord::create([
             'document_id' => $doc->id,
             'research_type' => 'academic_monograph',
-            'workflow_status' => 'under_review',
-            'submitted_by' => $this->submitter->id,
-            'reviewed_by' => $this->reviewer->id,
+            'workflow_status' => 'draft',
             'recorded_by' => $this->author->id,
             'recorded_at' => now(),
         ]);
+
+        $this->actingAs($this->submitter)->postJson("/api/v1/research/outputs/{$research->id}/submit", ['remarks' => 'Submit']);
+        $this->actingAs($this->reviewer)->postJson("/api/v1/research/outputs/{$research->id}/review", ['remarks' => 'Review']);
 
         // First approve call: 200 OK
         $firstApprove = $this->actingAs($this->approver)

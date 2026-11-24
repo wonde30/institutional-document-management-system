@@ -93,6 +93,12 @@ class ResearchWorkflowSingleSourceOfTruthTest extends TestCase
             'lock_version' => 0,
         ]);
 
+        \App\Models\DocumentVersion::create([
+            'document_id' => $doc->id,
+            'version_number' => 1,
+            'created_by' => $this->author->id,
+        ]);
+
         $research = ResearchRecord::create([
             'document_id' => $doc->id,
             'research_type' => 'academic_monograph',
