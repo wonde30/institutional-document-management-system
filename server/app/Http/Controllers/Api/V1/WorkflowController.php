@@ -230,7 +230,7 @@ class WorkflowController extends Controller
         $task = WorkflowTask::findOrFail($id);
 
         $validated = $request->validate([
-            'decision' => 'required|in:approve,reject,return,cancel,submit',
+            'decision' => 'required|in:approve,reject,return,cancel,submit,review,start_review',
             'reason' => 'nullable|string|max:1000',
             'idempotency_key' => 'nullable|string|max:100',
             'spawn_revision' => 'nullable|boolean',

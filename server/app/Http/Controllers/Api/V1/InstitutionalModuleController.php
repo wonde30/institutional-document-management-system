@@ -34,6 +34,7 @@ use App\Models\StampApplication;
 use App\Models\StampAuthorization;
 use App\Models\StampDefinition;
 use App\Models\StampVersion;
+use App\Models\User;
 use App\Models\VersionFile;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowInstance;
@@ -545,7 +546,7 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
-        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId) {
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId) {
             $locked = ResearchRecord::where('id', $id)->lockForUpdate()->first();
             if (! $locked) {
                 return response()->json(['success' => false, 'message' => 'Research output not found.'], 404);
@@ -597,53 +598,49 @@ class InstitutionalModuleController extends Controller
                     ->first();
 
                 if (! $instance) {
+                    $submitterUser = User::find($submitterId) ?? $actor;
                     $instance = app(WorkflowEngineService::class)->startInstance(
                         $definition->id,
                         $version->id,
                         null,
-                        $actor
+                        $submitterUser
                     );
                 }
 
-                // Manage workflow task lifecycle
+                // Manage workflow task lifecycle through WorkflowEngineService
                 $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
-                if ($activeTask) {
-                    $activeTask->update(['closed_at' => $now]);
-                    if (in_array($targetStatus, ['approved', 'rejected', 'returned'], true)) {
-                        $dec = match ($targetStatus) {
-                            'approved' => 'approve',
-                            'rejected' => 'reject',
-                            default => 'return',
-                        };
-                        WorkflowTaskDecision::create([
-                            'task_id' => $activeTask->id,
-                            'decided_by' => $actor->id,
-                            'decision' => $dec,
-                            'reason' => $remarks ?: 'Decided in departmental review',
-                            'decided_at' => $now,
-                        ]);
-                    }
+                $currentState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
+                    ->where('code', $currentStatus)
+                    ->first();
+
+                if ($activeTask && $currentState && $activeTask->state_id !== $currentState->id) {
+                    $activeTask->update(['state_id' => $currentState->id]);
+                } elseif (! $activeTask && $currentState) {
+                    $activeTask = WorkflowTask::create([
+                        'instance_id' => $instance->id,
+                        'state_id' => $currentState->id,
+                        'assigned_user_id' => ($currentStatus === 'under_review') ? ($locked->reviewed_by ?? null) : null,
+                        'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
+                        'required_role_id' => $currentState->assigned_role_id,
+                        'created_at' => $now,
+                        'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
+                    ]);
                 }
 
-                // Create task for next state if non-terminal
-                if (in_array($targetStatus, ['submitted', 'under_review', 'returned'], true)) {
-                    $targetStateCode = $targetStatus;
-                    $targetState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
-                        ->where('code', $targetStateCode)
-                        ->first();
+                if ($activeTask) {
+                    $engineDecision = match ($targetStatus) {
+                        'submitted' => 'submit',
+                        'under_review' => 'start_review',
+                        'approved' => 'approve',
+                        'rejected' => 'reject',
+                        'returned' => 'return',
+                        default => $targetStatus,
+                    };
 
-                    if ($targetState && ! $targetState->is_terminal) {
-                        $assignedUser = ($targetStatus === 'under_review') ? $actor->id : null;
-                        WorkflowTask::create([
-                            'instance_id' => $instance->id,
-                            'state_id' => $targetState->id,
-                            'assigned_user_id' => $assignedUser,
-                            'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
-                            'required_role_id' => $targetState->assigned_role_id,
-                            'created_at' => $now,
-                            'due_at' => now()->addHours((int) ($targetState->sla_hours ?? 72))->format('Y-m-d H:i:s.u'),
-                        ]);
-                    }
+                    app(WorkflowEngineService::class)->processDecision($activeTask, [
+                        'decision' => $engineDecision,
+                        'reason' => $remarks ?: "Decided in departmental review: {$targetStatus}",
+                    ], $actor);
                 }
             }
 
@@ -1072,7 +1069,7 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
-        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId) {
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId) {
             $locked = ProjectProposal::where('id', $id)->lockForUpdate()->first();
             if (! $locked) {
                 return response()->json(['success' => false, 'message' => 'Project proposal not found.'], 404);
@@ -1124,11 +1121,12 @@ class InstitutionalModuleController extends Controller
                     ->first();
 
                 if (! $instance) {
+                    $submitterUser = User::find($submitterId) ?? $actor;
                     $instance = app(WorkflowEngineService::class)->startInstance(
                         $definition->id,
                         $version->id,
                         null,
-                        $actor
+                        $submitterUser
                     );
                 }
 
@@ -1138,45 +1136,40 @@ class InstitutionalModuleController extends Controller
                     ['workflow_instance_id' => $instance->id]
                 );
 
-                // Manage workflow task lifecycle
+                // Manage workflow task lifecycle through WorkflowEngineService
                 $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
-                if ($activeTask) {
-                    $activeTask->update(['closed_at' => $now]);
-                    if (in_array($targetStatus, ['approved', 'rejected', 'returned'], true)) {
-                        $dec = match ($targetStatus) {
-                            'approved' => 'approve',
-                            'rejected' => 'reject',
-                            default => 'return',
-                        };
-                        WorkflowTaskDecision::create([
-                            'task_id' => $activeTask->id,
-                            'decided_by' => $actor->id,
-                            'decision' => $dec,
-                            'reason' => $remarks ?: 'Decided in project approval workflow',
-                            'decided_at' => $now,
-                        ]);
-                    }
+                $currentState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
+                    ->where('code', $currentStatus)
+                    ->first();
+
+                if ($activeTask && $currentState && $activeTask->state_id !== $currentState->id) {
+                    $activeTask->update(['state_id' => $currentState->id]);
+                } elseif (! $activeTask && $currentState) {
+                    $activeTask = WorkflowTask::create([
+                        'instance_id' => $instance->id,
+                        'state_id' => $currentState->id,
+                        'assigned_user_id' => ($currentStatus === 'under_review') ? ($locked->reviewed_by ?? null) : null,
+                        'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
+                        'required_role_id' => $currentState->assigned_role_id,
+                        'created_at' => $now,
+                        'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
+                    ]);
                 }
 
-                // Create task for next state if non-terminal
-                if (in_array($targetStatus, ['submitted', 'under_review', 'returned'], true)) {
-                    $targetStateCode = $targetStatus;
-                    $targetState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
-                        ->where('code', $targetStateCode)
-                        ->first();
+                if ($activeTask) {
+                    $engineDecision = match ($targetStatus) {
+                        'submitted' => 'submit',
+                        'under_review' => 'start_review',
+                        'approved' => 'approve',
+                        'rejected' => 'reject',
+                        'returned' => 'return',
+                        default => $targetStatus,
+                    };
 
-                    if ($targetState && ! $targetState->is_terminal) {
-                        $assignedUser = ($targetStatus === 'under_review') ? $actor->id : null;
-                        WorkflowTask::create([
-                            'instance_id' => $instance->id,
-                            'state_id' => $targetState->id,
-                            'assigned_user_id' => $assignedUser,
-                            'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
-                            'required_role_id' => $targetState->assigned_role_id,
-                            'created_at' => $now,
-                            'due_at' => now()->addHours((int) ($targetState->sla_hours ?? 72))->format('Y-m-d H:i:s.u'),
-                        ]);
-                    }
+                    app(WorkflowEngineService::class)->processDecision($activeTask, [
+                        'decision' => $engineDecision,
+                        'reason' => $remarks ?: "Decided in project approval workflow: {$targetStatus}",
+                    ], $actor);
                 }
             }
 
