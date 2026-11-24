@@ -222,11 +222,8 @@ class UniversityAssetService
 
             // 4. Resolve the stamp asset file
             $imageFile = $stampVersion->imageFile;
-            if (! $imageFile) {
-                return null;
-            }
-            $storageKey = $imageFile->storage_key ?? $imageFile->storage_path;
-            if (empty($storageKey)) {
+            $storageKey = $imageFile?->storage_key ?? $imageFile?->storage_path;
+            if (! $imageFile || empty($storageKey)) {
                 return null;
             }
 
@@ -237,7 +234,7 @@ class UniversityAssetService
             }
 
             $binary = $disk->get($storageKey);
-            if (! $binary) {
+            if (! $binary || strlen($binary) === 0) {
                 return null;
             }
 
@@ -248,7 +245,7 @@ class UniversityAssetService
                 'data_uri' => $dataUri,
                 'stamp_name' => $stampVersion->stamp->name,
                 'applied_at' => $appliedAt->format('Y-m-d H:i:s'),
-                'applied_by' => $application->appliedBy ? $application->appliedBy->name : 'Authorized Officer',
+                'applied_by' => $application->appliedBy?->name ?? 'Authorized Officer',
                 'reason' => $application->reason,
             ];
         } catch (\Throwable) {
@@ -317,7 +314,7 @@ class UniversityAssetService
 
             // 5. Signed content hash must exist and match physical file integrity
             $signedFile = $signature->signedFile;
-            $digest = $signedFile ? $signedFile->sha256 : $signature->provider_transaction_reference;
+            $digest = $signedFile?->sha256 ?? $signature->provider_transaction_reference;
             if (empty($digest)) {
                 return null;
             }
@@ -328,7 +325,7 @@ class UniversityAssetService
                     $disk = Storage::disk($signedFile->storage_disk ?? 'local');
                     if ($disk->exists($storageKey)) {
                         $actualBytes = $disk->get($storageKey);
-                        if (hash('sha256', (string) $actualBytes) !== $signedFile->sha256) {
+                        if (hash('sha256', $actualBytes) !== $signedFile->sha256) {
                             return null; // Tampered signed artifact on disk
                         }
                     }
@@ -341,11 +338,10 @@ class UniversityAssetService
                 return null;
             }
 
-            $signerName = $signerUser
-                ? $signerUser->name
-                : ($identity->signer_name
-                    ?? $identity->common_name
-                    ?? 'Authorized Signatory');
+            $signerName = $signerUser?->name
+                ?? $identity->signer_name
+                ?? $identity->common_name
+                ?? 'Authorized Signatory';
 
             return [
                 'is_verified' => true,
