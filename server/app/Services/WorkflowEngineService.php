@@ -35,13 +35,15 @@ class WorkflowEngineService
      */
     public function startInstance(
         int $definitionId,
-        int $documentVersionId,
-        ?int $parentInstanceId,
-        User $actor
+        ?int $documentVersionId = null,
+        ?int $parentInstanceId = null,
+        User $actor = null,
+        ?int $unitId = null
     ): WorkflowInstance {
+        $actor = $actor ?? auth()->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        return DB::transaction(function () use ($definitionId, $documentVersionId, $parentInstanceId, $actor, $now) {
+        return DB::transaction(function () use ($definitionId, $documentVersionId, $parentInstanceId, $actor, $now, $unitId) {
             $version = WorkflowVersion::where('definition_id', $definitionId)
                 ->whereNotNull('published_at')
                 ->orderByDesc('version_number')
@@ -78,8 +80,8 @@ class WorkflowEngineService
             ]);
 
             // Spawn initial task for initial state
-            $docVersion = DocumentVersion::with('document')->find($documentVersionId);
-            $ownerUnitId = $docVersion?->document?->owner_unit_id;
+            $docVersion = $documentVersionId ? DocumentVersion::with('document')->find($documentVersionId) : null;
+            $ownerUnitId = $docVersion?->document?->owner_unit_id ?? $unitId;
             $assignedUnitId = $initialState->assigned_unit_id ?? $ownerUnitId;
             $dueAt = $initialState->sla_hours
                 ? now()->addHours((int) $initialState->sla_hours)->format('Y-m-d H:i:s.u')
@@ -307,72 +309,86 @@ class WorkflowEngineService
             $doc = $task->instance->documentVersion?->document;
             $ver = $task->instance->documentVersion;
 
-            if ($decision === 'approve' && $doc && $ver) {
+            if ($decision === 'approve') {
                 // Prohibit if flag is missing (null) or explicitly true; allow only if explicitly false
                 $prohibit = $transition?->prohibit_self_approval ?? true;
                 if ($prohibit) {
-                    if ($actor->id === $doc->created_by || $actor->id === $ver->created_by || $actor->id === $task->instance->started_by) {
+                    if ($actor->id === $task->instance->started_by
+                        || ($doc && $actor->id === $doc->created_by)
+                        || ($ver && $actor->id === $ver->created_by)) {
                         throw new HttpException(422, 'Anti-self-approval violation: Authors and submitting actors cannot approve their own documents or versions.');
                     }
                 }
             }
 
             // Research and Project Separation of Duty Enforcement across task decisions
-            if ($doc) {
-                $researchRecord = ResearchRecord::where('document_id', $doc->id)->first();
-                if ($researchRecord) {
-                    $submitterId = (int) ($researchRecord->submitted_by ?? $researchRecord->recorded_by ?? $doc->created_by ?? 0);
-                    $staffId = $actor->staffProfile?->id;
-                    $isAuthor = ((int) $doc->created_by === (int) $actor->id)
-                        || ((int) $researchRecord->recorded_by === (int) $actor->id)
-                        || ($staffId && $researchRecord->authors()->where('staff_id', $staffId)->exists());
+            $researchRecord = $doc ? ResearchRecord::where('document_id', $doc->id)->first() : null;
+            if (! $researchRecord) {
+                $resEvent = WorkflowEvent::where('instance_id', $task->instance_id)->where('reason', 'like', '%research_record:%')->first();
+                if ($resEvent && preg_match('/research_record:(\d+)/', $resEvent->reason, $m)) {
+                    $researchRecord = ResearchRecord::find((int) $m[1]);
+                }
+            }
+            if ($researchRecord) {
+                $submitterId = (int) ($researchRecord->submitted_by ?? $researchRecord->recorded_by ?? $doc?->created_by ?? $task->instance->started_by ?? 0);
+                $staffId = $actor->staffProfile?->id;
+                $isAuthor = ((int) ($doc?->created_by ?? 0) === (int) $actor->id)
+                    || ((int) $researchRecord->recorded_by === (int) $actor->id)
+                    || ((int) $task->instance->started_by === (int) $actor->id)
+                    || ($staffId && $researchRecord->authors()->where('staff_id', $staffId)->exists());
 
-                    if (in_array($decision, ['review', 'start_review', 'approve', 'reject', 'return'], true)) {
-                        if ((int) $actor->id === $submitterId || $isAuthor) {
-                            throw new HttpException(422, 'Prohibited: Submitter and authors cannot review, approve, reject, or return their own research output.');
-                        }
-                    }
-
-                    if ($decision === 'approve' && is_null($researchRecord->submitted_by)) {
-                        throw new HttpException(422, 'Prohibited: Cannot approve research output with unrecorded or null submitted_by.');
-                    }
-
-                    $reviewerId = (int) ($researchRecord->reviewed_by ?? 0);
-                    if ($decision === 'approve' && $reviewerId && (int) $actor->id === $reviewerId) {
-                        throw new HttpException(422, 'Prohibited: Reviewer cannot approve the same research output.');
-                    }
-
-                    if (in_array($decision, ['reject', 'return'], true) && empty($reason)) {
-                        throw new HttpException(422, 'A valid reason or remarks must be provided when rejecting or returning research.');
+                if (in_array($decision, ['review', 'start_review', 'approve', 'reject', 'return'], true)) {
+                    if ((int) $actor->id === $submitterId || $isAuthor) {
+                        throw new HttpException(422, 'Prohibited: Submitter and authors cannot review, approve, reject, or return their own research output.');
                     }
                 }
 
-                $projectProposal = ProjectProposal::where('document_id', $doc->id)->first();
-                if ($projectProposal) {
-                    $submitterId = (int) ($projectProposal->submitted_by ?? $projectProposal->recorded_by ?? $doc->created_by ?? 0);
-                    $staffId = $actor->staffProfile?->id;
-                    $isAuthor = ((int) $doc->created_by === (int) $actor->id)
-                        || ((int) $projectProposal->recorded_by === (int) $actor->id)
-                        || ($staffId && DB::table('project_proposal_members')->where('proposal_id', $projectProposal->id)->where('staff_id', $staffId)->exists());
+                if ($decision === 'approve' && is_null($researchRecord->submitted_by)) {
+                    throw new HttpException(422, 'Prohibited: Cannot approve research output with unrecorded or null submitted_by.');
+                }
 
-                    if (in_array($decision, ['review', 'start_review', 'approve', 'reject', 'return'], true)) {
-                        if ((int) $actor->id === $submitterId || $isAuthor) {
-                            throw new HttpException(422, 'Prohibited: Submitter and proposal members cannot review, approve, reject, or return their own proposal.');
-                        }
-                    }
+                $reviewerId = (int) ($researchRecord->reviewed_by ?? 0);
+                if ($decision === 'approve' && $reviewerId && (int) $actor->id === $reviewerId) {
+                    throw new HttpException(422, 'Prohibited: Reviewer cannot approve the same research output.');
+                }
 
-                    if ($decision === 'approve' && is_null($projectProposal->submitted_by)) {
-                        throw new HttpException(422, 'Prohibited: Cannot approve project proposal with unrecorded or null submitted_by.');
-                    }
+                if (in_array($decision, ['reject', 'return'], true) && empty($reason)) {
+                    throw new HttpException(422, 'A valid reason or remarks must be provided when rejecting or returning research.');
+                }
+            }
 
-                    $reviewerId = (int) ($projectProposal->reviewed_by ?? 0);
-                    if ($decision === 'approve' && $reviewerId && (int) $actor->id === $reviewerId) {
-                        throw new HttpException(422, 'Prohibited: Reviewer cannot approve the same project proposal.');
-                    }
+            $projectProposal = $doc ? ProjectProposal::where('document_id', $doc->id)->first() : null;
+            if (! $projectProposal) {
+                $propId = DB::table('project_proposal_workflows')->where('workflow_instance_id', $task->instance_id)->value('proposal_id');
+                if ($propId) {
+                    $projectProposal = ProjectProposal::find($propId);
+                }
+            }
+            if ($projectProposal) {
+                $submitterId = (int) ($projectProposal->submitted_by ?? $projectProposal->recorded_by ?? $doc?->created_by ?? $task->instance->started_by ?? 0);
+                $staffId = $actor->staffProfile?->id;
+                $isAuthor = ((int) ($doc?->created_by ?? 0) === (int) $actor->id)
+                    || ((int) $projectProposal->recorded_by === (int) $actor->id)
+                    || ((int) $task->instance->started_by === (int) $actor->id)
+                    || ($staffId && DB::table('project_proposal_members')->where('proposal_id', $projectProposal->id)->where('staff_id', $staffId)->exists());
 
-                    if (in_array($decision, ['reject', 'return'], true) && empty($reason)) {
-                        throw new HttpException(422, 'A valid reason or remarks must be provided when rejecting or returning a project proposal.');
+                if (in_array($decision, ['review', 'start_review', 'approve', 'reject', 'return'], true)) {
+                    if ((int) $actor->id === $submitterId || $isAuthor) {
+                        throw new HttpException(422, 'Prohibited: Submitter and proposal members cannot review, approve, reject, or return their own proposal.');
                     }
+                }
+
+                if ($decision === 'approve' && is_null($projectProposal->submitted_by)) {
+                    throw new HttpException(422, 'Prohibited: Cannot approve project proposal with unrecorded or null submitted_by.');
+                }
+
+                $reviewerId = (int) ($projectProposal->reviewed_by ?? 0);
+                if ($decision === 'approve' && $reviewerId && (int) $actor->id === $reviewerId) {
+                    throw new HttpException(422, 'Prohibited: Reviewer cannot approve the same project proposal.');
+                }
+
+                if (in_array($decision, ['reject', 'return'], true) && empty($reason)) {
+                    throw new HttpException(422, 'A valid reason or remarks must be provided when rejecting or returning a project proposal.');
                 }
             }
 
@@ -401,7 +417,10 @@ class WorkflowEngineService
             $totalParticipantCount = $allParticipants->count();
             $participantUserIds = $allParticipants->pluck('user_id')->all();
 
-            $unitId = $task->assigned_unit_id;
+            $unitId = $task->assigned_unit_id
+                ?? $doc?->owner_unit_id
+                ?? $researchRecord?->document?->owner_unit_id
+                ?? $projectProposal?->document?->owner_unit_id;
             $hasPerm = $actor->hasPermission('workflow.review', $unitId)
                 || $actor->hasPermission('workflow.review')
                 || $actor->can('workflow.review')
@@ -720,16 +739,21 @@ class WorkflowEngineService
                         $fState = WorkflowState::find($forkStateId);
                         if ($fState && ! $fState->is_terminal) {
                             $branchKey = 'branch_' . ($fState->code ?? "b{$fIndex}_{$forkStateId}");
-                            $fUnitId = $fState->assigned_unit_id ?? ($task->assigned_unit_id ?? $task->instance->documentVersion->document->owner_unit_id);
+                            $fUnitId = $fState->assigned_unit_id ?? ($task->assigned_unit_id ?? $task->instance->documentVersion?->document?->owner_unit_id ?? $researchRecord?->document?->owner_unit_id ?? $projectProposal?->document?->owner_unit_id);
                             $fDueAt = $fState->sla_hours
                                 ? now()->addHours((int) $fState->sla_hours)->format('Y-m-d H:i:s.u')
                                 : now()->addDays(7)->format('Y-m-d H:i:s.u');
+
+                            $fAssignedUser = null;
+                            if (! $fUnitId) {
+                                $fAssignedUser = $actor->id;
+                            }
 
                             $newTask = WorkflowTask::create([
                                 'instance_id' => $task->instance_id,
                                 'state_id' => $fState->id,
                                 'branch_key' => $branchKey,
-                                'assigned_user_id' => null,
+                                'assigned_user_id' => $fAssignedUser,
                                 'assigned_unit_id' => $fUnitId,
                                 'required_role_id' => $fState->assigned_role_id,
                                 'created_at' => $now,
@@ -746,12 +770,15 @@ class WorkflowEngineService
                 } elseif ($transition->to_state_id) {
                     $toState = WorkflowState::find($transition->to_state_id);
                     if ($toState && ! $toState->is_terminal) {
-                        $targetUnitId = $toState->assigned_unit_id ?? ($task->assigned_unit_id ?? $task->instance->documentVersion->document->owner_unit_id);
+                        $targetUnitId = $toState->assigned_unit_id ?? ($task->assigned_unit_id ?? $task->instance->documentVersion?->document?->owner_unit_id ?? $researchRecord?->document?->owner_unit_id ?? $projectProposal?->document?->owner_unit_id);
                         $targetDueAt = $toState->sla_hours
                             ? now()->addHours((int) $toState->sla_hours)->format('Y-m-d H:i:s.u')
                             : now()->addDays(7)->format('Y-m-d H:i:s.u');
 
                         $assignedUser = ($toState->code === 'under_review') ? $actor->id : null;
+                        if (! $targetUnitId && ! $assignedUser) {
+                            $assignedUser = $actor->id;
+                        }
 
                         $newTask = WorkflowTask::create([
                             'instance_id' => $task->instance_id,
@@ -820,47 +847,58 @@ class WorkflowEngineService
 
                     // Synchronize state and decision columns on associated ResearchRecord or ProjectProposal
                     $parentDoc = $task->instance->documentVersion?->document;
-                    if ($parentDoc) {
-                        $targetStatusCode = $toState?->code ?? $finalOutcome;
-                        $rRecord = ResearchRecord::where('document_id', $parentDoc->id)->first();
-                        if ($rRecord) {
-                            $rUpdate = ['workflow_status' => $targetStatusCode];
-                            if ($targetStatusCode === 'submitted') {
-                                $rUpdate['submitted_by'] = $actor->id;
-                                $rUpdate['submitted_at'] = $now;
-                            } elseif ($targetStatusCode === 'under_review') {
-                                $rUpdate['reviewed_by'] = $actor->id;
-                            } elseif ($targetStatusCode === 'approved') {
-                                $rUpdate['approved_by'] = $actor->id;
-                                if ($reason) { $rUpdate['decision_remarks'] = $reason; }
-                            } elseif ($targetStatusCode === 'rejected') {
-                                $rUpdate['rejected_by'] = $actor->id;
-                                $rUpdate['decision_remarks'] = $reason;
-                            } elseif ($targetStatusCode === 'returned') {
-                                $rUpdate['decision_remarks'] = $reason;
-                            }
-                            $rRecord->update($rUpdate);
-                        }
+                    $targetStatusCode = $toState?->code ?? $finalOutcome;
 
-                        $pProposal = ProjectProposal::where('document_id', $parentDoc->id)->first();
-                        if ($pProposal) {
-                            $pUpdate = ['workflow_status' => $targetStatusCode];
-                            if ($targetStatusCode === 'submitted') {
-                                $pUpdate['submitted_by'] = $actor->id;
-                                $pUpdate['submitted_at'] = $now;
-                            } elseif ($targetStatusCode === 'under_review') {
-                                $pUpdate['reviewed_by'] = $actor->id;
-                            } elseif ($targetStatusCode === 'approved') {
-                                $pUpdate['approved_by'] = $actor->id;
-                                if ($reason) { $pUpdate['decision_remarks'] = $reason; }
-                            } elseif ($targetStatusCode === 'rejected') {
-                                $pUpdate['rejected_by'] = $actor->id;
-                                $pUpdate['decision_remarks'] = $reason;
-                            } elseif ($targetStatusCode === 'returned') {
-                                $pUpdate['decision_remarks'] = $reason;
-                            }
-                            $pProposal->update($pUpdate);
+                    $rRecord = $parentDoc ? ResearchRecord::where('document_id', $parentDoc->id)->first() : null;
+                    if (! $rRecord) {
+                        $resEvent = WorkflowEvent::where('instance_id', $task->instance_id)->where('reason', 'like', '%research_record:%')->first();
+                        if ($resEvent && preg_match('/research_record:(\d+)/', $resEvent->reason, $m)) {
+                            $rRecord = ResearchRecord::find((int) $m[1]);
                         }
+                    }
+                    if ($rRecord) {
+                        $rUpdate = ['workflow_status' => $targetStatusCode];
+                        if ($targetStatusCode === 'submitted') {
+                            $rUpdate['submitted_by'] = $actor->id;
+                            $rUpdate['submitted_at'] = $now;
+                        } elseif ($targetStatusCode === 'under_review') {
+                            $rUpdate['reviewed_by'] = $actor->id;
+                        } elseif ($targetStatusCode === 'approved') {
+                            $rUpdate['approved_by'] = $actor->id;
+                            if ($reason) { $rUpdate['decision_remarks'] = $reason; }
+                        } elseif ($targetStatusCode === 'rejected') {
+                            $rUpdate['rejected_by'] = $actor->id;
+                            $rUpdate['decision_remarks'] = $reason;
+                        } elseif ($targetStatusCode === 'returned') {
+                            $rUpdate['decision_remarks'] = $reason;
+                        }
+                        $rRecord->update($rUpdate);
+                    }
+
+                    $pProposal = $parentDoc ? ProjectProposal::where('document_id', $parentDoc->id)->first() : null;
+                    if (! $pProposal) {
+                        $propId = DB::table('project_proposal_workflows')->where('workflow_instance_id', $task->instance_id)->value('proposal_id');
+                        if ($propId) {
+                            $pProposal = ProjectProposal::find($propId);
+                        }
+                    }
+                    if ($pProposal) {
+                        $pUpdate = ['workflow_status' => $targetStatusCode];
+                        if ($targetStatusCode === 'submitted') {
+                            $pUpdate['submitted_by'] = $actor->id;
+                            $pUpdate['submitted_at'] = $now;
+                        } elseif ($targetStatusCode === 'under_review') {
+                            $pUpdate['reviewed_by'] = $actor->id;
+                        } elseif ($targetStatusCode === 'approved') {
+                            $pUpdate['approved_by'] = $actor->id;
+                            if ($reason) { $pUpdate['decision_remarks'] = $reason; }
+                        } elseif ($targetStatusCode === 'rejected') {
+                            $pUpdate['rejected_by'] = $actor->id;
+                            $pUpdate['decision_remarks'] = $reason;
+                        } elseif ($targetStatusCode === 'returned') {
+                            $pUpdate['decision_remarks'] = $reason;
+                        }
+                        $pProposal->update($pUpdate);
                     }
                 }
             }

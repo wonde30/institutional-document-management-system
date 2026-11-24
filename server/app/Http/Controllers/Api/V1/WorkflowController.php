@@ -108,13 +108,13 @@ class WorkflowController extends Controller
     {
         $validated = $request->validate([
             'workflow_definition_id' => 'required|exists:workflow_definitions,id',
-            'document_version_id' => 'required|exists:document_versions,id',
+            'document_version_id' => 'nullable|exists:document_versions,id',
             'parent_instance_id' => 'nullable|exists:workflow_instances,id',
         ]);
 
         $instance = $this->workflowEngine->startInstance(
             (int) $validated['workflow_definition_id'],
-            (int) $validated['document_version_id'],
+            isset($validated['document_version_id']) && $validated['document_version_id'] !== null ? (int) $validated['document_version_id'] : null,
             isset($validated['parent_instance_id']) ? (int) $validated['parent_instance_id'] : null,
             $request->user()
         );
@@ -230,7 +230,7 @@ class WorkflowController extends Controller
         $task = WorkflowTask::findOrFail($id);
 
         $validated = $request->validate([
-            'decision' => 'required|in:approve,reject,return,cancel,submit,review,start_review',
+            'decision' => 'required|in:approve,reject,return,cancel,submit,resubmit,review,start_review',
             'reason' => 'nullable|string|max:1000',
             'idempotency_key' => 'nullable|string|max:100',
             'spawn_revision' => 'nullable|boolean',

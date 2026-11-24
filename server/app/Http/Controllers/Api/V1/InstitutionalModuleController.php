@@ -37,6 +37,7 @@ use App\Models\StampVersion;
 use App\Models\User;
 use App\Models\VersionFile;
 use App\Models\WorkflowDefinition;
+use App\Models\WorkflowEvent;
 use App\Models\WorkflowInstance;
 use App\Models\WorkflowState;
 use App\Models\WorkflowTask;
@@ -498,7 +499,21 @@ class InstitutionalModuleController extends Controller
         }
 
         $doc = $record->document;
+        if (! $doc) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unprocessable: Linked document for this research output does not exist.',
+            ], 422);
+        }
         $ownerUnitId = (int) $doc->owner_unit_id;
+
+        $definition = WorkflowDefinition::where('code', 'research_departmental_review')->first();
+        if (! $definition) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Configuration error: Workflow definition [research_departmental_review] is missing.',
+            ], 500);
+        }
 
         // Submitter & author checks
         $submitterId = (int) ($record->submitted_by ?? $record->recorded_by ?? $doc->created_by ?? 0);
@@ -546,7 +561,7 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
-        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId) {
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId, $definition) {
             $locked = ResearchRecord::where('id', $id)->lockForUpdate()->first();
             if (! $locked) {
                 return response()->json(['success' => false, 'message' => 'Research output not found.'], 404);
@@ -583,65 +598,61 @@ class InstitutionalModuleController extends Controller
             $locked->update($updateData);
 
             // Integrate with WorkflowEngineService & seeded definitions
-            $definition = WorkflowDefinition::where('code', 'research_departmental_review')->first();
-            if ($definition && $doc) {
-                $version = $doc->latestVersion;
-                if (! $version) {
-                    $version = DocumentVersion::firstOrCreate(
-                        ['document_id' => $doc->id, 'version_number' => 1],
-                        ['created_by' => $doc->created_by, 'change_note' => 'Initial submission']
-                    );
-                }
+            // Stop fabricating DocumentVersion rows: use record's real linked version or null
+            $version = $doc->latestVersion;
+            $documentVersionId = $version?->id;
 
+            $instance = null;
+            if ($version) {
                 $instance = WorkflowInstance::where('document_version_id', $version->id)
                     ->whereHas('workflowVersion', fn ($vq) => $vq->where('definition_id', $definition->id))
                     ->first();
-
-                if (! $instance) {
-                    $submitterUser = User::find($submitterId) ?? $actor;
-                    $instance = app(WorkflowEngineService::class)->startInstance(
-                        $definition->id,
-                        $version->id,
-                        null,
-                        $submitterUser
-                    );
+            }
+            if (! $instance) {
+                $foundInstanceId = WorkflowEvent::where('reason', 'like', "%research_record:{$locked->id}%")->value('instance_id');
+                if ($foundInstanceId) {
+                    $instance = WorkflowInstance::find($foundInstanceId);
                 }
+            }
+            if (! $instance) {
+                $submitterUser = User::find($submitterId) ?? $actor;
+                $instance = app(WorkflowEngineService::class)->startInstance(
+                    $definition->id,
+                    $documentVersionId,
+                    null,
+                    $submitterUser,
+                    $ownerUnitId
+                );
+                WorkflowEvent::create([
+                    'instance_id' => $instance->id,
+                    'sequence_number' => (WorkflowEvent::where('instance_id', $instance->id)->max('sequence_number') ?? 0) + 1,
+                    'transition_id' => null,
+                    'actor_id' => $actor->id,
+                    'event_kind' => 'start',
+                    'reason' => "research_record:{$locked->id}",
+                    'occurred_at' => $now,
+                    'idempotency_key' => (string) Str::uuid(),
+                ]);
+            }
 
-                // Manage workflow task lifecycle through WorkflowEngineService
-                $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
-                $currentState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
-                    ->where('code', $currentStatus)
-                    ->first();
+            // Manage workflow task lifecycle through WorkflowEngineService:
+            // Do not rewrite task state_id to match record; engine's own state machine decides.
+            $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
 
-                if ($activeTask && $currentState && $activeTask->state_id !== $currentState->id) {
-                    $activeTask->update(['state_id' => $currentState->id]);
-                } elseif (! $activeTask && $currentState) {
-                    $activeTask = WorkflowTask::create([
-                        'instance_id' => $instance->id,
-                        'state_id' => $currentState->id,
-                        'assigned_user_id' => ($currentStatus === 'under_review') ? ($locked->reviewed_by ?? null) : null,
-                        'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
-                        'required_role_id' => $currentState->assigned_role_id,
-                        'created_at' => $now,
-                        'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
-                    ]);
-                }
+            if ($activeTask) {
+                $engineDecision = match ($targetStatus) {
+                    'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
+                    'under_review' => 'start_review',
+                    'approved' => 'approve',
+                    'rejected' => 'reject',
+                    'returned' => 'return',
+                    default => $targetStatus,
+                };
 
-                if ($activeTask) {
-                    $engineDecision = match ($targetStatus) {
-                        'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
-                        'under_review' => 'start_review',
-                        'approved' => 'approve',
-                        'rejected' => 'reject',
-                        'returned' => 'return',
-                        default => $targetStatus,
-                    };
-
-                    app(WorkflowEngineService::class)->processDecision($activeTask, [
-                        'decision' => $engineDecision,
-                        'reason' => $remarks ?: "Decided in departmental review: {$targetStatus}",
-                    ], $actor);
-                }
+                app(WorkflowEngineService::class)->processDecision($activeTask, [
+                    'decision' => $engineDecision,
+                    'reason' => $remarks ?: "Decided in departmental review: {$targetStatus}",
+                ], $actor);
             }
 
             AuditEvent::create([
@@ -1021,7 +1032,21 @@ class InstitutionalModuleController extends Controller
         }
 
         $doc = $proposal->document;
+        if (! $doc) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unprocessable: Linked document for this project proposal does not exist.',
+            ], 422);
+        }
         $ownerUnitId = (int) $doc->owner_unit_id;
+
+        $definition = WorkflowDefinition::where('code', 'project_approval')->first();
+        if (! $definition) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Configuration error: Workflow definition [project_approval] is missing.',
+            ], 500);
+        }
 
         // Submitter & PI / creator checks
         $submitterId = (int) ($proposal->submitted_by ?? $proposal->recorded_by ?? $doc->created_by ?? 0);
@@ -1069,7 +1094,7 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
-        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId) {
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId, $definition) {
             $locked = ProjectProposal::where('id', $id)->lockForUpdate()->first();
             if (! $locked) {
                 return response()->json(['success' => false, 'message' => 'Project proposal not found.'], 404);
@@ -1106,71 +1131,54 @@ class InstitutionalModuleController extends Controller
             $locked->update($updateData);
 
             // Integrate with WorkflowEngineService & seeded definitions
-            $definition = WorkflowDefinition::where('code', 'project_approval')->first();
-            if ($definition && $doc) {
-                $version = $doc->latestVersion;
-                if (! $version) {
-                    $version = DocumentVersion::firstOrCreate(
-                        ['document_id' => $doc->id, 'version_number' => 1],
-                        ['created_by' => $doc->created_by, 'change_note' => 'Initial proposal']
-                    );
-                }
+            // Stop fabricating DocumentVersion rows: use record's real linked version or null
+            $version = $doc->latestVersion;
+            $documentVersionId = $version?->id;
 
+            $instanceId = DB::table('project_proposal_workflows')->where('proposal_id', $locked->id)->value('workflow_instance_id');
+            $instance = $instanceId ? WorkflowInstance::find($instanceId) : null;
+
+            if (! $instance && $version) {
                 $instance = WorkflowInstance::where('document_version_id', $version->id)
                     ->whereHas('workflowVersion', fn ($vq) => $vq->where('definition_id', $definition->id))
                     ->first();
+            }
 
-                if (! $instance) {
-                    $submitterUser = User::find($submitterId) ?? $actor;
-                    $instance = app(WorkflowEngineService::class)->startInstance(
-                        $definition->id,
-                        $version->id,
-                        null,
-                        $submitterUser
-                    );
-                }
-
-                // Link to project_proposal_workflows
-                DB::table('project_proposal_workflows')->updateOrInsert(
-                    ['proposal_id' => $locked->id],
-                    ['workflow_instance_id' => $instance->id]
+            if (! $instance) {
+                $submitterUser = User::find($submitterId) ?? $actor;
+                $instance = app(WorkflowEngineService::class)->startInstance(
+                    $definition->id,
+                    $documentVersionId,
+                    null,
+                    $submitterUser,
+                    $ownerUnitId
                 );
+            }
 
-                // Manage workflow task lifecycle through WorkflowEngineService
-                $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
-                $currentState = WorkflowState::where('workflow_version_id', $instance->workflow_version_id)
-                    ->where('code', $currentStatus)
-                    ->first();
+            // Link to project_proposal_workflows
+            DB::table('project_proposal_workflows')->updateOrInsert(
+                ['proposal_id' => $locked->id],
+                ['workflow_instance_id' => $instance->id]
+            );
 
-                if ($activeTask && $currentState && $activeTask->state_id !== $currentState->id) {
-                    $activeTask->update(['state_id' => $currentState->id]);
-                } elseif (! $activeTask && $currentState) {
-                    $activeTask = WorkflowTask::create([
-                        'instance_id' => $instance->id,
-                        'state_id' => $currentState->id,
-                        'assigned_user_id' => ($currentStatus === 'under_review') ? ($locked->reviewed_by ?? null) : null,
-                        'assigned_unit_id' => $ownerUnitId ?: $doc->owner_unit_id,
-                        'required_role_id' => $currentState->assigned_role_id,
-                        'created_at' => $now,
-                        'due_at' => now()->addDays(7)->format('Y-m-d H:i:s.u'),
-                    ]);
-                }
+            // Manage workflow task lifecycle through WorkflowEngineService:
+            // Do not rewrite task state_id to match record; engine's own state machine decides.
+            $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
 
-                if ($activeTask) {
-                    $engineDecision = match ($targetStatus) {
-                        'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
-                        'under_review' => 'start_review',
-                        'approved' => 'approve',
-                        'rejected' => 'reject',
-                        'returned' => 'return',
-                        default => $targetStatus,
-                    };
+            if ($activeTask) {
+                $engineDecision = match ($targetStatus) {
+                    'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
+                    'under_review' => 'start_review',
+                    'approved' => 'approve',
+                    'rejected' => 'reject',
+                    'returned' => 'return',
+                    default => $targetStatus,
+                };
 
-                    app(WorkflowEngineService::class)->processDecision($activeTask, [
-                        'decision' => $engineDecision,
-                        'reason' => $remarks ?: "Decided in project approval workflow: {$targetStatus}",
-                    ], $actor);
-                }
+                app(WorkflowEngineService::class)->processDecision($activeTask, [
+                    'decision' => $engineDecision,
+                    'reason' => $remarks ?: "Decided in project approval workflow: {$targetStatus}",
+                ], $actor);
             }
 
             AuditEvent::create([

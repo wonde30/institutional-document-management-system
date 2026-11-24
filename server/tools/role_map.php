@@ -247,6 +247,8 @@ $routes = [
 
 ob_start();
 
+$dbName = config('database.connections.' . config('database.default') . '.database');
+echo "Database: {$dbName} (no env override)\n";
 echo "========================================================================================================================\n";
 echo "=== ROLE MAP & ACCESS CHANGE AUDIT TABLE (BASELINE 768c161 vs HEAD) ===\n";
 echo "========================================================================================================================\n\n";
@@ -293,16 +295,23 @@ foreach ($routes as $r) {
 }
 
 echo "\n\n========================================================================================================================\n";
-echo "=== AUDIT OF 6 SPECIFIC PERMISSION CODES FROM DATABASE ===\n";
+echo "=== AUDIT OF 13 SPECIFIC PERMISSION CODES FROM DATABASE ===\n";
 echo "========================================================================================================================\n";
 
 $targetCodes = [
     'backups.manage',
     'backups.restore',
+    'signatures.request',
     'signatures.sign',
     'signatures.verify',
+    'reports.view',
     'reports.export',
+    'documents.share',
+    'documents.version',
+    'documents.upload',
     'correspondence.issue_direct',
+    'staff.view_sensitive',
+    'system.configure',
 ];
 
 $perms = DB::table('permissions')->whereIn('code', $targetCodes)->orderBy('id')->get();
@@ -321,6 +330,55 @@ foreach ($targetCodes as $tCode) {
     } else {
         printf("| %-5s | %-30s | %-12s | %-50s |\n", "-", $tCode, "NO", "NONE");
     }
+}
+
+echo "\n\n========================================================================================================================\n";
+echo "=== DIRECT USER PERMISSION GRANTS (user_permissions TABLE) ===\n";
+echo "========================================================================================================================\n";
+
+$userPermRows = DB::table('user_permissions')
+    ->join('users', 'user_permissions.user_id', '=', 'users.id')
+    ->join('permissions', 'user_permissions.permission_id', '=', 'permissions.id')
+    ->leftJoin('authorization_scopes', 'user_permissions.scope_id', '=', 'authorization_scopes.id')
+    ->select(
+        'users.id as user_id',
+        'users.name',
+        'users.email',
+        'permissions.code as perm_code',
+        'authorization_scopes.kind as scope_kind',
+        'authorization_scopes.unit_id as scope_unit_id',
+        'user_permissions.expires_at'
+    )
+    ->orderBy('users.id')
+    ->get();
+
+printf("| %-8s | %-20s | %-30s | %-30s | %-12s |\n", "User ID", "Name", "Email", "Permission Code", "Scope");
+echo "|----------|----------------------|--------------------------------|--------------------------------|--------------|\n";
+if ($userPermRows->isEmpty()) {
+    echo "| (No direct user permissions found in user_permissions table)                                                |\n";
+} else {
+    foreach ($userPermRows as $upr) {
+        $scopeStr = ($upr->scope_kind ?? 'global') . ($upr->scope_unit_id ? ':' . $upr->scope_unit_id : '');
+        printf("| %-8d | %-20s | %-30s | %-30s | %-12s |\n",
+            $upr->user_id, substr($upr->name, 0, 20), $upr->email, $upr->perm_code, $scopeStr);
+    }
+}
+
+echo "\n--- Direct Grant Check for head.se (head.se@wu.edu.et) ---\n";
+$headUser = DB::table('users')->where('email', 'head.se@wu.edu.et')->first();
+if ($headUser) {
+    $headDirectPerms = DB::table('user_permissions')
+        ->join('permissions', 'user_permissions.permission_id', '=', 'permissions.id')
+        ->where('user_permissions.user_id', $headUser->id)
+        ->pluck('permissions.code')
+        ->all();
+    echo "User found: id={$headUser->id}, name={$headUser->name}, email={$headUser->email}\n";
+    echo "Direct user permissions count: " . count($headDirectPerms) . "\n";
+    echo "Direct permissions: " . (empty($headDirectPerms) ? "NONE" : implode(', ', $headDirectPerms)) . "\n";
+    $hasIssueDirect = in_array('correspondence.issue_direct', $headDirectPerms, true);
+    echo "Does seeders grant correspondence.issue_direct directly to head.se? " . ($hasIssueDirect ? "YES" : "NO") . "\n";
+} else {
+    echo "User head.se@wu.edu.et not found in users table.\n";
 }
 
 echo "\n\n========================================================================================================================\n";
