@@ -26,6 +26,16 @@ class UserRole extends Model
     protected $table = 'user_roles';
     public $timestamps = false;
 
+    protected static function booted(): void
+    {
+        static::saved(function ($model) {
+            User::clearUserGrantsCache($model->user_id);
+        });
+        static::deleted(function ($model) {
+            User::clearUserGrantsCache($model->user_id);
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'role_id',

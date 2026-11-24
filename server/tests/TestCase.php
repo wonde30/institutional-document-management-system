@@ -329,5 +329,7 @@ abstract class TestCase extends BaseTestCase
             'granted_by' => $adminId,
             'granted_at' => now(),
         ]);
+
+        $user->clearGrantsCache();
     }
 }

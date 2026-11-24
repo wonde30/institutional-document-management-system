@@ -66,8 +66,26 @@ class User extends Authenticatable
     public function clearGrantsCache(): void
     {
         $this->cachedSubtreeUnitIds = [];
+        static::clearUserGrantsCache($this->id);
+    }
+
+    public static function clearUserGrantsCache(?int $userId = null): void
+    {
         if (app()->bound('request') && ($req = app('request')) && $req instanceof \Illuminate\Http\Request) {
-            $req->attributes->remove('__user_grants_' . $this->id);
+            if ($userId !== null) {
+                $req->attributes->remove('__user_grants_' . $userId);
+                foreach (array_keys($req->attributes->all()) as $k) {
+                    if (str_starts_with($k, '__user_permitted_units_' . $userId . '_')) {
+                        $req->attributes->remove($k);
+                    }
+                }
+            } else {
+                foreach (array_keys($req->attributes->all()) as $k) {
+                    if (str_starts_with($k, '__user_grants_') || str_starts_with($k, '__user_permitted_units_')) {
+                        $req->attributes->remove($k);
+                    }
+                }
+            }
         }
     }
 

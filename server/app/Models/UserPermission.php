@@ -10,6 +10,16 @@ class UserPermission extends Model
     public $timestamps = false;
     protected $table = 'user_permissions';
 
+    protected static function booted(): void
+    {
+        static::saved(function ($model) {
+            User::clearUserGrantsCache($model->user_id);
+        });
+        static::deleted(function ($model) {
+            User::clearUserGrantsCache($model->user_id);
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'permission_id',

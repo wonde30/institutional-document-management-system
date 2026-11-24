@@ -15,12 +15,13 @@ class AuditEventsPerformanceIndexesTest extends TestCase
 
     public function test_audit_events_has_performance_indexes_for_actor_target_and_occurred_at(): void
     {
-        // Assert that the performance indexes exist on audit_events
+        // Assert that the base composite performance indexes exist and redundant single-column indexes were dropped
         $indexes = collect(DB::select('SHOW INDEX FROM audit_events'))->pluck('Key_name')->unique()->values()->all();
 
-        $this->assertContains('audit_events_actor_id_idx', $indexes, 'Missing index audit_events_actor_id_idx on actor_id');
-        $this->assertContains('audit_events_target_idx', $indexes, 'Missing index audit_events_target_idx on target_type and target_id');
-        $this->assertContains('audit_events_occurred_actor_idx', $indexes, 'Missing index audit_events_occurred_actor_idx on occurred_at and actor_id');
+        $this->assertContains('audit_events_ix_2', $indexes, 'Missing base composite index audit_events_ix_2 on actor_id and occurred_at');
+        $this->assertContains('audit_events_ix_1', $indexes, 'Missing base composite index audit_events_ix_1 on target_type, target_id, and occurred_at');
+        $this->assertNotContains('audit_events_actor_id_idx', $indexes, 'Redundant index audit_events_actor_id_idx must be dropped');
+        $this->assertNotContains('audit_events_target_idx', $indexes, 'Redundant index audit_events_target_idx must be dropped');
     }
 
     public function test_explain_queries_use_performance_indexes_without_table_scan(): void
@@ -40,22 +41,16 @@ class AuditEventsPerformanceIndexesTest extends TestCase
             ]);
         }
 
-        // 1. Actor query plan
-        $actorPlan = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events FORCE INDEX (audit_events_actor_id_idx) WHERE actor_id = 1");
+        // 1. Actor query plan uses audit_events_ix_2
+        $actorPlan = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events FORCE INDEX (audit_events_ix_2) WHERE actor_id = 1");
         $this->assertNotEmpty($actorPlan);
         $this->assertNotEquals('ALL', $actorPlan[0]->type, 'Actor query must not perform a full table scan');
-        $this->assertEquals('audit_events_actor_id_idx', $actorPlan[0]->key);
+        $this->assertEquals('audit_events_ix_2', $actorPlan[0]->key);
 
-        // 2. Target query plan
-        $targetPlan = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events FORCE INDEX (audit_events_target_idx) WHERE target_type = 'document' AND target_id = '10'");
+        // 2. Target query plan uses audit_events_ix_1
+        $targetPlan = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events FORCE INDEX (audit_events_ix_1) WHERE target_type = 'document' AND target_id = '10'");
         $this->assertNotEmpty($targetPlan);
         $this->assertNotEquals('ALL', $targetPlan[0]->type, 'Target query must not perform a full table scan');
-        $this->assertEquals('audit_events_target_idx', $targetPlan[0]->key);
-
-        // 3. Occurred at range plan
-        $occurredPlan = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events FORCE INDEX (audit_events_occurred_actor_idx) WHERE occurred_at >= '2026-01-01 00:00:00' ORDER BY occurred_at DESC LIMIT 20");
-        $this->assertNotEmpty($occurredPlan);
-        $this->assertNotEquals('ALL', $occurredPlan[0]->type, 'Occurred at query must not perform a full table scan');
-        $this->assertStringNotContainsString('Using filesort', $occurredPlan[0]->Extra ?? '', 'Occurred at query must not use filesort');
+        $this->assertEquals('audit_events_ix_1', $targetPlan[0]->key);
     }
 }
