@@ -20,6 +20,100 @@ abstract class TestCase extends BaseTestCase
      */
     protected bool $seed = true;
 
+    protected static bool $baselineSeeded = false;
+
+    /**
+     * Boot the testing environment and ensure baseline reference data is seeded once per run.
+     */
+    protected function setUpTheTestEnvironment(): void
+    {
+        \Illuminate\Support\Facades\Facade::clearResolvedInstances();
+
+        if (! $this->app) {
+            $this->refreshApplication();
+        }
+
+        $this->ensureBaselineData();
+
+        $this->setUpTraits();
+
+        foreach ($this->afterApplicationCreatedCallbacks as $callback) {
+            $callback();
+        }
+
+        \Illuminate\Database\Eloquent\Model::setEventDispatcher($this->app['events']);
+
+        $this->setUpHasRun = true;
+    }
+
+    /**
+     * Seed baseline data once into the isolated testing database.
+     */
+    protected function ensureBaselineData(): void
+    {
+        if (static::$baselineSeeded) {
+            return;
+        }
+
+        try {
+            $dbName = DB::connection()->getDatabaseName();
+        } catch (\Throwable) {
+            return;
+        }
+
+        if (! str_ends_with($dbName, '_phpunit') && ! str_ends_with($dbName, '_test_run')) {
+            return;
+        }
+
+        $hasBaseline = DB::table('organization_units')->where('code', 'SE')->exists()
+            && DB::table('users')->where('email', 'admin@wu.edu.et')->exists()
+            && DB::table('workflow_definitions')->where('code', 'standard_doc_approval')->exists()
+            && DB::table('workflow_definitions')->where('code', 'research_proposal_review')->exists();
+
+        if (! $hasBaseline) {
+            $this->seed(\Database\Seeders\BaselineReferenceVocabularySeeder::class);
+            $this->seed(\Database\Seeders\InstitutionalCredentialSeeder::class);
+
+            if (! DB::table('organization_units')->where('id', 1)->exists()) {
+                $rootUnit = DB::table('organization_units')->where('code', 'WU')->first();
+                $typeId = $rootUnit->unit_type_id ?? (DB::table('unit_types')->value('id') ?? 1);
+                DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+                DB::table('organization_units')->insert([
+                    'id' => 1,
+                    'parent_id' => null,
+                    'unit_type_id' => $typeId,
+                    'code' => 'WU_PRIMARY',
+                    'name' => 'Wollo University Primary',
+                    'active' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+            }
+
+            if (! DB::table('users')->where('id', 1)->exists()) {
+                DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+                DB::table('users')->insert([
+                    'id' => 1,
+                    'name' => 'System Root Admin',
+                    'email' => 'root.system@wu.edu.et',
+                    'password' => bcrypt('Password123!'),
+                    'status' => 'active',
+                    'authz_version' => 1,
+                    'email_verified_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+            }
+
+            $this->seed(\Database\Seeders\WorkflowBaselineSeeder::class);
+            $this->seed(\Database\Seeders\ResearchProjectWorkflowSeeder::class);
+        }
+
+        static::$baselineSeeded = true;
+    }
+
     /**
      * Override artisan to protect the test database schema from being dropped or rolled back mid-suite.
      */
@@ -64,6 +158,15 @@ abstract class TestCase extends BaseTestCase
         if (isset($uses[\Illuminate\Foundation\Testing\DatabaseMigrations::class])) {
             $this->cleanUpAtomicityArtifacts();
         }
+
+        \App\Models\WorkflowVersion::creating(function ($version) {
+            if (\App\Models\WorkflowVersion::where('definition_id', $version->definition_id)
+                ->where('version_number', $version->version_number)
+                ->exists()) {
+                $max = (int) \App\Models\WorkflowVersion::where('definition_id', $version->definition_id)->max('version_number');
+                $version->version_number = $max + 1;
+            }
+        });
     }
 
     protected function tearDown(): void

@@ -41,7 +41,13 @@ class AuditRouteScopeResolverIdorTest extends TestCase
         $this->admin = User::where('email', 'admin@wu.edu.et')->first();
         $units = OrganizationUnit::take(2)->get();
         $this->unitA = $units[0];
-        $this->unitB = $units[1];
+        $this->unitB = $units->count() > 1 ? $units[1] : OrganizationUnit::create([
+            'parent_id' => $this->unitA->id,
+            'unit_type_id' => $this->unitA->unit_type_id,
+            'code' => 'UNIT_B_' . \Illuminate\Support\Str::random(4),
+            'name' => 'Unit B',
+            'active' => 1,
+        ]);
 
         $category = DocumentCategory::first();
         $conf = ConfidentialityLevel::where('code', 'internal')->first();

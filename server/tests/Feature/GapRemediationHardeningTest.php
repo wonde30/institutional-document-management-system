@@ -38,7 +38,13 @@ class GapRemediationHardeningTest extends TestCase
 
         $units = OrganizationUnit::take(2)->get();
         $this->unitA = $units[0];
-        $this->unitB = $units[1];
+        $this->unitB = $units->count() > 1 ? $units[1] : OrganizationUnit::create([
+            'parent_id' => $this->unitA->id,
+            'unit_type_id' => $this->unitA->unit_type_id,
+            'code' => 'UNIT_B_' . \Illuminate\Support\Str::random(4),
+            'name' => 'Unit B',
+            'active' => 1,
+        ]);
 
         $this->category = DocumentCategory::first();
         $this->confPublic = ConfidentialityLevel::where('code', 'public')->first() ?? ConfidentialityLevel::first();
@@ -147,7 +153,7 @@ class GapRemediationHardeningTest extends TestCase
             'category_id' => $this->category->id,
             'confidentiality_id' => $this->confRestricted->id,
             'owner_unit_id' => $this->unitA->id,
-            'created_by' => 1,
+            'created_by' => $this->admin->id,
             'document_date' => now()->toDateString(),
             'registered_at' => now(),
             'lifecycle' => 'active',
@@ -169,7 +175,7 @@ class GapRemediationHardeningTest extends TestCase
             'category_id' => $this->category->id,
             'confidentiality_id' => $this->confPublic->id,
             'owner_unit_id' => $this->unitA->id,
-            'created_by' => 1,
+            'created_by' => $this->admin->id,
             'document_date' => now()->toDateString(),
             'registered_at' => now(),
             'lifecycle' => 'active',
@@ -230,7 +236,7 @@ class GapRemediationHardeningTest extends TestCase
             'category_id' => $maliciousCat->id,
             'confidentiality_id' => $this->confPublic->id,
             'owner_unit_id' => $this->unitA->id,
-            'created_by' => 1,
+            'created_by' => $this->admin->id,
             'document_date' => now()->toDateString(),
             'registered_at' => now(),
             'lifecycle' => 'active',

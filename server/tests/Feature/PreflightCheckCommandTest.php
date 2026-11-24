@@ -67,9 +67,19 @@ class PreflightCheckCommandTest extends TestCase
         ]);
         \Illuminate\Support\Facades\DB::purge('mysql');
 
-        $this->artisan('wu:preflight')
-            ->expectsOutputToContain("Warning: Mail transport is 'log' in non-local environment.")
-            ->expectsOutputToContain("Warning: Queue connection is 'database'; ensure artisan queue:work daemon is active in production.")
-            ->assertExitCode(0);
+        try {
+            $this->artisan('wu:preflight')
+                ->expectsOutputToContain("Warning: Mail transport is 'log' in non-local environment.")
+                ->expectsOutputToContain("Warning: Queue connection is 'database'; ensure artisan queue:work daemon is active in production.")
+                ->assertExitCode(0);
+        } finally {
+            $this->app->detectEnvironment(fn () => 'testing');
+            config([
+                'database.connections.mysql.database' => 'wu_dms_phpunit',
+                'mail.default' => 'array',
+                'queue.default' => 'sync',
+            ]);
+            \Illuminate\Support\Facades\DB::purge('mysql');
+        }
     }
 }

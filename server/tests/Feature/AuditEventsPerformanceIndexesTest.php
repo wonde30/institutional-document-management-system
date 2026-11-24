@@ -25,10 +25,13 @@ class AuditEventsPerformanceIndexesTest extends TestCase
 
     public function test_explain_queries_use_performance_indexes_without_table_scan(): void
     {
+        $actor1Id = User::value('id') ?? 1;
+        $actor2Id = User::where('id', '!=', $actor1Id)->value('id') ?? $actor1Id;
+
         // Insert sample rows to enable cost-based optimizer index selection
         for ($i = 1; $i <= 25; $i++) {
             DB::table('audit_events')->insert([
-                'actor_id' => ($i % 3 === 0) ? 1 : 2,
+                'actor_id' => ($i % 3 === 0) ? $actor1Id : $actor2Id,
                 'action' => 'document.view',
                 'target_type' => 'document',
                 'target_id' => (string) $i,

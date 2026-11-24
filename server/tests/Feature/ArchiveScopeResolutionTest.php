@@ -24,7 +24,13 @@ class ArchiveScopeResolutionTest extends TestCase
         $this->seed(BaselineReferenceVocabularySeeder::class);
 
         $unitA = OrganizationUnit::first();
-        $unitB = OrganizationUnit::skip(1)->first();
+        $unitB = OrganizationUnit::skip(1)->first() ?? OrganizationUnit::create([
+            'parent_id' => $unitA?->id,
+            'unit_type_id' => $unitA?->unit_type_id ?? 1,
+            'code' => 'UNIT_TEST_B_' . \Illuminate\Support\Str::random(4),
+            'name' => 'Unit Test B',
+            'active' => 1,
+        ]);
         $this->assertNotNull($unitA);
         $this->assertNotNull($unitB);
 

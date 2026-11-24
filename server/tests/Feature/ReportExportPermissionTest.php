@@ -32,7 +32,13 @@ class ReportExportPermissionTest extends TestCase
 
         $units = OrganizationUnit::take(2)->get();
         $this->unitA = $units[0];
-        $this->unitB = $units[1];
+        $this->unitB = $units->count() > 1 ? $units[1] : OrganizationUnit::create([
+            'parent_id' => $this->unitA->id,
+            'unit_type_id' => $this->unitA->unit_type_id,
+            'code' => 'UNIT_B_' . Str::random(4),
+            'name' => 'Unit B',
+            'active' => 1,
+        ]);
 
         $categories = DocumentCategory::take(2)->get();
         $this->catA = $categories[0];

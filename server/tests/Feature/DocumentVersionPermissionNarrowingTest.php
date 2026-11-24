@@ -30,6 +30,7 @@ class DocumentVersionPermissionNarrowingTest extends TestCase
         $unit = OrganizationUnit::first();
         $cat = DocumentCategory::first();
         $conf = ConfidentialityLevel::where('code', 'internal')->first() ?? ConfidentialityLevel::first();
+        $creator = User::where('email', 'admin@wu.edu.et')->first() ?? User::first();
 
         $this->document = Document::create([
             'reference_number' => 'WU/DOC/TEST/' . Str::random(6),
@@ -38,7 +39,7 @@ class DocumentVersionPermissionNarrowingTest extends TestCase
             'category_id' => $cat->id,
             'confidentiality_id' => $conf->id,
             'owner_unit_id' => $unit->id,
-            'created_by' => 1,
+            'created_by' => $creator->id,
             'document_date' => now()->toDateString(),
             'registered_at' => now(),
             'lifecycle' => 'active',

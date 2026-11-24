@@ -75,13 +75,16 @@ class AuditGapRemediationTest extends TestCase
     {
         $category = DocumentCategory::first();
         $unit = OrganizationUnit::first();
+        $confId = \App\Models\ConfidentialityLevel::where('code', 'internal')->value('id')
+            ?? \App\Models\ConfidentialityLevel::where('code', 'public')->value('id')
+            ?? \App\Models\ConfidentialityLevel::value('id');
 
         $doc = Document::create([
             'reference_number' => 'WU/DOC/TEST/' . uniqid(),
             'title' => 'Test Document for Discretionary Sharing',
             'summary' => 'Summary',
             'category_id' => $category->id,
-            'confidentiality_id' => 1,
+            'confidentiality_id' => $confId,
             'owner_unit_id' => $unit->id,
             'created_by' => $this->admin->id,
             'lifecycle' => 'active',
