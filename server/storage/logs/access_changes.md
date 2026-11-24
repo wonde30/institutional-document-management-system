@@ -45,3 +45,24 @@ Every change made to `WorkflowEngineService.php` and `WorkflowController.php` si
 | `WorkflowController::reassign` | Checked `workflow.manage` on unit (unseeded). | Checked `workflow.configure` or `workflow.reassign` on unit (seeded). | `super_admin` (via unseeded fallback bypass) | `super_admin` | **BUG FIX (RBAC-02)**: Replaced unseeded permission checks with canonical seeded permissions. |
 | `InstitutionalModuleController::transitionResearchStatus`<br>`transitionProjectStatus` | Silently skipped workflow engine if `$doc` or `$definition` was missing. Fabricated `DocumentVersion` rows with version 1. Rewrote task `state_id` to match record status. | Fails loudly (422 if `$doc` missing, 500 if `$definition` missing). Passes real linked version or `null`. Does NOT fabricate versions. Does NOT rewrite task `state_id`; the engine's state machine decides and closes terminal tasks atomically. | Scoped to permitted units for action | Scoped to permitted units for action | **BUG FIX**: Fail-closed architecture. Engine state machine retains single source of truth for task state; terminal transitions close all tasks on instance with zero open tasks remaining. |
 
+---
+
+## 4. Architectural Decision: 403 Forbidden vs 404 Not Found for Out-of-Unit Access
+
+### Context & Threat Model
+In Wollo University DMS, documents and institutional records belong to specific organizational units (`owner_unit_id`). Users operate with scoped capabilities across three authorization tiers (`global`, `subtree`, and `unit`). The system must prevent unauthorized cross-department data leakage, out-of-unit tampering, and resource enumeration attacks (IDOR oracles).
+
+### Decision Principles
+1. **List & Search Endpoints (Virtual Non-Existence)**:
+   - When querying collections (`GET /api/v1/documents`, `/api/v1/archive/entries`, `/api/v1/search`, `/api/v1/reports/export`, etc.), queries are automatically scoped using `Document::accessibleBy($user, $permission)` and permitted unit ID resolution.
+   - Out-of-unit records that the user has no clearance or scope to see are completely omitted from the result set.
+   - The user cannot observe the existence, metadata, or total count of out-of-unit records.
+
+2. **Direct Route ID Access & Scoped Routing (`RouteScopeResolver`)**:
+   - When an authenticated user attempts to access or mutate a specific resource by ID across an organizational boundary they do not have clearance/authority over:
+     - If the user possesses the required capability but **only in another unit** (i.e. out-of-unit target), the server returns **`403 Forbidden`** with an explicit authorization denial envelope.
+     - **Rationale for 403**: A `403 Forbidden` correctly reflects that the user's identity is verified, but their authorization scope does not cover the target unit. In institutional audits and security monitoring, distinguishing an authorization failure (`403`) from a missing reference (`404`) is essential for intrusion detection, permission misconfiguration tracking, and compliance auditing.
+     - When a resource genuinely does not exist or has been tombstoned without historical trace, the server returns **`404 Not Found`**.
+   - For highly confidential records (`confidentiality_id` in restricted/secret tiers), if the user lacks clearance (`staff.view_sensitive`), `allowsUser()` returns `false`, resulting in `403 Forbidden` upon access attempt and silent omission from `accessibleBy()` queries.
+
+
