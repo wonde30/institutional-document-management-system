@@ -204,7 +204,15 @@ class AuditResearchAndProjectWorkflowTest extends TestCase
         $submitRes->assertStatus(200)
             ->assertJsonPath('data.workflow_status', 'submitted');
 
-        // 3. Dean approves project (submitted -> approved)
+        // 3. Department Head reviews project (submitted -> under_review)
+        $reviewRes = $this->actingAs($this->departmentHead)
+            ->postJson("/api/v1/projects/{$project->id}/review", [
+                'remarks' => 'Commencing project committee review.',
+            ]);
+        $reviewRes->assertStatus(200)
+            ->assertJsonPath('data.workflow_status', 'under_review');
+
+        // 4. Dean approves project (under_review -> approved)
         $approveRes = $this->actingAs($this->dean)
             ->postJson("/api/v1/projects/{$project->id}/approve", [
                 'remarks' => 'Proposal approved for institution funding.',
