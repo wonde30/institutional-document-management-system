@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class PreflightAuditVerificationTest extends TestCase
 {
-    public function test_preflight_fails_with_actionable_instructions_if_extensions_missing(): void
+    public function test_preflight_warns_on_optional_extensions_without_failing(): void
     {
         $hasIntl = extension_loaded('intl');
         $hasGd = extension_loaded('gd');
@@ -16,18 +16,15 @@ class PreflightAuditVerificationTest extends TestCase
         $artisan = $this->artisan('wu:preflight');
 
         if (! $hasIntl || ! $hasGd) {
-            $artisan->assertExitCode(1)
-                ->expectsOutputToContain('Preflight Check FAILED')
-                ->expectsOutputToContain('Windows configuration instructions:');
-
-            $ini = php_ini_loaded_file() ?: 'php.ini';
-            $artisan->expectsOutputToContain("Open your active php.ini: {$ini}");
+            $artisan->assertExitCode(0)
+                ->expectsOutputToContain('Preflight Check PASSED cleanly!')
+                ->expectsOutputToContain('Advisories');
 
             if (! $hasIntl) {
-                $artisan->expectsOutputToContain('extension=intl');
+                $artisan->expectsOutputToContain("Optional extension 'intl' is NOT loaded");
             }
             if (! $hasGd) {
-                $artisan->expectsOutputToContain('extension=gd');
+                $artisan->expectsOutputToContain("Optional extension 'gd' is NOT loaded");
             }
         } else {
             $artisan->assertExitCode(0)

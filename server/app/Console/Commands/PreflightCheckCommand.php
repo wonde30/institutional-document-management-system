@@ -37,6 +37,7 @@ class PreflightCheckCommand extends Command
 
         // 1. PHP Extensions
         $this->line('<fg=cyan>1. Checking PHP Extensions...</>');
+        // Required extensions are strictly those actively utilized by application code
         $requiredExtensions = [
             'bcmath' => 'Arbitrary precision mathematics and timestamps',
             'fileinfo' => 'MIME type sniffing and file validation',
@@ -44,8 +45,12 @@ class PreflightCheckCommand extends Command
             'openssl' => 'Cryptographic signing, token generation, and encryption',
             'pdo_mysql' => 'MySQL database connectivity',
             'zip' => 'Package compression and document archiving',
-            'intl' => 'Internationalization, collation, and Unicode normalization',
-            'gd' => 'Image processing, document thumbnails, and rendering',
+        ];
+
+        // Advisory / optional extensions not directly invoked by app code
+        $advisoryExtensions = [
+            'intl' => 'Internationalization and Unicode collation (recommended for localized formatting; not directly invoked by app code)',
+            'gd' => 'Image processing and thumbnail generation (recommended if visual rendering is enabled; not directly invoked by app code)',
         ];
 
         $iniPath = php_ini_loaded_file() ?: 'php.ini';
@@ -61,6 +66,15 @@ class PreflightCheckCommand extends Command
                 $this->line("     <fg=yellow>  3. Verify extension_dir is set to your PHP extensions directory</>");
                 $this->line("     <fg=yellow>  4. Restart your web server / CLI session</>");
                 $failures[] = "Missing required PHP extension '{$ext}' ({$purpose}). Enable 'extension={$ext}' in {$iniPath}";
+            }
+        }
+
+        foreach ($advisoryExtensions as $ext => $reason) {
+            if (extension_loaded($ext)) {
+                $this->line("  <fg=green>✓</> Optional extension '{$ext}' is loaded");
+            } else {
+                $this->line("  <fg=yellow>!</> Warning: Optional extension '{$ext}' is NOT loaded ({$reason})");
+                $warnings[] = "Optional extension '{$ext}' not loaded: {$reason}.";
             }
         }
 
