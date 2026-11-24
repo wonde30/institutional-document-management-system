@@ -29,6 +29,14 @@ return new class extends Migration
             $table->index('workflow_status', 'project_proposals_workflow_status_idx');
         });
 
+        Schema::table('data_import_operations', function (Blueprint $table) {
+            $table->index('status', 'data_import_operations_status_idx');
+        });
+
+        Schema::table('data_export_operations', function (Blueprint $table) {
+            $table->index('status', 'data_export_operations_status_idx');
+        });
+
         Schema::table('import_batches', function (Blueprint $table) {
             $table->index('status', 'import_batches_status_idx');
         });
@@ -49,6 +57,14 @@ return new class extends Migration
 
         Schema::table('import_batches', function (Blueprint $table) {
             $table->dropIndex('import_batches_status_idx');
+        });
+
+        Schema::table('data_export_operations', function (Blueprint $table) {
+            $table->dropIndex('data_export_operations_status_idx');
+        });
+
+        Schema::table('data_import_operations', function (Blueprint $table) {
+            $table->dropIndex('data_import_operations_status_idx');
         });
 
         Schema::table('project_proposals', function (Blueprint $table) {

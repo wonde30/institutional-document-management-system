@@ -46,11 +46,11 @@ DB::reconnect('mysql');
 ]);
 echo "Migrated wu_dms_perf schema.\n";
 
-// Rollback latest migration to establish BEFORE state
-echo "Rolling back latest performance migration to capture BEFORE baseline...\n";
+// Rollback latest performance migrations to establish BEFORE state
+echo "Rolling back latest performance migrations to capture BEFORE baseline...\n";
 \Illuminate\Support\Facades\Artisan::call('migrate:rollback', [
     '--database' => 'mysql',
-    '--step' => 1,
+    '--step' => 2,
     '--force' => true,
 ]);
 
@@ -63,9 +63,22 @@ echo "Seeding baseline vocabularies and test datasets...\n";
 \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TestDocumentsSeeder', '--force' => true]);
 echo "wu_dms_perf populated successfully.\n";
 
-// 3. Temporary background PHP server is running on port 8002 pointing to wu_dms_perf
+// 3. Dedicated HTTP server on port 8002 pointing to wu_dms_perf
 $port = 8002;
-echo "Connecting to dedicated HTTP server on 127.0.0.1:{$port} (DB: wu_dms_perf)...\n";
+$serverProcess = null;
+$fp = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
+if (! $fp) {
+    echo "Starting dedicated HTTP server on 127.0.0.1:{$port} (DB: wu_dms_perf)...\n";
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        pclose(popen("cmd /c \"set DB_DATABASE=wu_dms_perf&& start /B php artisan serve --host=127.0.0.1 --port={$port} > NUL 2>&1\"", "r"));
+    } else {
+        exec("DB_DATABASE=wu_dms_perf php artisan serve --host=127.0.0.1 --port={$port} > /dev/null 2>&1 &");
+    }
+    sleep(3);
+} else {
+    fclose($fp);
+}
+echo "Connected to dedicated HTTP server on 127.0.0.1:{$port} (DB: wu_dms_perf).\n";
 
 // Helper Sanctum Client
 class PerfSanctumClient
