@@ -168,7 +168,7 @@ class RoleDeletionHardeningAuditTest extends TestCase
         $this->assertDatabaseHas('roles', ['id' => $role->id]);
     }
 
-    public function test_role_permissions_reference_blocks_deletion_with_422(): void
+    public function test_role_permissions_detached_on_deletion_with_200(): void
     {
         $role = Role::create([
             'code' => 'custom_perm_role_' . uniqid(),
@@ -184,8 +184,9 @@ class RoleDeletionHardeningAuditTest extends TestCase
         ]);
 
         $res = $this->actingAs($this->admin)->deleteJson("/api/v1/roles/{$role->id}");
-        $res->assertStatus(422);
-        $this->assertDatabaseHas('roles', ['id' => $role->id]);
+        $res->assertStatus(200);
+        $this->assertDatabaseMissing('roles', ['id' => $role->id]);
+        $this->assertDatabaseMissing('role_permissions', ['role_id' => $role->id]);
     }
 
     public function test_unreferenced_custom_role_deletion_succeeds_with_200(): void

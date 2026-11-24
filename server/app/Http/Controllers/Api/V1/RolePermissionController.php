@@ -231,6 +231,11 @@ class RolePermissionController extends Controller
 
         foreach ($referencingFks as $fk) {
             $table = $fk->TABLE_NAME;
+            // role_permissions rows belong to the role; detach them inside transaction instead of blocking
+            if ($table === 'role_permissions') {
+                continue;
+            }
+
             $column = $fk->COLUMN_NAME;
             $count = DB::table($table)->where($column, $role->id)->count();
 
@@ -257,18 +262,37 @@ class RolePermissionController extends Controller
             }
         }
 
-        DB::transaction(function () use ($role, $request) {
-            $role->delete();
+        try {
+            DB::transaction(function () use ($role, $request) {
+                // Detach role_permissions rows inside the transaction
+                DB::table('role_permissions')->where('role_id', $role->id)->delete();
 
+                $role->delete();
+
+                AuditService::log(
+                    action: 'role.deleted',
+                    targetType: 'role',
+                    targetId: (string) $role->id,
+                    details: ['code' => $role->code, 'name' => $role->name],
+                    actorId: $request->user()?->id,
+                    request: $request
+                );
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
             AuditService::log(
-                action: 'role.deleted',
+                action: 'role.deletion_rejected',
                 targetType: 'role',
                 targetId: (string) $role->id,
-                details: ['code' => $role->code, 'name' => $role->name],
+                details: ['reason' => 'foreign_key_exception', 'error' => $e->getMessage()],
                 actorId: $request->user()?->id,
                 request: $request
             );
-        });
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Role cannot be deleted due to referencing records.',
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,
