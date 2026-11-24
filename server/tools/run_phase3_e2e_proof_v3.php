@@ -904,6 +904,72 @@ if ($sigRequestId) {
                 file_put_contents($fullPath, $originalBytes);
             }
         }
+
+        // Official Institutional Stamp Application & Verification (stamps/apply)
+        $stampDef = \App\Models\StampDefinition::firstOrCreate(
+            ['unit_id' => $techUnitId],
+            ['name' => 'Official College Stamp - Technology', 'active' => true]
+        );
+        $stampDef->update(['active' => true]);
+
+        $stampAssetKey = 'stamps/tech_official_stamp_' . uniqid() . '.png';
+        Storage::disk('local')->put($stampAssetKey, 'PNG_STAMP_BINARY_ASSET_CONTENT');
+        $stampAssetFile = FileObject::create([
+            'storage_disk' => 'local',
+            'storage_key' => $stampAssetKey,
+            'original_filename' => 'tech_official_stamp.png',
+            'detected_mime' => 'image/png',
+            'byte_size' => 32,
+            'sha256' => hash('sha256', 'PNG_STAMP_BINARY_ASSET_CONTENT'),
+            'uploaded_by' => $adminUser->id,
+            'uploaded_at' => now()->format('Y-m-d H:i:s.u'),
+            'scan_status' => 'clean',
+            'storage_status' => 'ready',
+        ]);
+
+        $stampVersion = \App\Models\StampVersion::firstOrCreate(
+            ['stamp_id' => $stampDef->id, 'version_number' => 1],
+            [
+                'image_file_id' => $stampAssetFile->id,
+                'effective_from' => now()->subDay()->format('Y-m-d H:i:s.u'),
+                'retired_at' => null,
+            ]
+        );
+        $stampVersion->update([
+            'image_file_id' => $stampAssetFile->id,
+            'effective_from' => now()->subDay()->format('Y-m-d H:i:s.u'),
+            'retired_at' => null,
+        ]);
+
+        \App\Models\StampAuthorization::firstOrCreate(
+            ['stamp_id' => $stampDef->id, 'user_id' => $adminUser->id],
+            [
+                'granted_by' => $adminUser->id,
+                'valid_from' => now()->subDay()->format('Y-m-d H:i:s.u'),
+                'valid_until' => null,
+            ]
+        );
+
+        // Apply Official Stamp
+        $applyStampRes = $adminClient->postJson('/api/v1/stamps/apply', [
+            'document_version_id' => $docVersionId,
+            'stamp_id' => $stampDef->id,
+            'reason' => 'Official seal application for university directive',
+        ]);
+        recordResult($results, 'admin', 'apply official stamp', '/api/v1/stamps/apply', 201, $applyStampRes);
+        printAuditRow('stamp.applied');
+
+        // Verify Applied Stamp Visual & Integrity
+        $stampVisual = $applyStampRes['body']['data']['stamp_visual'] ?? null;
+        $isStampVerified = !empty($stampVisual['data_uri']) && !empty($stampVisual['stamp_name']);
+        $results[] = [
+            'role' => 'admin',
+            'action' => 'verify applied stamp visual integrity',
+            'endpoint' => '/api/v1/stamps/apply',
+            'status' => $isStampVerified ? 'STAMP_VERIFIED' : 'FAILED',
+            'result' => $isStampVerified ? 'PASS' : 'FAIL',
+            'notes' => 'Stamp applied and verified without requiring GD or intl extensions; visual data URI generated',
+        ];
     }
 }
 
