@@ -14,6 +14,18 @@ class DisasterRecoveryRestorationTest extends TestCase
 {
     protected string $isolatedDb = 'wu_dms_recovery_test';
 
+    protected function tearDown(): void
+    {
+        try {
+            DB::purge('mysql_pitr_check');
+            DB::statement("DROP DATABASE IF EXISTS `{$this->isolatedDb}`");
+        } catch (\Throwable) {
+            // Best effort
+        }
+
+        parent::tearDown();
+    }
+
     public function test_full_backup_and_isolated_database_restoration_to_wu_dms_recovery_test(): void
     {
         $coordinator = app(BackupCoordinatorService::class);

@@ -25,6 +25,9 @@ class CorrespondenceParticipant extends Model
 
         ];
     }
+    /**
+     * @return BelongsTo<Correspondence, $this>
+     */
     public function correspondence(): BelongsTo
     {
         return $this->belongsTo(Correspondence::class, 'correspondence_id');

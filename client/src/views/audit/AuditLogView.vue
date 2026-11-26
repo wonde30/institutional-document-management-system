@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { auditApi } from '@/api/client'
 import type { AuditEvent, PaginationMeta } from '@/types'
+import PageHeader from '@/components/PageHeader.vue'
 import DataTable, { type TableColumn } from '@/components/data-display/DataTable.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ModalDialog from '@/components/ModalDialog.vue'
@@ -89,25 +90,18 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Page Header -->
- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
- <ShieldCheck class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Security Audit Ledger & Immutable Trails</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Cryptographically referenced, immutable administrative event log tracking system actions across Wollo University DMS.
- </p>
- </div>
-
- <div class="flex items-center gap-2.5">
+ <PageHeader
+ :icon="ShieldCheck"
+ title="Security Audit Ledger & Immutable Trails"
+ subtitle="Cryptographically referenced, immutable administrative event log tracking system actions across Wollo University DMS."
+ >
+ <template #actions>
  <BaseButton variant="outline" size="sm" :loading="loading" @click="loadEvents(1)">
  <RefreshCw class="w-4 h-4 mr-1.5" />
  Refresh
  </BaseButton>
- </div>
- </div>
+ </template>
+ </PageHeader>
 
  <!-- Filter Bar -->
  <div class="bg-surface rounded-xl border border-hairline p-4 flex flex-col sm:flex-row items-center justify-between gap-4">

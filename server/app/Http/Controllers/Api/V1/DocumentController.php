@@ -13,6 +13,7 @@ use App\Models\PhysicalOriginal;
 use App\Models\ReferenceSequence;
 use App\Models\VersionFile;
 use App\Models\WorkflowDefinition;
+use App\Services\AuditService;
 use App\Services\DocumentRepositoryService;
 use App\Services\DocumentTimelineService;
 use App\Services\Settings\SettingsService;
@@ -75,7 +76,7 @@ class DocumentController extends Controller
     {
         $actor = $request->user();
         $query = Document::accessibleBy($actor, 'documents.view')
-            ->with(['category', 'confidentiality', 'ownerUnit', 'creator', 'custodian', 'currentVersion'])
+            ->with(['category:id,code,name', 'confidentiality:id,code,name', 'ownerUnit:id,code,name', 'creator:id,name', 'custodian:id,name,email', 'currentVersion'])
             ->withCount('versions');
 
         // Departmental Scope Isolation: Restrict to permitted units unless globally authorized
@@ -244,7 +245,7 @@ class DocumentController extends Controller
             }
 
             // 4. Start workflow instance if applicable
-            if ($workflowDef && $version) {
+            if ($workflowDef) {
                 app(\App\Services\WorkflowEngineService::class)->startInstance(
                     $workflowDef->id,
                     $version->id,
@@ -455,12 +456,12 @@ class DocumentController extends Controller
         if ($doc->correspondence) {
             $ownerUnitId = (int) $doc->owner_unit_id;
             $hasCorrAccess = $actor->hasPermission('correspondence.view', $ownerUnitId)
-                || $actor->hasPermission('correspondence.manage', $ownerUnitId)
+                || $actor->hasPermission('correspondence.register', $ownerUnitId)
                 || $actor->hasPermission('correspondence.dispatch', $ownerUnitId);
         }
 
         if (! $hasDocDownload && ! $hasCorrAccess) {
-            $confLevel = $doc->confidentiality?->code ?? 'internal';
+            $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'internal';
             $message = in_array($confLevel, ['confidential', 'secret', 'top_secret'], true)
                 ? 'Forbidden: High confidentiality document file download restricted.'
                 : 'Forbidden: Missing required baseline permission [documents.download].';
@@ -478,6 +479,42 @@ class DocumentController extends Controller
             ], 404);
         }
 
+        // Security Hardening: Audit confidential document access
+        // Ensure confidentiality relationship is loaded
+        if (! $doc->relationLoaded('confidentiality')) {
+            $doc->load('confidentiality');
+        }
+        
+        $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'public';
+        if ($confLevel !== 'public') {
+            try {
+                AuditService::recordDocumentEvent(
+                    action: 'document.confidential_access',
+                    actorId: $actor->id,
+                    documentId: $doc->id,
+                    details: [
+                        'file_object_id' => $file->id,
+                        'original_filename' => $file->original_filename,
+                        'classification_level' => $confLevel,
+                        'sha256' => $file->sha256,
+                        'byte_size' => $file->byte_size,
+                        'access_type' => 'download',
+                    ],
+                    request: request()
+                );
+            } catch (\Throwable $e) {
+                // Log but don't fail the download
+                \Log::error('Failed to record confidential access audit', [
+                    'user_id' => $actor->id,
+                    'document_id' => $doc->id,
+                    'file_id' => $file->id,
+                    'action' => 'document.confidential_access',
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // General file download audit (all documents, including public)
         try {
             AuditService::recordDocumentEvent(
                 action: 'documents.downloaded',
@@ -491,7 +528,15 @@ class DocumentController extends Controller
                 ],
                 request: request()
             );
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            \Log::error('Failed to record download audit', [
+                'user_id' => $actor->id,
+                'document_id' => $doc->id,
+                'file_id' => $file->id,
+                'action' => 'documents.downloaded',
+                'error' => $e->getMessage()
+            ]);
+        }
 
         return app(\App\Services\FileSecurityService::class)->createDownloadResponse($file);
     }
@@ -513,30 +558,34 @@ class DocumentController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $movement = DocumentMovement::create([
-            'document_id' => $document->id,
-            'from_unit_id' => $validated['from_unit_id'],
-            'to_unit_id' => $validated['to_unit_id'],
-            'sent_by' => $actor->id,
-            'sent_at' => $now,
-            'instruction' => $validated['instruction'] ?? null,
-            'due_at' => $validated['due_at'] ?? null,
-            'idempotency_key' => (string) Str::uuid(),
-        ]);
-
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'document.movement_sent',
-            'target_type' => 'document_movement',
-            'target_id' => (string) $movement->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => [
+        $movement = DB::transaction(function () use ($document, $validated, $actor, $now) {
+            $movement = DocumentMovement::create([
                 'document_id' => $document->id,
                 'from_unit_id' => $validated['from_unit_id'],
                 'to_unit_id' => $validated['to_unit_id'],
-            ],
-        ]);
+                'sent_by' => $actor->id,
+                'sent_at' => $now,
+                'instruction' => $validated['instruction'] ?? null,
+                'due_at' => $validated['due_at'] ?? null,
+                'idempotency_key' => (string) Str::uuid(),
+            ]);
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'document.movement_sent',
+                'target_type' => 'document_movement',
+                'target_id' => (string) $movement->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'document_id' => $document->id,
+                    'from_unit_id' => $validated['from_unit_id'],
+                    'to_unit_id' => $validated['to_unit_id'],
+                ],
+            ]);
+
+            return $movement;
+        });
 
         return response()->json([
             'success' => true,
@@ -674,7 +723,7 @@ class DocumentController extends Controller
             ->where('id', $validated['version_b'])
             ->firstOrFail();
 
-        $filesA = $versionA->versionFiles->map(fn ($vf) => [
+        $filesA = $versionA->versionFiles->map(fn (VersionFile $vf): array => [
             'id' => $vf->file_object_id,
             'filename' => $vf->fileObject?->original_filename,
             'byte_size' => $vf->fileObject?->byte_size,
@@ -683,7 +732,7 @@ class DocumentController extends Controller
             'purpose' => $vf->purpose,
         ]);
 
-        $filesB = $versionB->versionFiles->map(fn ($vf) => [
+        $filesB = $versionB->versionFiles->map(fn (VersionFile $vf): array => [
             'id' => $vf->file_object_id,
             'filename' => $vf->fileObject?->original_filename,
             'byte_size' => $vf->fileObject?->byte_size,
@@ -860,5 +909,155 @@ class DocumentController extends Controller
                 'data' => $check,
             ], 500);
         }
+    }
+
+    /**
+     * Share a document by creating a discretionary grant in document_grants.
+     */
+    public function share(Request $request, int $id): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        if (! $document->allowsUser($request->user(), 'documents.share')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to share this document.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'target_user_id' => 'nullable|exists:users,id',
+            'target_unit_id' => 'nullable|exists:organization_units,id',
+            'permission_code' => 'required|string|in:documents.view,documents.download',
+            'expires_at' => 'nullable|date|after:now',
+        ]);
+
+        $hasUser = ! empty($validated['target_user_id']);
+        $hasUnit = ! empty($validated['target_unit_id']);
+
+        if (($hasUser && $hasUnit) || (! $hasUser && ! $hasUnit)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: Exactly one of target_user_id or target_unit_id must be provided to share the document.',
+            ], 422);
+        }
+
+        // For confidential or restricted documents the TARGET must hold clearance (422 otherwise)
+        $confCode = $document->confidentiality?->code;
+        $isHighConf = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
+        if ($isHighConf) {
+            if ($hasUnit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unprocessable: Confidential and restricted documents cannot be shared to entire units; a cleared target user is required.',
+                ], 422);
+            }
+
+            $targetUser = \App\Models\User::find($validated['target_user_id']);
+            if (! $targetUser || ! $document->hasConfidentialClearance($targetUser, (int) $document->owner_unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unprocessable: Target user lacks mandatory security clearance for confidential records.',
+                ], 422);
+            }
+        }
+
+        if (! $document->allowsUser($request->user(), $validated['permission_code'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: You cannot grant permission '{$validated['permission_code']}' which you do not hold on this document.",
+            ], 403);
+        }
+
+        $permId = DB::table('permissions')->where('code', $validated['permission_code'])->value('id');
+
+        // Reject duplicate active grants
+        $dupQuery = DB::table('document_grants')
+            ->where('document_id', $document->id)
+            ->where('permission_id', $permId)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
+
+        if ($hasUser) {
+            $dupQuery->where('user_id', $validated['target_user_id']);
+        } else {
+            $dupQuery->where('unit_id', $validated['target_unit_id']);
+        }
+
+        if ($dupQuery->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A matching active discretionary grant already exists for this document and target.',
+            ], 422);
+        }
+
+        $grantId = DB::transaction(function () use ($document, $validated, $permId, $request) {
+            $grantId = DB::table('document_grants')->insertGetId([
+                'document_id' => $document->id,
+                'permission_id' => $permId,
+                'user_id' => $validated['target_user_id'] ?? null,
+                'unit_id' => $validated['target_unit_id'] ?? null,
+                'granted_by' => $request->user()->id,
+                'granted_at' => now(),
+                'expires_at' => $validated['expires_at'] ?? null,
+            ]);
+
+            AuditService::recordDocumentEvent(
+                action: 'document.shared',
+                actorId: $request->user()->id,
+                documentId: $document->id,
+                details: $validated,
+                request: $request
+            );
+
+            return $grantId;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document access shared successfully.',
+            'data' => ['grant_id' => $grantId],
+        ], 201);
+    }
+
+    /**
+     * Revoke a discretionary document share grant.
+     */
+    public function revokeShare(Request $request, int $id, int $grantId): JsonResponse
+    {
+        $document = Document::findOrFail($id);
+
+        if (! $document->allowsUser($request->user(), 'documents.share')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to manage shares on this document.',
+            ], 403);
+        }
+
+        $deleted = DB::table('document_grants')
+            ->where('id', $grantId)
+            ->where('document_id', $document->id)
+            ->delete();
+
+        if (! $deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Discretionary grant not found on this document.',
+            ], 404);
+        }
+
+        AuditService::recordDocumentEvent(
+            action: 'document.share_revoked',
+            actorId: $request->user()->id,
+            documentId: $document->id,
+            details: ['grant_id' => $grantId],
+            request: $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document share grant revoked successfully.',
+        ]);
     }
 }

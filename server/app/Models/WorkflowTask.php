@@ -49,6 +49,9 @@ class WorkflowTask extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<WorkflowInstance, $this>
+     */
     public function instance(): BelongsTo
     {
         return $this->belongsTo(WorkflowInstance::class, 'instance_id');

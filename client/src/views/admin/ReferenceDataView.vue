@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { metadataApi } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
@@ -173,19 +174,12 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-hairline pb-4">
-      <div>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
-          <Database class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-          <span>Institutional Vocabulary & Reference Catalogs</span>
-        </h1>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Standardized system taxonomy: categories, confidentiality classifications, priorities, and dispatch channels.
-        </p>
-      </div>
-
-      <div class="flex items-center gap-2">
+    <PageHeader
+      :icon="Database"
+      title="Institutional Vocabulary & Reference Catalogs"
+      subtitle="Standardized system taxonomy: categories, confidentiality classifications, priorities, and dispatch channels."
+    >
+      <template #actions>
         <label class="flex items-center gap-1.5 text-xs text-ink-muted mr-2 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -205,8 +199,8 @@ onMounted(() => {
           <Plus class="w-4 h-4 mr-1.5" />
           Add {{ currentConfig.title }}
         </BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Navigation Tabs -->
     <div class="border-b border-hairline flex gap-4 text-xs font-semibold overflow-x-auto">

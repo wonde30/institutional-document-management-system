@@ -86,7 +86,7 @@ class RouteScopeResolver
 
             $document = $movement->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -106,7 +106,7 @@ class RouteScopeResolver
 
             $document = $assignment->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -121,7 +121,7 @@ class RouteScopeResolver
 
             $document = $extraction->documentVersion?->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -136,7 +136,7 @@ class RouteScopeResolver
 
             $document = $signature->documentVersion?->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
@@ -151,7 +151,70 @@ class RouteScopeResolver
 
             $document = $evidence->documentVersion?->document()->with('confidentiality')->first();
 
-            return $document
+            return ($document instanceof Document)
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        // 5b. Project proposals: the proposal references a document.
+        if (str_contains($path, 'projects/')) {
+            $proposal = \App\Models\ProjectProposal::find($id);
+
+            if (! $proposal) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $proposal->document()->with('confidentiality')->first();
+
+            return ($document instanceof Document)
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        // 6. Archive records: entries, disposition requests, and archive files.
+        if (str_contains($path, 'archive/entries')) {
+            $entry = \App\Models\ArchiveEntry::find($id);
+
+            if (! $entry) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $entry->document()->with('confidentiality')->first();
+
+            return ($document instanceof Document)
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        if (str_contains($path, 'archive/disposition-requests')) {
+            $disp = \App\Models\DispositionRequest::with('archiveEntry.document.confidentiality')->find($id);
+
+            if (! $disp) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            return RouteAuthorizationTarget::forDocument($disp->archiveEntry->document);
+        }
+
+        if (str_contains($path, 'archive/files')) {
+            $document = Document::resolveForFile($id);
+
+            return ($document instanceof Document)
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        // 7. Workflow instances: the instance is bound to the document version being routed.
+        if (str_contains($path, 'workflows/instances')) {
+            $instance = \App\Models\WorkflowInstance::with('documentVersion.document.confidentiality')->find($id);
+
+            if (! $instance) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $instance->documentVersion?->document;
+
+            return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }

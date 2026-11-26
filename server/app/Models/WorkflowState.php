@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $workflow_version_id
+ * @property string $code
+ * @property string $name
+ * @property bool $is_initial
+ * @property bool $is_terminal
+ * @property int|null $assigned_role_id
+ * @property int|null $assigned_unit_id
+ * @property int|null $sla_hours
+ */
 class WorkflowState extends Model
 {
     use HasFactory;

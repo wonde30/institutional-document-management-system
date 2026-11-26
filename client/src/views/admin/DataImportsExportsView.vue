@@ -319,7 +319,7 @@ onMounted(loadAll)
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Data Imports & Structured Exports"
+      title="Data Imports &amp; Structured Exports"
       subtitle="Run a validated batch import against an authorised organizational unit, or generate a structured export of the records you are permitted to reach."
     >
       <template #actions>

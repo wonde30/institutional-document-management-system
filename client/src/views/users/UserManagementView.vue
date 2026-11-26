@@ -502,7 +502,7 @@ onMounted(() => {
  <div class="space-y-6">
  <PageHeader 
  title="User Accounts & Staff Directory"
- subtitle="Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status"
+ subtitle="Dynamic database-driven RBAC roster, scoped roles, single-user direct permission overrides, and lifecycle status."
  >
  <template #actions>
  <!-- View Mode Switcher -->
@@ -617,7 +617,7 @@ onMounted(() => {
  <template #cell-name="{ item }">
  <div class="flex items-center gap-3">
  <div
- class="w-8 h-8 rounded-md flex items-center justify-center font-semibold text-xs uppercase"
+ class="w-8 h-8 rounded-md flex items-center justify-center font-semibold text-xs"
  :class="{
  'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]': item.status === 'active',
  'bg-surface-muted text-ink-muted ': item.status === 'inactive',
@@ -1508,7 +1508,7 @@ onMounted(() => {
  <td class="px-3 py-2.5 align-top">
  <div class="text-xs font-medium text-ink-secondary flex items-center gap-1">
  <span
- class="uppercase text-xs font-semibold px-1.5 py-0.5 rounded"
+ class="text-xs font-semibold px-1.5 py-0.5 rounded"
  :class="{
  'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300': item.scope_kind === 'global',
  'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300': item.scope_kind === 'unit',

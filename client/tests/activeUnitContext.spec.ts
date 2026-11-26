@@ -23,7 +23,11 @@ vi.mock('@/api/client', () => ({
     unreadCount: vi.fn().mockResolvedValue({ data: { success: true, count: 0 } }),
   },
   metadataApi: {
-    loadAll: vi.fn().mockResolvedValue({ data: { success: true, data: { categories: [], priorities: [], confidentiality_levels: [], purposes: [], classifications: [], dispatch_methods: [] } } }),
+    getAll: vi.fn().mockResolvedValue({ data: { success: true, data: { document_categories: [], priorities: [], confidentiality_levels: [], correspondence_types: [], dispatch_methods: [] } } }),
+    loadAll: vi.fn().mockResolvedValue({ data: { success: true, data: {} } }),
+  },
+  organizationUnitsApi: {
+    unitTypes: vi.fn().mockResolvedValue({ data: { data: [] } }),
   },
   ensureCsrfCookie: vi.fn().mockResolvedValue(undefined),
 }))

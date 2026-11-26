@@ -68,7 +68,7 @@ async function handleLogin() {
  <h1 class="text-2xl font-bold text-ink tracking-tight">
  Wollo University
  </h1>
- <p class="text-xs font-semibold text-ink-muted   mt-0.5">
+ <p class="text-xs font-semibold text-ink-secondary mt-0.5">
  Integrated Document Repository & Archive
  </p>
  </div>
@@ -88,10 +88,11 @@ async function handleLogin() {
  <!-- Login Form -->
  <form @submit.prevent="handleLogin" class="space-y-4">
  <div class="space-y-1.5">
- <label class="block text-xs font-semibold text-ink-secondary">
+ <label for="email" class="block text-xs font-semibold text-ink-secondary">
  Institutional Email
  </label>
  <BaseInput
+ id="email"
  v-model="email"
  type="email"
  placeholder="name@wu.edu.et"
@@ -106,7 +107,7 @@ async function handleLogin() {
 
  <div class="space-y-1.5">
  <div class="flex items-center justify-between">
- <label class="block text-xs font-semibold text-ink-secondary">
+ <label for="password" class="block text-xs font-semibold text-ink-secondary">
  Password
  </label>
  <router-link
@@ -117,6 +118,7 @@ async function handleLogin() {
  </router-link>
  </div>
  <BaseInput
+ id="password"
  v-model="password"
  :type="showPassword ? 'text' : 'password'"
  placeholder="••••••••••••"
@@ -153,13 +155,13 @@ async function handleLogin() {
  </form>
 
  <!-- Support Info -->
- <div class="text-center text-xs text-ink-muted">
+ <div class="text-center text-xs text-ink-secondary">
  Need access delegation? Contact the Information Technology Directorate through your unit's administrative officer.
  </div>
  </div>
 
  <!-- Footer Note & Public Links -->
- <div class="mt-6 text-center text-xs text-ink-muted space-y-2">
+ <div class="mt-6 text-center text-xs text-ink-secondary space-y-2">
  <div class="flex items-center justify-center gap-3 text-xs font-medium">
  <router-link to="/" class="hover:text-primary transition-colors">
  Portal Home

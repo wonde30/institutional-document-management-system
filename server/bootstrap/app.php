@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+
+        // NOTE: redirectGuestsTo(fn () => null) prevents RouteNotFoundException [login] on unauthenticated API requests.
+        $middleware->redirectGuestsTo(fn (Request $request) => null);
 
         // The runtime configuration is applied before the session starts, so a
         // changed session lifetime takes effect on the next request.
@@ -45,9 +49,21 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Consistent API error envelope. The framework renders a validation
         // failure as {"message": ..., "errors": {...}}; the documented contract
-        // additionally carries the "success" discriminator so that a client can
+        // also carries the "success" discriminator so that a client can
         // distinguish a failure without inspecting the status code. The same
         // envelope is applied to the HTTP exceptions raised by the controllers.
+        // Return consistent JSON 401 when unauthenticated on API routes, even without Accept header
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        });
+
         $exceptions->render(function (ValidationException $e, Request $request) {
             if (! $request->is('api/*') && ! $request->expectsJson()) {
                 return null;

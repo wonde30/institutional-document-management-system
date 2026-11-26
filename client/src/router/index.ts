@@ -61,6 +61,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Privacy & Data Protection Policy', isPublic: true },
   },
   {
+    path: '/privacy',
+    redirect: '/privacy-policy',
+  },
+  {
     path: '/terms',
     name: 'public.terms',
     component: () => import('@/views/public/TermsConditionsView.vue'),
@@ -378,7 +382,17 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
+  scrollBehavior(to, _from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    }
+    if (to.hash) {
+      return {
+        el: to.hash,
+        behavior: 'smooth',
+        top: 72,
+      }
+    }
     return { top: 0 }
   },
 })

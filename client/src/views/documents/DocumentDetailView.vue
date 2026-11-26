@@ -784,10 +784,11 @@ onMounted(() => {
 <template>
  <div class="space-y-6 max-w-5xl mx-auto">
  <!-- Header -->
- <PageHeader 
- :title="document?.title || 'Document Record'"
- subtitle="Comprehensive document record with metadata, versions, attachments, and lifecycle history."
- >
+ <PageHeader>
+ <template #title>
+ <span v-if="document">{{ document.title }}</span>
+ <span v-else>Document Record</span>
+ </template>
  <template #actions>
  <BaseButton variant="ghost" size="sm" @click="router.push('/documents')">
  <ArrowLeft class="w-4 h-4" />
@@ -1009,7 +1010,7 @@ onMounted(() => {
  </div>
 
  <!-- Action buttons if task is open and actor is eligible -->
- <div v-if="!t.closed_at && (authStore.user?.id === t.assigned_user_id || authStore.hasPermission('workflow.review') || authStore.hasPermission('workflow.manage') || authStore.hasPermission('system.configure'))" class="flex items-center gap-1.5 shrink-0">
+ <div v-if="!t.closed_at && (authStore.user?.id === t.assigned_user_id || authStore.hasPermission('workflow.review') || authStore.hasPermission('workflow.configure') || authStore.hasPermission('system.configure'))" class="flex items-center gap-1.5 shrink-0">
  <BaseButton
  size="sm"
  variant="primary"

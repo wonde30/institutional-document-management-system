@@ -6,6 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $stamp_id
+ * @property int $version_number
+ * @property int $image_file_id
+ * @property \Carbon\Carbon|null $effective_from
+ * @property \Carbon\Carbon|null $retired_at
+ * @property \App\Models\StampDefinition|null $stamp
+ * @property \App\Models\FileObject|null $imageFile
+ */
 class StampVersion extends Model
 {
     use HasFactory;
@@ -29,11 +39,17 @@ class StampVersion extends Model
             'retired_at' => 'datetime',
         ];
     }
+    /**
+     * @return BelongsTo<StampDefinition, $this>
+     */
     public function stamp(): BelongsTo
     {
         return $this->belongsTo(StampDefinition::class, 'stamp_id');
     }
 
+    /**
+     * @return BelongsTo<FileObject, $this>
+     */
     public function imageFile(): BelongsTo
     {
         return $this->belongsTo(FileObject::class, 'image_file_id');

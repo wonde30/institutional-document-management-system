@@ -78,11 +78,11 @@ watch(() => authStore.activeUnitId, () => {
     >
       <template #actions>
         <BaseButton variant="secondary" size="sm" :loading="isLoading" @click="loadData" title="Refresh dashboard data" class="hidden lg:flex">
-          <RefreshCw class="w-3.5 h-3.5" />
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isLoading }" />
           <span class="ml-1.5">Refresh</span>
         </BaseButton>
         <BaseButton variant="secondary" size="sm" :loading="isLoading" @click="loadData" title="Refresh dashboard data" class="lg:hidden" aria-label="Refresh dashboard">
-          <RefreshCw class="w-3.5 h-3.5" />
+          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isLoading }" />
         </BaseButton>
         <BaseButton
           v-if="authStore.hasPermission('documents.create')"
@@ -107,27 +107,43 @@ watch(() => authStore.activeUnitId, () => {
     <LoadingSkeleton v-if="isLoading" :count="4" class="my-4" />
 
     <template v-else>
-      <!-- Core KPI Grid: 4 cards, no icons, text-3xl values, text-sm labels -->
+      <!-- Core KPI Grid: 4 cards, interactive router-links, text-3xl values, text-sm labels -->
       <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-        <div class="p-4 rounded-lg bg-surface border border-hairline">
-          <div class="text-3xl font-semibold tabular-nums text-ink">{{ tasks.length }}</div>
+        <router-link
+          to="/tasks"
+          class="p-4 rounded-lg bg-surface border border-hairline hover:bg-surface-hover hover:border-hairline-subtle transition cursor-pointer group"
+          :class="{ 'opacity-70': tasks.length === 0 }"
+        >
+          <div class="text-3xl font-semibold tabular-nums text-ink group-hover:text-primary transition">{{ tasks.length }}</div>
           <div class="text-sm text-ink-muted mt-1">Open tasks</div>
-        </div>
+        </router-link>
 
-        <div class="p-4 rounded-lg bg-surface border border-hairline">
-          <div class="text-3xl font-semibold tabular-nums text-ink">{{ metrics?.overview?.documents_requiring_action ?? 0 }}</div>
+        <router-link
+          to="/documents"
+          class="p-4 rounded-lg bg-surface border border-hairline hover:bg-surface-hover hover:border-hairline-subtle transition cursor-pointer group"
+          :class="{ 'opacity-70': (metrics?.overview?.documents_requiring_action ?? 0) === 0 }"
+        >
+          <div class="text-3xl font-semibold tabular-nums text-ink group-hover:text-primary transition">{{ metrics?.overview?.documents_requiring_action ?? 0 }}</div>
           <div class="text-sm text-ink-muted mt-1">Action required</div>
-        </div>
+        </router-link>
 
-        <div class="p-4 rounded-lg bg-surface border border-hairline">
-          <div class="text-3xl font-semibold tabular-nums text-ink">{{ metrics?.overview?.incoming_letters ?? 0 }}</div>
+        <router-link
+          to="/correspondence"
+          class="p-4 rounded-lg bg-surface border border-hairline hover:bg-surface-hover hover:border-hairline-subtle transition cursor-pointer group"
+          :class="{ 'opacity-70': (metrics?.overview?.incoming_letters ?? 0) === 0 }"
+        >
+          <div class="text-3xl font-semibold tabular-nums text-ink group-hover:text-primary transition">{{ metrics?.overview?.incoming_letters ?? 0 }}</div>
           <div class="text-sm text-ink-muted mt-1">Incoming letters</div>
-        </div>
+        </router-link>
 
-        <div class="p-4 rounded-lg bg-surface border border-hairline">
-          <div class="text-3xl font-semibold tabular-nums text-ink">{{ metrics?.overview?.outgoing_awaiting_dispatch ?? 0 }}</div>
+        <router-link
+          to="/correspondence"
+          class="p-4 rounded-lg bg-surface border border-hairline hover:bg-surface-hover hover:border-hairline-subtle transition cursor-pointer group"
+          :class="{ 'opacity-70': (metrics?.overview?.outgoing_awaiting_dispatch ?? 0) === 0 }"
+        >
+          <div class="text-3xl font-semibold tabular-nums text-ink group-hover:text-primary transition">{{ metrics?.overview?.outgoing_awaiting_dispatch ?? 0 }}</div>
           <div class="text-sm text-ink-muted mt-1">Awaiting dispatch</div>
-        </div>
+        </router-link>
       </div>
 
       <!-- Office overview: ONE card with 4 columns + dividers, amber warning only when > 0 -->
@@ -233,7 +249,7 @@ watch(() => authStore.activeUnitId, () => {
           </section>
 
           <!-- Documents Requiring Action -->
-          <section v-if="(metrics?.documents_requiring_action || []).length > 0" class="bg-surface rounded-lg border border-hairline p-4">
+          <section class="bg-surface rounded-lg border border-hairline p-4">
             <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-hairline">
               <h2 class="text-sm font-semibold text-ink">Documents requiring action</h2>
               <router-link to="/documents" class="text-xs text-primary hover:underline">
@@ -241,7 +257,7 @@ watch(() => authStore.activeUnitId, () => {
               </router-link>
             </div>
 
-            <div class="divide-y divide-hairline-subtle text-xs">
+            <div v-if="(metrics?.documents_requiring_action || []).length > 0" class="divide-y divide-hairline-subtle text-xs">
               <div
                 v-for="doc in metrics?.documents_requiring_action"
                 :key="doc.id"
@@ -256,6 +272,9 @@ watch(() => authStore.activeUnitId, () => {
                   Action Pending
                 </span>
               </div>
+            </div>
+            <div v-else class="py-5 text-center text-xs text-ink-faint">
+              <p>No documents currently requiring action.</p>
             </div>
           </section>
 
@@ -306,7 +325,7 @@ watch(() => authStore.activeUnitId, () => {
               </router-link>
             </div>
 
-            <div class="divide-y divide-hairline-subtle text-xs">
+            <div v-if="(metrics?.recent_documents || []).length > 0" class="divide-y divide-hairline-subtle text-xs">
               <div
                 v-for="doc in (metrics?.recent_documents || []).slice(0, 3)"
                 :key="doc.id"
@@ -321,6 +340,9 @@ watch(() => authStore.activeUnitId, () => {
                   {{ doc.lifecycle }}
                 </span>
               </div>
+            </div>
+            <div v-else class="py-6 text-center text-xs text-ink-faint">
+              <p>No recent document activity recorded in your department.</p>
             </div>
           </section>
         </div>

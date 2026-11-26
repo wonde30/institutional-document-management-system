@@ -278,7 +278,7 @@ class EmailNotificationService
                 'occurred_at' => $now,
             ]);
 
-            $archivistUsers = User::whereHas('permissions', fn ($pq) => $pq->where('code', 'archive.manage'))
+            $archivistUsers = User::whereHas('userPermissions.permission', fn ($pq) => $pq->where('code', 'archive.manage'))
                 ->orWhereHas('roles.permissions', fn ($pq) => $pq->where('code', 'archive.manage'))
                 ->limit(10)
                 ->get();

@@ -22,6 +22,7 @@ import {
   Eye,
   Activity,
   Settings,
+  Sliders,
   HelpCircle,
   type LucideIcon,
 } from 'lucide-vue-next'
@@ -65,6 +66,7 @@ export const navIconMap: Record<string, LucideIcon> = {
   Eye,
   Activity,
   Settings,
+  Sliders,
   HelpCircle,
 }
 
@@ -229,6 +231,12 @@ export const navigationConfig: NavigationSection[] = [
         to: '/admin/organization',
         icon: Building2,
         permission: 'organization.view',
+      },
+      {
+        name: 'Configuration Center',
+        to: '/admin/configuration',
+        icon: Sliders,
+        permission: 'system.configure',
       },
       {
         name: 'Workflows & office procedures',

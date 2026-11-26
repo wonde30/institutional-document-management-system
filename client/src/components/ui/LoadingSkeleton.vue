@@ -12,7 +12,7 @@ const props = withDefaults(
 </script>
 
 <template>
- <div class="animate-pulse space-y-3 w-full" aria-busy="true" aria-label="Loading content">
+ <div class="animate-pulse space-y-3 w-full" role="status" aria-busy="true" aria-label="Loading content">
  <!-- Table Skeleton -->
  <template v-if="type === 'table'">
  <div class="h-10 bg-surface-muted rounded-lg w-full mb-4"></div>

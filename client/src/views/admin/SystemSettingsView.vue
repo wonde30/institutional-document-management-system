@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -215,16 +216,11 @@ onMounted(loadSettings)
 
 <template>
   <div class="space-y-6 max-w-4xl">
-    <div class="border-b border-hairline pb-4">
-      <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
-        <Settings class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-        <span>Institutional Settings &amp; Environment Boundaries</span>
-      </h1>
-      <p class="text-xs text-ink-muted mt-0.5">
-        Runtime configuration is stored by the server and audited on every change. Deployment
-        configuration remains managed by the environment and is shown for reference only.
-      </p>
-    </div>
+    <PageHeader
+      :icon="Settings"
+      title="Institutional Settings &amp; Environment Boundaries"
+      subtitle="Runtime configuration is stored by the server and audited on every change. Deployment configuration remains managed by the environment and is shown for reference only."
+    />
 
     <!-- Loading -->
     <LoadingSkeleton v-if="isLoading" :rows="6" type="card" />

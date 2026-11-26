@@ -86,6 +86,15 @@ class SecurityEnforcementTest extends TestCase
         $response->assertStatus(401);
     }
 
+    public function test_unauthenticated_request_without_accept_header_is_blocked_with_401(): void
+    {
+        $response = $this->get('/api/v1/auth/me');
+
+        $response->assertStatus(401)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
     public function test_expired_direct_permission_fails_closed(): void
     {
         $restrictedUser = User::create([

@@ -8,6 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property string $code
+ * @property string $name
+ * @property string|null $description
+ * @property int|null $category_id
+ * @property int|null $owner_unit_id
+ * @property string $visibility_scope
+ * @property bool $is_active
+ * @property bool $active
+ */
 class DocumentTemplate extends Model
 {
     use HasFactory;

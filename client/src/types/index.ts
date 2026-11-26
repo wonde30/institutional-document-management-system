@@ -1339,3 +1339,6 @@ declare module 'vue-router' {
     group?: 'Workspace' | 'Records' | 'Institutional records' | 'Trust & reporting' | 'Administration' | string
   }
 }
+
+export * from './landing'
+

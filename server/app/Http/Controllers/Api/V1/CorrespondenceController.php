@@ -150,7 +150,7 @@ class CorrespondenceController extends Controller
             }
         }
 
-        $correspondence = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $receivingUnitId, $request) {
+        $correspondence = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request) {
             // 1. Generate reference number atomically
             $seq = DB::table('reference_sequences')
                 ->where('sequence_key', 'CORR')
@@ -283,7 +283,20 @@ class CorrespondenceController extends Controller
                 'registered_at' => $now,
             ]);
 
-            // 4. Create communication parties if provided
+            // 4. Create initial document movement if correspondence has first_receiving_unit_id
+            if ($receivingUnitId && $receivingUnitId != $validated['owner_unit_id']) {
+                DocumentMovement::create([
+                    'document_id' => $doc->id,
+                    'from_unit_id' => $validated['owner_unit_id'],
+                    'to_unit_id' => $receivingUnitId,
+                    'sent_by' => $actor->id,
+                    'sent_at' => $now,
+                    'instruction' => 'Automatic routing via correspondence registration',
+                    'idempotency_key' => 'CORR-INIT-' . $doc->id,
+                ]);
+            }
+
+            // 5. Create communication parties if provided
             if (! empty($validated['sender_unit_id'])) {
                 $party = CommunicationParty::firstOrCreate([
                     'unit_id' => $validated['sender_unit_id'],
@@ -714,7 +727,9 @@ class CorrespondenceController extends Controller
             try {
                 $settingsService = app(SettingsService::class);
                 $policyExceptionAllowed = (bool) ($settingsService->effectiveValue('institution.permit_emblem_exception') ?? false);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to resolve emblem exception policy setting', ['error' => $e->getMessage()]);
+            }
 
             if (! $hasApprovedEmblem && ! $policyExceptionAllowed) {
                 return response()->json([
@@ -777,7 +792,9 @@ class CorrespondenceController extends Controller
                     'user_id' => $actor->id,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create correspondence dispatched notification', ['error' => $e->getMessage()]);
+            }
 
             return $disp;
         });
@@ -803,7 +820,7 @@ class CorrespondenceController extends Controller
         $ownerUnitId = (int) $corr->document->owner_unit_id;
 
         if (! $actor->hasPermission('correspondence.dispatch', $ownerUnitId)
-            && ! $actor->hasPermission('correspondence.manage', $ownerUnitId)) {
+            && ! $actor->hasPermission('correspondence.send', $ownerUnitId)) {
             return response()->json([
                 'success' => false,
                 'message' => "Forbidden: You do not have permission to record delivery evidence for office ID {$ownerUnitId}.",
@@ -940,8 +957,7 @@ class CorrespondenceController extends Controller
 
             $ownerUnitId = (int) $lockedCorr->document->owner_unit_id;
 
-            if (! $actor->hasPermission('correspondence.manage', $ownerUnitId)
-                && ! $actor->hasPermission('correspondence.register', $ownerUnitId)) {
+            if (! $actor->hasPermission('correspondence.register', $ownerUnitId)) {
                 abort(403, 'Forbidden: You do not have permission to close correspondence in this unit.');
             }
 
@@ -995,7 +1011,9 @@ class CorrespondenceController extends Controller
                     'user_id' => $actor->id,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create correspondence closed notification', ['error' => $e->getMessage()]);
+            }
 
             return $lockedCorr;
         });

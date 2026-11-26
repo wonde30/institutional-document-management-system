@@ -58,7 +58,7 @@ class LegacyTransitionToken extends Model implements HasAbilities
             }
         }
 
-        $instance = new static();
+        $instance = new self();
         $instance->tokenable = $user;
         $instance->created_at = Carbon::now();
         $instance->expires_at = Carbon::now()->addMinutes(120);

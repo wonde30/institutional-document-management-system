@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
@@ -28,9 +30,36 @@ class AuthController extends Controller
         ]);
 
         $normalizedEmail = strtolower(trim($validated['email']));
+        $throttleKey = Str::transliterate($normalizedEmail.'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = max(1, RateLimiter::availableIn($throttleKey));
+
+            AuditService::recordAuthEvent(
+                action: 'auth.login_throttled',
+                actorId: null,
+                targetType: 'user',
+                targetId: 'unknown',
+                details: [
+                    'attempted_email' => $normalizedEmail,
+                    'available_in_seconds' => $seconds,
+                ],
+                request: $request
+            );
+
+            return response()->json([
+                'success' => false,
+                'message' => "Too many login attempts. Please try again in {$seconds} seconds.",
+            ], 429, [
+                'Retry-After' => (string) $seconds,
+            ]);
+        }
+
         $user = User::where('email', $normalizedEmail)->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, 60);
+
             AuditService::recordAuthEvent(
                 action: 'auth.login_failed',
                 actorId: $user?->id,
@@ -47,6 +76,8 @@ class AuthController extends Controller
                 'email' => ['The provided credentials do not match our institutional records.'],
             ]);
         }
+
+        RateLimiter::clear($throttleKey);
 
         if ($user->status !== 'active') {
             AuditService::recordAuthEvent(
@@ -138,14 +169,18 @@ class AuthController extends Controller
             Auth::guard('web')->logout();
         }
 
-        if ($request->hasSession()) {
+        $logoutAll = $request->boolean('all_devices', false);
+
+        if ($logoutAll && $user) {
+            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+        } elseif ($request->hasSession()) {
+            $currentSessionId = $request->session()->getId();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-        }
 
-        // Revoke user sessions and transition tokens from sessions table
-        if ($user) {
-            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+            if ($currentSessionId) {
+                \Illuminate\Support\Facades\DB::table('sessions')->where('id', $currentSessionId)->delete();
+            }
         }
 
         return response()->json([

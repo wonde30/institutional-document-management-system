@@ -16,7 +16,7 @@ class BackupEncryptionService
      */
     protected function getEncryptionSecret(): string
     {
-        $secret = env('DMS_BACKUP_ENCRYPTION_KEY') ?: config('app.key');
+        $secret = config('services.backup.encryption_key') ?: config('app.key');
         if (empty($secret)) {
             throw new RuntimeException("No encryption secret configured. Set DMS_BACKUP_ENCRYPTION_KEY or APP_KEY.");
         }

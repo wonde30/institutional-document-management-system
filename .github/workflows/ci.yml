@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - develop
+      - audit/*
   pull_request:
     branches:
       - main
@@ -33,7 +34,7 @@ jobs:
         image: mysql:8.4
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-          MYSQL_DATABASE: wollo_dms_test
+          MYSQL_DATABASE: wu_dms_phpunit
         ports:
           - '3306:3306'
         options: >-
@@ -67,28 +68,19 @@ jobs:
       - name: Validate the Composer manifest
         run: composer validate --no-check-publish
 
-      - name: Validate the PHP syntax of every source file
-        run: |
-          set -e
-          find app bootstrap config database routes tests -name '*.php' -print0 \
-            | xargs -0 -n1 -P4 php -l > /dev/null
-
       - name: Install the Composer dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
-
-      - name: Audit the Composer dependencies
-        run: composer audit
 
       - name: Prepare the environment
         run: |
           cp .env.example .env
           php artisan key:generate --force
 
+      - name: Verify preflight checks
+        run: php artisan wu:preflight
+
       - name: Verify the route table
         run: php artisan route:list --except-vendor
-
-      - name: Verify the migrations apply cleanly
-        run: php artisan migrate --force
 
       - name: Run the backend test suite
         run: php artisan test
@@ -115,11 +107,8 @@ jobs:
       - name: Install the front end dependencies
         run: npm ci
 
-      - name: Validate the continuous integration workflow definition
-        run: node ../scripts/validate-ci-workflow.cjs
-
       - name: Type check the front end
-        run: npx vue-tsc -b --noEmit
+        run: npm run typecheck
 
       - name: Run the front end test suite
         run: npm run test

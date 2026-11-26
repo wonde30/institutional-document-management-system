@@ -91,8 +91,10 @@ class RolePermissionController extends Controller
             ->with(['user.primaryMembershipRecord.membership.unit', 'scope.unit', 'grantedBy'])
             ->get();
 
-        $data = $userRoles->map(function ($ur) {
+        $data = $userRoles->map(function (UserRole $ur): array {
             $isExpired = $ur->expires_at && $ur->expires_at->isPast();
+            $scope = $ur->scope;
+            $unit = $scope?->unit;
             return [
                 'user_id' => $ur->user_id,
                 'name' => $ur->user?->name,
@@ -100,9 +102,9 @@ class RolePermissionController extends Controller
                 'status' => $ur->user?->status,
                 'primary_unit' => $ur->user?->primaryMembershipRecord?->membership?->unit?->name,
                 'scope_id' => $ur->scope_id,
-                'scope_kind' => $ur->scope?->kind,
-                'scope_unit_id' => $ur->scope?->unit_id,
-                'scope_unit_name' => $ur->scope?->unit?->name ?? ($ur->scope?->kind === 'global' ? 'Global Scope' : null),
+                'scope_kind' => $scope?->kind,
+                'scope_unit_id' => $scope?->unit_id,
+                'scope_unit_name' => $unit ? $unit->name : ($scope?->kind === 'global' ? 'Global Scope' : null),
                 'granted_by_name' => $ur->grantedBy?->name,
                 'granted_at' => $ur->granted_at?->toIso8601String(),
                 'expires_at' => $ur->expires_at?->toIso8601String(),
@@ -183,10 +185,118 @@ class RolePermissionController extends Controller
 
         $role->update($validated);
 
+        if (array_key_exists('active', $validated)) {
+            User::whereHas('userRoles', fn ($q) => $q->where('role_id', $role->id))->increment('authz_version');
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Role updated successfully.',
             'data' => new RoleResource($role),
+        ]);
+    }
+
+    /**
+     * Delete role.
+     */
+    public function destroyRole(Request $request, int $id): JsonResponse
+    {
+        $role = Role::findOrFail($id);
+
+        if ($role->is_system) {
+            AuditService::log(
+                action: 'role.deletion_rejected',
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['reason' => 'system_role_protected', 'code' => $role->code],
+                actorId: $request->user()?->id,
+                request: $request
+            );
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Security restriction: Protected system roles cannot be deleted.',
+            ], 422);
+        }
+
+        // Query information_schema for EVERY foreign key referencing roles.id
+        $dbName = DB::connection()->getDatabaseName();
+        $referencingFks = DB::select("
+            SELECT TABLE_NAME, COLUMN_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = ?
+              AND REFERENCED_TABLE_NAME = 'roles'
+              AND REFERENCED_COLUMN_NAME = 'id'
+        ", [$dbName]);
+
+        foreach ($referencingFks as $fk) {
+            $table = $fk->TABLE_NAME;
+            // role_permissions rows belong to the role; detach them inside transaction instead of blocking
+            if ($table === 'role_permissions') {
+                continue;
+            }
+
+            $column = $fk->COLUMN_NAME;
+            $count = DB::table($table)->where($column, $role->id)->count();
+
+            if ($count > 0) {
+                AuditService::log(
+                    action: 'role.deletion_rejected',
+                    targetType: 'role',
+                    targetId: (string) $role->id,
+                    details: [
+                        'reason' => 'foreign_key_referenced',
+                        'table' => $table,
+                        'column' => $column,
+                        'count' => $count,
+                        'code' => $role->code,
+                    ],
+                    actorId: $request->user()?->id,
+                    request: $request
+                );
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Role cannot be deleted because it is referenced in {$table} ({$count} record(s)).",
+                ], 422);
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($role, $request) {
+                // Detach role_permissions rows inside the transaction
+                DB::table('role_permissions')->where('role_id', $role->id)->delete();
+
+                $role->delete();
+
+                AuditService::log(
+                    action: 'role.deleted',
+                    targetType: 'role',
+                    targetId: (string) $role->id,
+                    details: ['code' => $role->code, 'name' => $role->name],
+                    actorId: $request->user()?->id,
+                    request: $request
+                );
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            AuditService::log(
+                action: 'role.deletion_rejected',
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['reason' => 'foreign_key_exception', 'error' => $e->getMessage()],
+                actorId: $request->user()?->id,
+                request: $request
+            );
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Role cannot be deleted due to referencing records.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Role deleted successfully.',
         ]);
     }
 
@@ -204,6 +314,9 @@ class RolePermissionController extends Controller
 
         $role->permissions()->sync($validated['permission_ids']);
         $role->load('permissions');
+
+        // Increment authz_version for all users holding this role to invalidate stale cached permissions
+        User::whereHas('userRoles', fn ($q) => $q->where('role_id', $role->id))->increment('authz_version');
 
         return response()->json([
             'success' => true,
@@ -309,7 +422,7 @@ class RolePermissionController extends Controller
                 'message' => 'Forbidden: Only an existing Super Administrator can assign the super_admin role.',
             ], 403);
         }
-        $hasProtectedPerm = $targetRole->is_protected || $targetRole->permissions->contains(fn ($p) => in_array($p->code, ['system.configure', 'roles.assign', 'roles.create'], true) || (bool) $p->is_protected);
+        $hasProtectedPerm = $targetRole->is_system || $targetRole->permissions->contains(fn (Permission $p) => in_array($p->code, ['system.configure', 'roles.assign', 'roles.create'], true) || (bool) $p->is_protected);
         if ($hasProtectedPerm && ! $actor->hasPermission('system.configure')) {
             return response()->json([
                 'success' => false,
@@ -320,16 +433,10 @@ class RolePermissionController extends Controller
         // Resolve or create authorization scope
         $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : $validated['unit_id'];
         
-        $scope = AuthorizationScope::where('kind', $validated['scope_kind'])
-            ->where('unit_id', $scopeUnitId)
-            ->first();
-
-        if (! $scope) {
-            $scope = AuthorizationScope::create([
-                'kind' => $validated['scope_kind'],
-                'unit_id' => $scopeUnitId,
-            ]);
-        }
+        $scope = AuthorizationScope::firstOrCreate([
+            'kind' => $validated['scope_kind'],
+            'unit_id' => $scopeUnitId,
+        ]);
 
         // Grant role
         DB::table('user_roles')->updateOrInsert(
@@ -381,7 +488,7 @@ class RolePermissionController extends Controller
         $targetRole = Role::with('permissions')->findOrFail($validated['role_id']);
         $carriesAdminCapability = $targetRole->is_system
             || $targetRole->code === 'super_admin'
-            || $targetRole->permissions->contains(fn ($p) => $p->code === 'system.configure');
+            || $targetRole->permissions->contains(fn (Permission $p) => $p->code === 'system.configure');
 
         if ($carriesAdminCapability) {
             if (! $request->user()->hasPermission('system.configure')) {
@@ -479,16 +586,10 @@ class RolePermissionController extends Controller
         // Resolve or create authorization scope
         $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : $validated['unit_id'];
 
-        $scope = AuthorizationScope::where('kind', $validated['scope_kind'])
-            ->where('unit_id', $scopeUnitId)
-            ->first();
-
-        if (! $scope) {
-            $scope = AuthorizationScope::create([
-                'kind' => $validated['scope_kind'],
-                'unit_id' => $scopeUnitId,
-            ]);
-        }
+        $scope = AuthorizationScope::firstOrCreate([
+            'kind' => $validated['scope_kind'],
+            'unit_id' => $scopeUnitId,
+        ]);
 
         // Grant single-user direct permission
         DB::table('user_permissions')->updateOrInsert(

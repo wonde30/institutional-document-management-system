@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $unit_id
+ * @property string $name
+ * @property bool $active
+ */
 class StampDefinition extends Model
 {
     use HasFactory;

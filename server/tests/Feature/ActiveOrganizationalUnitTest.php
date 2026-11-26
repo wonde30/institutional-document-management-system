@@ -574,6 +574,59 @@ class ActiveOrganizationalUnitTest extends TestCase
         $this->switchTo($user, $this->collegeB->id)->assertStatus(403);
     }
 
+    public function test_delete_leaf_unit_succeeds_and_deleting_unit_with_children_is_blocked(): void
+    {
+        $admin = $this->makeUser('admin.unit.test@wu.edu.et');
+        $this->grantPermissionToUser($admin, 'organization.manage');
+        $this->authenticateAs($admin);
+
+        // Deleting unit with children is blocked with 422
+        $response = $this->deleteJson('/api/v1/organization-units/' . $this->collegeA->id);
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Cannot delete an organizational unit that contains child units.');
+
+        // Deleting leaf unit succeeds
+        $leafResponse = $this->deleteJson('/api/v1/organization-units/' . $this->deptA2->id);
+        $leafResponse->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('organization_units', ['id' => $this->deptA2->id]);
+    }
+
+    public function test_updating_unit_parent_to_descendant_is_blocked(): void
+    {
+        $admin = $this->makeUser('admin.unit.cycle@wu.edu.et');
+        $this->grantPermissionToUser($admin, 'organization.manage');
+        $this->authenticateAs($admin);
+
+        // College A is parent of Dept A1. Setting College A's parent to Dept A1 must fail with 422
+        $response = $this->putJson('/api/v1/organization-units/' . $this->collegeA->id, [
+            'parent_id' => $this->deptA1->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.parent_id.0', 'The selected parent unit is a descendant of this unit.');
+    }
+
+    public function test_deleting_unit_with_active_scopes_is_blocked(): void
+    {
+        $admin = $this->makeUser('admin.unit.deps@wu.edu.et');
+        $this->grantPermissionToUser($admin, 'organization.manage');
+        $this->authenticateAs($admin);
+
+        \Illuminate\Support\Facades\DB::table('authorization_scopes')->insert([
+            'kind' => 'unit',
+            'unit_id' => $this->deptA1->id,
+        ]);
+
+        $response = $this->deleteJson('/api/v1/organization-units/' . $this->deptA1->id);
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Cannot delete an organizational unit associated with active authorization scopes.');
+    }
+
     /**
      * Read the navigation routes offered to the authenticated user.
      *

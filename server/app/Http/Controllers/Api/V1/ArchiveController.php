@@ -71,9 +71,9 @@ class ArchiveController extends Controller
         }
 
         $actor = $request->user();
-        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage')) {
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage_retention')) {
             $query->whereHas('document', function ($dq) use ($actor) {
-                $dq->accessibleBy($actor, 'archive.access');
+                $dq->accessibleBy($actor, 'archive.view');
             });
         }
 
@@ -152,7 +152,9 @@ class ArchiveController extends Controller
         if ($entry->next_review_at && $entry->next_review_at <= now()->addDays(30)) {
             try {
                 app(\App\Services\EmailNotificationService::class)->notifyRetentionReview($entry, 'due');
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send retention review notification', ['error' => $e->getMessage()]);
+            }
         }
 
         return response()->json([
@@ -331,7 +333,7 @@ class ArchiveController extends Controller
         $entry = ArchiveEntry::with(['document', 'retentionPolicyVersion.policy'])->findOrFail($id);
         $actor = $request->user();
 
-        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage') && ! $actor->hasPermission('archive.transfer')) {
+        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage_retention') && ! $actor->hasPermission('archive.transfer')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You do not have permission to perform retention reviews on archived records.',
@@ -411,7 +413,9 @@ class ArchiveController extends Controller
                     'user_id' => $actor->id,
                     'created_at' => $now,
                 ]);
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create retention review notification', ['error' => $e->getMessage()]);
+            }
 
             return [
                 'entry' => $entry->fresh(['document', 'retentionPolicyVersion.policy']),
@@ -641,20 +645,22 @@ class ArchiveController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $entry->document->update([
-            'lifecycle' => 'active',
-            'updated_at' => $now,
-        ]);
+        DB::transaction(function () use ($entry, $actor, $now) {
+            $entry->document->update([
+                'lifecycle' => 'active',
+                'updated_at' => $now,
+            ]);
 
-        \App\Models\AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'archive.document_restored',
-            'target_type' => 'document',
-            'target_id' => (string) $entry->document_id,
-            'request_id' => (string) \Illuminate\Support\Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => ['entry_id' => $entry->id],
-        ]);
+            \App\Models\AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'archive.document_restored',
+                'target_type' => 'document',
+                'target_id' => (string) $entry->document_id,
+                'request_id' => (string) \Illuminate\Support\Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => ['entry_id' => $entry->id],
+            ]);
+        });
 
         return response()->json([
             'success' => true,

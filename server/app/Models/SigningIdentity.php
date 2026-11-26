@@ -31,11 +31,17 @@ class SigningIdentity extends Model
             'revoked_at' => 'datetime',
         ];
     }
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /**
+     * @return BelongsTo<FileObject, $this>
+     */
     public function publicCertificateFile(): BelongsTo
     {
         return $this->belongsTo(FileObject::class, 'public_certificate_file_id');

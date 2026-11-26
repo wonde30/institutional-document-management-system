@@ -34,7 +34,16 @@ use App\Models\StampApplication;
 use App\Models\StampAuthorization;
 use App\Models\StampDefinition;
 use App\Models\StampVersion;
+use App\Models\User;
 use App\Models\VersionFile;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowEvent;
+use App\Models\WorkflowInstance;
+use App\Models\WorkflowState;
+use App\Models\WorkflowTask;
+use App\Models\WorkflowTaskDecision;
+use App\Services\FileSecurityService;
+use App\Services\WorkflowEngineService;
 use App\Services\Pki\CertificateService;
 use App\Services\Pki\PdfSignatureService;
 use App\Services\Pki\PdfSignatureVerificationService;
@@ -311,14 +320,7 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
         $nextVersion = ($record->document->versions()->max('version_number') ?? 0) + 1;
 
-        $version = DocumentVersion::create([
-            'document_id' => $record->document_id,
-            'version_number' => $nextVersion,
-            'created_by' => $actor->id,
-            'created_at' => $now,
-            'change_note' => $validated['change_note'],
-        ]);
-
+        $fileObject = null;
         if ($request->hasFile('file') && $request->file('file')->isValid()) {
             $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
                 $request->file('file'),
@@ -326,24 +328,46 @@ class InstitutionalModuleController extends Controller
                 $actor->id,
                 'primary'
             );
-
-            \App\Models\VersionFile::create([
-                'version_id' => $version->id,
-                'file_object_id' => $fileObject->id,
-                'purpose' => 'primary',
-                'display_order' => 1,
-            ]);
         }
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'research.version_uploaded',
-            'target_type' => 'document_version',
-            'target_id' => (string) $version->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => ['research_id' => $record->id, 'version' => $nextVersion],
-        ]);
+        try {
+            $version = DB::transaction(function () use ($record, $nextVersion, $actor, $now, $validated, $fileObject) {
+                $version = DocumentVersion::create([
+                    'document_id' => $record->document_id,
+                    'version_number' => $nextVersion,
+                    'created_by' => $actor->id,
+                    'created_at' => $now,
+                    'change_note' => $validated['change_note'],
+                ]);
+
+                if ($fileObject) {
+                    \App\Models\VersionFile::create([
+                        'document_version_id' => $version->id,
+                        'file_object_id' => $fileObject->id,
+                        'purpose' => 'primary',
+                        'display_order' => 1,
+                    ]);
+                }
+
+                AuditEvent::create([
+                    'actor_id' => $actor->id,
+                    'action' => 'research.version_uploaded',
+                    'target_type' => 'document_version',
+                    'target_id' => (string) $version->id,
+                    'request_id' => (string) Str::uuid(),
+                    'occurred_at' => $now,
+                    'details_json' => ['research_id' => $record->id, 'version' => $nextVersion],
+                ]);
+
+                return $version;
+            });
+        } catch (\Throwable $e) {
+            if ($fileObject) {
+                \Illuminate\Support\Facades\Storage::disk($fileObject->storage_disk)->delete($fileObject->storage_key);
+                $fileObject->delete();
+            }
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
@@ -425,6 +449,245 @@ class InstitutionalModuleController extends Controller
                 'approval_distinction' => 'Published status denotes repository visibility; university research process approval is recorded separately.',
             ],
         ]);
+    }
+
+    public function submitResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'submitted', ['draft', 'returned'], 'research.submit', 'research.submitted', 'Research output submitted for departmental review.');
+    }
+
+    public function reviewResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'under_review', ['submitted'], 'research.review', 'research.reviewed', 'Research output moved to peer review.');
+    }
+
+    public function approveResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'approved', ['under_review'], 'research.approve', 'research.approved', 'Research output approved.');
+    }
+
+    public function rejectResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'research.reject', 'research.rejected', 'Research output rejected.');
+    }
+
+    public function returnResearch(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionResearchStatus($id, $request, 'returned', ['submitted', 'under_review'], 'research.review', 'research.returned', 'Research output returned for revision.');
+    }
+
+    protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
+    {
+        $actor = $request->user();
+        if (! $actor) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        // (a) Load record scoped to user's permitted units so missing and out-of-scope look the same (404)
+        $permittedUnitIds = $actor->getPermittedUnitIds($requiredPermission);
+        $query = ResearchRecord::with(['document', 'authors.staff']);
+        if ($permittedUnitIds !== null) {
+            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+        }
+
+        $record = $query->find($id);
+        if (! $record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Research output not found.',
+            ], 404);
+        }
+
+        $doc = $record->document;
+        if (! $doc) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unprocessable: Linked document for this research output does not exist.',
+            ], 422);
+        }
+        $ownerUnitId = (int) $doc->owner_unit_id;
+
+        $definition = WorkflowDefinition::where('code', 'research_departmental_review')->first();
+        if (! $definition) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Configuration error: Workflow definition [research_departmental_review] is missing.',
+            ], 500);
+        }
+
+        // Submitter & author checks
+        $submitterId = (int) ($record->submitted_by ?? $record->recorded_by ?? $doc->created_by ?? 0);
+        $staffId = $actor->staffProfile?->id;
+        $isAuthor = ((int) $doc->created_by === (int) $actor->id)
+            || ((int) $record->recorded_by === (int) $actor->id)
+            || ($staffId && $record->authors()->where('staff_id', $staffId)->exists());
+
+        // (c) Block submitter & authors from reviewing, approving, rejecting, or returning
+        if (in_array($targetStatus, ['under_review', 'approved', 'rejected', 'returned'], true)) {
+            if ((int) $actor->id === $submitterId || $isAuthor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Prohibited: Submitter and authors cannot review, approve, reject, or return their own research output.',
+                ], 422);
+            }
+        }
+
+        // A null submitted_by must block approval (422), not skip the check
+        if ($targetStatus === 'approved' && is_null($record->submitted_by)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Cannot approve research output with unrecorded or null submitted_by.',
+            ], 422);
+        }
+
+        // Block reviewer from approving the same item
+        $reviewerId = (int) ($record->reviewed_by ?? 0);
+        if ($targetStatus === 'approved' && $reviewerId && (int) $actor->id === $reviewerId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Reviewer cannot approve the same research output.',
+            ], 422);
+        }
+
+        // (e) Require reason/remarks on reject and return
+        $remarks = trim((string) ($request->input('remarks') ?? $request->input('reason') ?? $request->input('comments') ?? ''));
+        if (in_array($targetStatus, ['rejected', 'returned'], true) && empty($remarks)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A valid reason or remarks must be provided when rejecting or returning research.',
+            ], 422);
+        }
+
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId, $definition) {
+            $locked = ResearchRecord::where('id', $id)->lockForUpdate()->first();
+            if (! $locked) {
+                return response()->json(['success' => false, 'message' => 'Research output not found.'], 404);
+            }
+
+            $currentStatus = $locked->workflow_status ?? 'draft';
+
+            // Validate status transition
+            if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+                ], 422);
+            }
+
+            // Update status and tracking columns
+            $updateData = ['workflow_status' => $targetStatus];
+            if ($targetStatus === 'submitted') {
+                $updateData['submitted_by'] = $actor->id;
+                $updateData['submitted_at'] = $now;
+            } elseif ($targetStatus === 'under_review') {
+                $updateData['reviewed_by'] = $actor->id;
+            } elseif ($targetStatus === 'approved') {
+                $updateData['approved_by'] = $actor->id;
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
+            } elseif ($targetStatus === 'rejected') {
+                $updateData['rejected_by'] = $actor->id;
+                $updateData['decision_remarks'] = $remarks;
+            } elseif ($targetStatus === 'returned') {
+                $updateData['decision_remarks'] = $remarks;
+            }
+            $locked->update($updateData);
+
+            // Integrate with WorkflowEngineService & seeded definitions
+            // Stop fabricating DocumentVersion rows: use record's real linked version or null
+            $version = $doc->currentVersion ?? $doc->versions()->orderByDesc('version_number')->first();
+            $documentVersionId = $version?->id;
+
+            $instance = null;
+            if ($version) {
+                $instance = WorkflowInstance::where('document_version_id', $version->id)
+                    ->whereHas('workflowVersion', fn ($vq) => $vq->where('definition_id', $definition->id))
+                    ->first();
+            }
+            if (! $instance) {
+                $foundInstanceId = WorkflowEvent::where('reason', 'like', "%research_record:{$locked->id}%")->value('instance_id');
+                if ($foundInstanceId) {
+                    $instance = WorkflowInstance::find($foundInstanceId);
+                }
+            }
+            if (! $instance) {
+                $submitterUser = User::find($submitterId) ?? $actor;
+                $instance = app(WorkflowEngineService::class)->startInstance(
+                    $definition->id,
+                    $documentVersionId,
+                    null,
+                    $submitterUser,
+                    $ownerUnitId
+                );
+                WorkflowEvent::create([
+                    'instance_id' => $instance->id,
+                    'sequence_number' => (WorkflowEvent::where('instance_id', $instance->id)->max('sequence_number') ?? 0) + 1,
+                    'transition_id' => null,
+                    'actor_id' => $actor->id,
+                    'event_kind' => 'start',
+                    'reason' => "research_record:{$locked->id}",
+                    'occurred_at' => $now,
+                    'idempotency_key' => (string) Str::uuid(),
+                ]);
+
+                // If record was already submitted prior to this transition, advance draft task to submitted
+                if ($currentStatus === 'submitted') {
+                    $initialDraftTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+                    if ($initialDraftTask) {
+                        app(WorkflowEngineService::class)->processDecision($initialDraftTask, [
+                            'decision' => 'submit',
+                            'reason' => 'Auto-advancing initial task to match pre-existing submitted record status',
+                        ], $submitterUser);
+                    }
+                }
+            }
+
+            // Manage workflow task lifecycle through WorkflowEngineService:
+            // Do not rewrite task state_id to match record; engine's own state machine decides.
+            $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+
+            if ($activeTask) {
+                $engineDecision = match ($targetStatus) {
+                    'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
+                    'under_review' => 'start_review',
+                    'approved' => 'approve',
+                    'rejected' => 'reject',
+                    'returned' => 'return',
+                    default => $targetStatus,
+                };
+
+                app(WorkflowEngineService::class)->processDecision($activeTask, [
+                    'decision' => $engineDecision,
+                    'reason' => $remarks ?: "Decided in departmental review: {$targetStatus}",
+                ], $actor);
+            }
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => $auditAction,
+                'target_type' => 'research_record',
+                'target_id' => (string) $locked->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'previous_status' => $currentStatus,
+                    'new_status' => $targetStatus,
+                    'remarks' => $remarks ?: null,
+                    'submitted_by' => $locked->submitted_by,
+                    'reviewed_by' => $locked->reviewed_by,
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $successMessage,
+                'data' => $locked->fresh()->load(['document.ownerUnit', 'recordedBy', 'submittedBy', 'reviewedBy']),
+            ]);
+        });
     }
 
     /**
@@ -732,6 +995,238 @@ class InstitutionalModuleController extends Controller
         ], 201);
     }
 
+    public function submitProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'submitted', ['draft', 'returned'], 'projects.submit', 'projects.submitted', 'Project proposal submitted for departmental review.');
+    }
+
+    public function reviewProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'under_review', ['submitted'], 'projects.review', 'projects.reviewed', 'Project proposal moved to review.');
+    }
+
+    public function approveProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'approved', ['submitted', 'under_review'], 'projects.approve', 'projects.approved', 'Project proposal approved.');
+    }
+
+    public function rejectProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'rejected', ['submitted', 'under_review'], 'projects.reject', 'projects.rejected', 'Project proposal rejected.');
+    }
+
+    public function returnProject(int $id, Request $request): JsonResponse
+    {
+        return $this->transitionProjectStatus($id, $request, 'returned', ['submitted', 'under_review'], 'projects.review', 'projects.returned', 'Project proposal returned for revision.');
+    }
+
+    protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
+    {
+        $actor = $request->user();
+        if (! $actor) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        // (a) Load record scoped to user's permitted units so missing and out-of-scope look the same (404)
+        $permittedUnitIds = $actor->getPermittedUnitIds($requiredPermission);
+        $query = ProjectProposal::with(['document', 'projectType']);
+        if ($permittedUnitIds !== null) {
+            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+        }
+
+        $proposal = $query->find($id);
+        if (! $proposal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Project proposal not found.',
+            ], 404);
+        }
+
+        $doc = $proposal->document;
+        if (! $doc) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unprocessable: Linked document for this project proposal does not exist.',
+            ], 422);
+        }
+        $ownerUnitId = (int) $doc->owner_unit_id;
+
+        $definition = WorkflowDefinition::where('code', 'project_approval')->first();
+        if (! $definition) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Configuration error: Workflow definition [project_approval] is missing.',
+            ], 500);
+        }
+
+        // Submitter & PI / creator checks
+        $submitterId = (int) ($proposal->submitted_by ?? $proposal->recorded_by ?? $doc->created_by ?? 0);
+        $staffId = $actor->staffProfile?->id;
+        $isAuthor = ((int) $doc->created_by === (int) $actor->id)
+            || ((int) $proposal->recorded_by === (int) $actor->id)
+            || ($staffId && DB::table('project_proposal_members')->where('proposal_id', $proposal->id)->where('staff_id', $staffId)->exists());
+
+        // (c) Block submitter & authors from reviewing, approving, rejecting, or returning
+        if (in_array($targetStatus, ['under_review', 'approved', 'rejected', 'returned'], true)) {
+            if ((int) $actor->id === $submitterId || $isAuthor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Prohibited: Submitter and proposal members cannot review, approve, reject, or return their own proposal.',
+                ], 422);
+            }
+        }
+
+        // A null submitted_by must block approval (422), not skip the check
+        if ($targetStatus === 'approved' && is_null($proposal->submitted_by)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Cannot approve project proposal with unrecorded or null submitted_by.',
+            ], 422);
+        }
+
+        // Block reviewer from approving the same item
+        $reviewerId = (int) ($proposal->reviewed_by ?? 0);
+        if ($targetStatus === 'approved' && $reviewerId && (int) $actor->id === $reviewerId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prohibited: Reviewer cannot approve the same project proposal.',
+            ], 422);
+        }
+
+        // (e) Require reason/remarks on reject and return
+        $remarks = trim((string) ($request->input('remarks') ?? $request->input('reason') ?? $request->input('comments') ?? ''));
+        if (in_array($targetStatus, ['rejected', 'returned'], true) && empty($remarks)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A valid reason or remarks must be provided when rejecting or returning a project proposal.',
+            ], 422);
+        }
+
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        // (b), (d), (f) Atomic status check with lockForUpdate inside DB::transaction
+        return DB::transaction(function () use ($id, $targetStatus, $allowedFromStatuses, $actor, $now, $auditAction, $successMessage, $remarks, $doc, $ownerUnitId, $submitterId, $definition) {
+            $locked = ProjectProposal::where('id', $id)->lockForUpdate()->first();
+            if (! $locked) {
+                return response()->json(['success' => false, 'message' => 'Project proposal not found.'], 404);
+            }
+
+            $currentStatus = $locked->workflow_status ?? 'draft';
+
+            // Validate status transition
+            if (! in_array($currentStatus, $allowedFromStatuses, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Invalid workflow status transition from {$currentStatus} to {$targetStatus}.",
+                ], 422);
+            }
+
+            // Update status and tracking columns
+            $updateData = ['workflow_status' => $targetStatus];
+            if ($targetStatus === 'submitted') {
+                $updateData['submitted_by'] = $actor->id;
+                $updateData['submitted_at'] = $now;
+            } elseif ($targetStatus === 'under_review') {
+                $updateData['reviewed_by'] = $actor->id;
+            } elseif ($targetStatus === 'approved') {
+                $updateData['approved_by'] = $actor->id;
+                if ($remarks) {
+                    $updateData['decision_remarks'] = $remarks;
+                }
+            } elseif ($targetStatus === 'rejected') {
+                $updateData['rejected_by'] = $actor->id;
+                $updateData['decision_remarks'] = $remarks;
+            } elseif ($targetStatus === 'returned') {
+                $updateData['decision_remarks'] = $remarks;
+            }
+            $locked->update($updateData);
+
+            // Integrate with WorkflowEngineService & seeded definitions
+            // Stop fabricating DocumentVersion rows: use record's real linked version or null
+            $version = $doc->currentVersion ?? $doc->versions()->orderByDesc('version_number')->first();
+            $documentVersionId = $version?->id;
+
+            $instanceId = DB::table('project_proposal_workflows')->where('proposal_id', $locked->id)->value('workflow_instance_id');
+            $instance = $instanceId ? WorkflowInstance::find($instanceId) : null;
+
+            if (! $instance && $version) {
+                $instance = WorkflowInstance::where('document_version_id', $version->id)
+                    ->whereHas('workflowVersion', fn ($vq) => $vq->where('definition_id', $definition->id))
+                    ->first();
+            }
+
+            if (! $instance) {
+                $submitterUser = User::find($submitterId) ?? $actor;
+                $instance = app(WorkflowEngineService::class)->startInstance(
+                    $definition->id,
+                    $documentVersionId,
+                    null,
+                    $submitterUser,
+                    $ownerUnitId
+                );
+
+                // If record was already submitted prior to this transition, advance draft task to submitted
+                if ($currentStatus === 'submitted') {
+                    $initialDraftTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+                    if ($initialDraftTask) {
+                        app(WorkflowEngineService::class)->processDecision($initialDraftTask, [
+                            'decision' => 'submit',
+                            'reason' => 'Auto-advancing initial task to match pre-existing submitted record status',
+                        ], $submitterUser);
+                    }
+                }
+            }
+
+            // Link to project_proposal_workflows
+            DB::table('project_proposal_workflows')->updateOrInsert(
+                ['proposal_id' => $locked->id],
+                ['workflow_instance_id' => $instance->id]
+            );
+
+            // Manage workflow task lifecycle through WorkflowEngineService:
+            // Do not rewrite task state_id to match record; engine's own state machine decides.
+            $activeTask = WorkflowTask::where('instance_id', $instance->id)->whereNull('closed_at')->first();
+
+            if ($activeTask) {
+                $engineDecision = match ($targetStatus) {
+                    'submitted' => ($currentStatus === 'returned') ? 'resubmit' : 'submit',
+                    'under_review' => 'start_review',
+                    'approved' => 'approve',
+                    'rejected' => 'reject',
+                    'returned' => 'return',
+                    default => $targetStatus,
+                };
+
+                app(WorkflowEngineService::class)->processDecision($activeTask, [
+                    'decision' => $engineDecision,
+                    'reason' => $remarks ?: "Decided in project approval workflow: {$targetStatus}",
+                ], $actor);
+            }
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => $auditAction,
+                'target_type' => 'project_proposal',
+                'target_id' => (string) $locked->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'previous_status' => $currentStatus,
+                    'new_status' => $targetStatus,
+                    'remarks' => $remarks ?: null,
+                    'submitted_by' => $locked->submitted_by,
+                    'reviewed_by' => $locked->reviewed_by,
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $successMessage,
+                'data' => $locked->fresh()->load(['projectType', 'document.ownerUnit', 'recordedBy', 'submittedBy', 'reviewedBy']),
+            ]);
+        });
+    }
+
     /**
      * Electronic Signatures & Stamps Module
      */
@@ -849,35 +1344,37 @@ class InstitutionalModuleController extends Controller
         // Perform immediate independent cryptographic verification of the signed PDF
         $verifyResult = $verifier->verifyPdf($signResult['signed_pdf_path']);
 
-        $verification = SignatureVerification::create([
-            'signature_id' => $digitalSignature->id,
-            'verified_at' => $now,
-            'outcome' => $verifyResult['outcome'] ?? 'valid',
-            'certificate_status' => $verifyResult['certificate_status'] ?? 'trusted_valid',
-            'timestamp_status' => $verifyResult['timestamp_status'] ?? 'trusted_rfc3161',
-            'details_json' => array_merge($verifyResult['details'] ?? [], [
-                'signature_format' => $digitalSignature->signature_format,
-                'signed_file_id' => $signedFile->id,
-                'signed_sha256' => $signedFile->sha256,
-                'verification_timestamp' => $now,
-            ]),
-        ]);
+        $verification = DB::transaction(function () use ($digitalSignature, $now, $verifyResult, $signedFile, $actor) {
+            $verification = SignatureVerification::create([
+                'signature_id' => $digitalSignature->id,
+                'verified_at' => $now,
+                'outcome' => $verifyResult['outcome'] ?? 'valid',
+                'certificate_status' => $verifyResult['certificate_status'] ?? 'trusted_valid',
+                'timestamp_status' => $verifyResult['timestamp_status'] ?? 'trusted_rfc3161',
+                'details_json' => array_merge($verifyResult['details'] ?? [], [
+                    'signature_format' => $digitalSignature->signature_format,
+                    'signed_file_id' => $signedFile->id,
+                    'signed_sha256' => $signedFile->sha256,
+                    'verification_timestamp' => $now,
+                ]),
+            ]);
 
-        // In DigitalSignature, signed_file_id and source_file_id link the exact artifacts
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'signature.executed_and_verified',
+                'target_type' => 'digital_signature',
+                'target_id' => (string) $digitalSignature->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'outcome' => $verification->outcome,
+                    'signed_sha256' => $signedFile->sha256,
+                    'format' => $digitalSignature->signature_format,
+                ],
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'signature.executed_and_verified',
-            'target_type' => 'digital_signature',
-            'target_id' => (string) $digitalSignature->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => [
-                'outcome' => $verification->outcome,
-                'signed_sha256' => $signedFile->sha256,
-                'format' => $digitalSignature->signature_format,
-            ],
-        ]);
+            return $verification;
+        });
 
         return response()->json([
             'success' => true,
@@ -900,8 +1397,9 @@ class InstitutionalModuleController extends Controller
             ], 404);
         }
 
-        $fullPath = storage_path('app/'.$signature->signedFile->storage_key);
-        if (! File::exists($fullPath)) {
+        $fullPath = app(FileSecurityService::class)->resolveFileObjectPath($signature->signedFile);
+
+        if (! $fullPath) {
             return response()->json([
                 'success' => false,
                 'message' => 'Signed PDF binary file is missing from storage disk.',
@@ -960,8 +1458,14 @@ class InstitutionalModuleController extends Controller
             $filePath = $request->file('file')->getRealPath();
         } elseif ($request->filled('file_id')) {
             $fileObject = FileObject::findOrFail($request->integer('file_id'));
-            $disk = Storage::disk($fileObject->storage_disk ?? 'local');
-            $filePath = $disk->path($fileObject->storage_key);
+            $filePath = app(FileSecurityService::class)->resolveFileObjectPath($fileObject);
+
+            if (! $filePath) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File object physical binary not found in storage repository.',
+                ], 404);
+            }
         } else {
             return response()->json([
                 'success' => false,
@@ -1041,7 +1545,7 @@ class InstitutionalModuleController extends Controller
         if (! $isAuthorized) {
             $unitId = (int) $stamp->unit_id;
             $isAuthorized = $actor->hasPermission('system.configure')
-                || $actor->hasPermission('documents.stamp', $unitId)
+                || $actor->hasPermission('stamps.manage', $unitId)
                 || $actor->hasPermission('stamps.apply', $unitId);
         }
 
@@ -1054,9 +1558,15 @@ class InstitutionalModuleController extends Controller
 
         // 4. Asset must be institutionally controlled
         $imageFile = $stampVersion->imageFile;
-        $storageKey = $imageFile?->storage_key ?? $imageFile?->storage_path;
-        $diskName = $imageFile?->storage_disk ?? 'local';
-        if (! $imageFile || empty($storageKey) || ! Storage::disk($diskName)->exists($storageKey)) {
+        if (! $imageFile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stamp image asset is not available in controlled institutional storage.',
+            ], 422);
+        }
+        $storageKey = $imageFile->storage_key ?? $imageFile->storage_path;
+        $diskName = $imageFile->storage_disk ?? 'local';
+        if (empty($storageKey) || ! Storage::disk($diskName)->exists($storageKey)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stamp image asset is not available in controlled institutional storage.',
@@ -1089,46 +1599,56 @@ class InstitutionalModuleController extends Controller
         $stampedStorageKey = 'documents/stamped_' . Str::random(24) . '.pdf';
         Storage::disk('local')->put($stampedStorageKey, $sourceBytes);
 
-        $resultFile = FileObject::create([
-            'storage_disk' => 'local',
-            'storage_key' => $stampedStorageKey,
-            'original_filename' => 'stamped_' . ($sourceFile->original_filename ?: 'letter.pdf'),
-            'detected_mime' => 'application/pdf',
-            'byte_size' => strlen($sourceBytes),
-            'sha256' => hash('sha256', $sourceBytes . '_STAMP_' . $stampVersion->id . '_' . $formattedNow),
-            'uploaded_by' => $actor->id,
-            'uploaded_at' => $formattedNow,
-            'scan_status' => 'clean',
-            'storage_status' => 'ready',
-        ]);
+        try {
+            $application = DB::transaction(function () use (
+                $stampedStorageKey, $sourceFile, $sourceBytes, $stampVersion,
+                $formattedNow, $actor, $docVersion, $validated, $stamp
+            ) {
+                $resultFile = FileObject::create([
+                    'storage_disk' => 'local',
+                    'storage_key' => $stampedStorageKey,
+                    'original_filename' => 'stamped_' . ($sourceFile->original_filename ?: 'letter.pdf'),
+                    'detected_mime' => 'application/pdf',
+                    'byte_size' => strlen($sourceBytes),
+                    'sha256' => hash('sha256', $sourceBytes . '_STAMP_' . $stampVersion->id . '_' . $formattedNow),
+                    'uploaded_by' => $actor->id,
+                    'uploaded_at' => $formattedNow,
+                    'scan_status' => 'clean',
+                    'storage_status' => 'ready',
+                ]);
 
-        // 7. Create StampApplication record
-        $application = StampApplication::create([
-            'stamp_version_id' => $stampVersion->id,
-            'document_version_id' => $docVersion->id,
-            'source_file_id' => $sourceFile->id,
-            'result_file_id' => $resultFile->id,
-            'applied_by' => $actor->id,
-            'applied_at' => $formattedNow,
-            'reason' => $validated['reason'],
-        ]);
+                $application = StampApplication::create([
+                    'stamp_version_id' => $stampVersion->id,
+                    'document_version_id' => $docVersion->id,
+                    'source_file_id' => $sourceFile->id,
+                    'result_file_id' => $resultFile->id,
+                    'applied_by' => $actor->id,
+                    'applied_at' => $formattedNow,
+                    'reason' => $validated['reason'],
+                ]);
 
-        // 8. Audit event
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'stamp.applied',
-            'target_type' => 'stamp_application',
-            'target_id' => (string) $application->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $formattedNow,
-            'details_json' => [
-                'stamp_id' => $stamp->id,
-                'stamp_version_id' => $stampVersion->id,
-                'version_number' => $stampVersion->version_number,
-                'document_version_id' => $docVersion->id,
-                'reason' => $application->reason,
-            ],
-        ]);
+                AuditEvent::create([
+                    'actor_id' => $actor->id,
+                    'action' => 'stamp.applied',
+                    'target_type' => 'stamp_application',
+                    'target_id' => (string) $application->id,
+                    'request_id' => (string) Str::uuid(),
+                    'occurred_at' => $formattedNow,
+                    'details_json' => [
+                        'stamp_id' => $stamp->id,
+                        'stamp_version_id' => $stampVersion->id,
+                        'version_number' => $stampVersion->version_number,
+                        'document_version_id' => $docVersion->id,
+                        'reason' => $application->reason,
+                    ],
+                ]);
+
+                return $application;
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($stampedStorageKey);
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
@@ -1148,7 +1668,7 @@ class InstitutionalModuleController extends Controller
         $identities = SigningIdentity::with(['user', 'publicCertificateFile'])
             ->orderByDesc('id')
             ->get()
-            ->map(function ($id) use ($certService) {
+            ->map(function (SigningIdentity $id) use ($certService): array {
                 $certParsed = null;
                 if ($id->publicCertificateFile) {
                     $certPath = storage_path('app/'.$id->publicCertificateFile->storage_key);
@@ -1299,7 +1819,9 @@ class InstitutionalModuleController extends Controller
         try {
             $pendingJobs = DB::table('jobs')->count();
             $failedJobs = DB::table('failed_jobs')->count();
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to query queue job counts in operations status', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'success' => true,

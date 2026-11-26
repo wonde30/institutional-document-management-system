@@ -11,9 +11,54 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @property int $id
+ * @property string $reference_number
+ * @property string $title
+ * @property string|null $summary
+ * @property int|null $category_id
+ * @property int|null $confidentiality_id
+ * @property int $owner_unit_id
+ * @property int|null $custodian_id
+ * @property int|null $created_by
+ * @property string|null $document_date
+ * @property \Carbon\Carbon|null $registered_at
+ * @property string $lifecycle
+ * @property int $lock_version
+ * @property \App\Models\ConfidentialityLevel|null $confidentiality
+ * @property \App\Models\OrganizationUnit|null $ownerUnit
+ * @property \App\Models\User|null $creator
+ * @property \App\Models\DocumentVersion|null $latestVersion
+ */
 class Document extends Model
 {
     use HasFactory;
+
+    public static function getHighConfidentialityIds(): array
+    {
+        $request = app()->bound('request') ? app('request') : null;
+        if ($request && $request instanceof \Illuminate\Http\Request && $request->attributes->has('__high_conf_ids')) {
+            return $request->attributes->get('__high_conf_ids');
+        }
+
+        $ids = DB::table('confidentiality_levels')
+            ->whereIn('code', ['confidential', 'restricted', 'secret', 'top_secret'])
+            ->pluck('id')
+            ->all();
+
+        if ($request && $request instanceof \Illuminate\Http\Request) {
+            $request->attributes->set('__high_conf_ids', $ids);
+        }
+
+        return $ids;
+    }
+
+    public static function clearConfidentialityCache(): void
+    {
+        if (app()->bound('request') && ($req = app('request')) && $req instanceof \Illuminate\Http\Request) {
+            $req->attributes->remove('__high_conf_ids');
+        }
+    }
 
     protected $table = 'documents';
     protected $dateFormat = 'Y-m-d H:i:s.u';
@@ -49,6 +94,9 @@ class Document extends Model
         return $this->belongsTo(DocumentCategory::class, 'category_id');
     }
 
+    /**
+     * @return BelongsTo<ConfidentialityLevel, $this>
+     */
     public function confidentiality(): BelongsTo
     {
         return $this->belongsTo(ConfidentialityLevel::class, 'confidentiality_id');
@@ -228,17 +276,22 @@ class Document extends Model
     }
 
     /**
+     * Check whether a user possesses elevated security clearance for high-confidentiality records.
+     * Clearance is strictly granted via staff.view_sensitive (documents.delete is NOT clearance).
+     */
+    public function hasConfidentialClearance(User $user, int $ownerUnitId): bool
+    {
+        return $user->hasPermission('staff.view_sensitive', $ownerUnitId)
+            || $user->hasPermission('staff.view_sensitive');
+    }
+
+    /**
      * Determine whether a user is authorized to perform an operation on this document.
      */
     public function allowsUser(?User $user, string $permission): bool
     {
         if (! $user || $user->status !== 'active') {
             return false;
-        }
-
-        // 1. Super admin / system configure capability always has authoritative access
-        if ($user->hasPermission('system.configure')) {
-            return true;
         }
 
         $ownerUnitId = (int) $this->owner_unit_id;
@@ -250,18 +303,16 @@ class Document extends Model
         }
         $isHighConfidentiality = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
 
-        // 2. Owner unit check
-        if ($user->hasPermission($permission, $ownerUnitId)) {
-            if (! $isHighConfidentiality) {
+        // 1. Super admin / system configure capability (reusing confidentiality clearance check)
+        if ($user->hasPermission('system.configure')) {
+            if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
                 return true;
             }
+        }
 
-            // High confidentiality documents require elevated clearance
-            $hasElevatedClearance = $user->hasPermission('staff.view_sensitive', $ownerUnitId)
-                || $user->hasPermission('documents.delete', $ownerUnitId)
-                || $user->hasPermission('system.configure');
-
-            if ($hasElevatedClearance) {
+        // 2. Owner unit check
+        if ($user->hasPermission($permission, $ownerUnitId)) {
+            if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
                 return true;
             }
         }
@@ -286,6 +337,26 @@ class Document extends Model
 
         if ($hasActiveGrant) {
             return true;
+        }
+
+        // 4. Archive management: when a document has an archive record or is retired,
+        // users holding authorized 'archive.view' permission (cross-unit read) can view non-confidential
+        // archived records, or high-confidentiality records if holding clearance.
+        // Transfer, retention, and disposal operations are NOT cross-unit and must be checked against the owning unit.
+        if ($permission === 'archive.view') {
+            $isArchived = $this->lifecycle === 'retired'
+                || ($this->relationLoaded('archiveEntry') ? $this->archiveEntry !== null : DB::table('archive_entries')->where('document_id', $this->id)->exists());
+
+            if ($isArchived) {
+                $permittedUnits = $user->getPermittedUnitIds('archive.view');
+                $hasArchivePerm = ($permittedUnits === null) || ! empty($permittedUnits);
+
+                if ($hasArchivePerm) {
+                    if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
+                        return true;
+                    }
+                }
+            }
         }
 
         // SEC-002: Creator / Custodian intrinsic access applies ONLY to approved read operations
@@ -402,10 +473,44 @@ class Document extends Model
         $hasGlobalSensitive = ($sensitiveUnitIds === null);
         $sensitiveUnitIds = $sensitiveUnitIds ?? [];
 
-        $highConfIds = DB::table('confidentiality_levels')
-            ->whereIn('code', ['confidential', 'restricted', 'secret', 'top_secret'])
-            ->pluck('id')
-            ->all();
+        $highConfIds = static::getHighConfidentialityIds();
+
+        // Parity rule for archive.view: cross-unit read for archived records with clearance boundary
+        if ($permission === 'archive.view') {
+            $permittedArchiveUnits = $user->getPermittedUnitIds('archive.view');
+            $hasArchiveView = ($permittedArchiveUnits === null) || ! empty($permittedArchiveUnits);
+
+            if (! $hasArchiveView) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->where(function (Builder $q) use ($user, $highConfIds) {
+                $q->where(function ($sub) {
+                    $sub->where('documents.lifecycle', 'retired')
+                        ->orWhereExists(function ($eq) {
+                            $eq->select(DB::raw(1))
+                               ->from('archive_entries')
+                               ->whereColumn('archive_entries.document_id', 'documents.id');
+                        });
+                });
+
+                if (! empty($highConfIds)) {
+                    $q->where(function (Builder $confQ) use ($highConfIds, $user) {
+                        $confQ->whereNotIn('documents.confidentiality_id', $highConfIds)
+                              ->orWhere(function (Builder $clearQ) use ($user) {
+                                  $sensitiveUnits = $user->getPermittedUnitIds('staff.view_sensitive');
+                                  if ($sensitiveUnits === null) {
+                                      $clearQ->whereRaw('1 = 1');
+                                  } elseif (! empty($sensitiveUnits)) {
+                                      $clearQ->whereIn('documents.owner_unit_id', $sensitiveUnits);
+                                  } else {
+                                      $clearQ->whereRaw('1 = 0');
+                                  }
+                              });
+                    });
+                }
+            });
+        }
 
         return $query->where(function (Builder $q) use (
             $permittedUnitIds,

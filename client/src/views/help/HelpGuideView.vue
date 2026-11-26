@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import {
  HelpCircle,
@@ -80,15 +81,11 @@ const filteredGuides = computed(() => {
 
 <template>
  <div class="space-y-6 max-w-4xl">
- <div class="border-b border-hairline pb-4">
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
- <HelpCircle class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Wollo University DMS Help Guide</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Operational guidelines, workflow rules, and institutional access policies by functional module.
- </p>
- </div>
+ <PageHeader
+ :icon="HelpCircle"
+ title="Wollo University DMS Help Guide"
+ subtitle="Operational guidelines, workflow rules, and institutional access policies by functional module."
+ />
 
  <div class="max-w-md pt-1">
  <BaseInput

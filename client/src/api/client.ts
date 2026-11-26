@@ -74,7 +74,9 @@ export async function ensureCsrfCookie(): Promise<void> {
       .get('/sanctum/csrf-cookie', { withCredentials: true })
       .then(() => {})
       .catch((err) => {
-        console.warn('Sanctum CSRF cookie acquisition note:', err.message)
+        if (import.meta.env.DEV) {
+          console.warn('Sanctum CSRF cookie acquisition failed:', err.message)
+        }
       })
       .finally(() => {
         csrfPromise = null

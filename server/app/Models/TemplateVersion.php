@@ -7,6 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $template_id
+ * @property int $version_number
+ * @property array|null $schema_definition
+ * @property string|null $body_template_html
+ * @property string|null $header_asset_key
+ * @property string|null $footer_asset_key
+ * @property string $status
+ * @property \Carbon\Carbon|null $published_at
+ * @property int|null $published_by
+ * @property int|null $created_by
+ * @property \Carbon\Carbon|null $created_at
+ * @property \App\Models\DocumentTemplate|null $template
+ */
 class TemplateVersion extends Model
 {
     use HasFactory;
@@ -47,6 +62,9 @@ class TemplateVersion extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<DocumentTemplate, $this>
+     */
     public function template(): BelongsTo
     {
         return $this->belongsTo(DocumentTemplate::class, 'template_id');

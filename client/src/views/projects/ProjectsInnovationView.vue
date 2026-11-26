@@ -154,7 +154,7 @@ async function submitProposal() {
      Refresh
     </BaseButton>
     <BaseButton
-     v-if="authStore.hasPermission('projects.create') || authStore.hasPermission('documents.create')"
+     v-if="authStore.hasPermission('projects.submit') || authStore.hasPermission('documents.create')"
      variant="primary"
      size="sm"
      @click="openCreateModal"

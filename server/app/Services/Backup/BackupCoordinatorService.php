@@ -132,7 +132,7 @@ class BackupCoordinatorService
                 ],
             ]);
         } catch (\Throwable $e) {
-            // Non-blocking for audit failure
+            \Illuminate\Support\Facades\Log::error('Backup audit logging failed: ' . $e->getMessage(), ['exception' => $e]);
         }
 
         return [

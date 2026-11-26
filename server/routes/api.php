@@ -22,6 +22,8 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NumberingPolicyController;
 use App\Http\Controllers\Api\V1\OcrController;
 use App\Http\Controllers\Api\V1\OrganizationUnitController;
+use App\Http\Controllers\Api\V1\Public\PublicLandingController;
+use App\Http\Controllers\Api\V1\Public\PublicLegalController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RetentionPolicyController;
 use App\Http\Controllers\Api\V1\RolePermissionController;
@@ -66,6 +68,19 @@ Route::prefix('v1')->group(function () {
     // the public catalogue are exposed, and no value is a secret.
     Route::get('settings/public', [SettingsController::class, 'publicSettings']);
 
+    // Public Institutional Portal Endpoints (Unauthenticated, Read-Only, Rate-Limited)
+    Route::prefix('public')->middleware('throttle:60,1')->group(function () {
+        Route::prefix('landing')->group(function () {
+            Route::get('summary', [PublicLandingController::class, 'summary']);
+            Route::get('modules', [PublicLandingController::class, 'modules']);
+            Route::get('accreditation', [PublicLandingController::class, 'accreditation']);
+            Route::get('announcements', [PublicLandingController::class, 'announcements']);
+        });
+
+        Route::get('legal/{type}', [PublicLegalController::class, 'show'])
+            ->where('type', 'privacy|terms');
+    });
+
     // 2. Protected Endpoints (Sanctum SPA Session + Authz Version + Active Account Boundary)
     Route::middleware(['auth:sanctum', 'authz_version', 'active_account'])->group(function () {
 
@@ -107,6 +122,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:documents.view');
         Route::get('reports/summary', [ReportController::class, 'summary'])
             ->middleware('permission:reports.view');
+        Route::get('reports/export', [ReportController::class, 'export'])
+            ->middleware('permission:reports.export');
 
         // Organization & Identity
         Route::get('unit-types', [OrganizationUnitController::class, 'unitTypes']);
@@ -150,6 +167,8 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:roles.view|system.configure');
         Route::put('roles/{id}', [RolePermissionController::class, 'updateRole'])
             ->middleware('permission:roles.update');
+        Route::delete('roles/{id}', [RolePermissionController::class, 'destroyRole'])
+            ->middleware('permission:roles.delete');
         Route::post('roles/{id}/permissions', [RolePermissionController::class, 'syncRolePermissions'])
             ->middleware('permission:roles.update');
         Route::get('permissions', [RolePermissionController::class, 'permissions'])
@@ -178,6 +197,10 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:documents.update');
         Route::post('documents/{id}/versions', [DocumentController::class, 'uploadVersion'])
             ->middleware('permission:documents.version');
+        Route::post('documents/{id}/share', [DocumentController::class, 'share'])
+            ->middleware('permission:documents.share');
+        Route::delete('documents/{id}/share/{grantId}', [DocumentController::class, 'revokeShare'])
+            ->middleware('permission:documents.share');
         Route::get('files/{fileId}/download', [DocumentController::class, 'downloadFile'])
             ->middleware('permission:documents.download');
         Route::get('documents/{id}/timeline', [DocumentController::class, 'timeline'])
@@ -281,9 +304,9 @@ Route::prefix('v1')->group(function () {
         Route::post('correspondences/{id}/dispatch', [CorrespondenceController::class, 'dispatch'])
             ->middleware('permission:correspondence.dispatch');
         Route::post('correspondences/{id}/dispatches/{dispatchId}/delivery-evidence', [CorrespondenceController::class, 'recordDispatchDeliveryEvidence'])
-            ->middleware('permission:correspondence.dispatch|correspondence.manage');
+            ->middleware('permission:correspondence.dispatch');
         Route::post('correspondences/{id}/close', [CorrespondenceController::class, 'close'])
-            ->middleware('permission:correspondence.manage|correspondence.register');
+            ->middleware('permission:correspondence.register');
 
         // Workflow & Routing
         Route::get('workflows/definitions', [WorkflowController::class, 'definitions'])
@@ -313,7 +336,7 @@ Route::prefix('v1')->group(function () {
         Route::get('archive/entries/{id}/disposal-eligibility', [ArchiveController::class, 'disposalEligibility'])
             ->middleware('permission:archive.view');
         Route::post('archive/entries/{id}/review', [ArchiveController::class, 'review'])
-            ->middleware('permission:archive.manage|archive.transfer');
+            ->middleware('permission:archive.transfer');
         Route::post('archive/entries/{id}/request-disposal', [ArchiveController::class, 'requestDisposal'])
             ->middleware('permission:archive.request_disposal');
         Route::post('archive/disposition-requests/{id}/decide', [ArchiveController::class, 'decideDisposal'])
@@ -352,6 +375,16 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:research.update');
         Route::post('research/outputs/{id}/toggle-publication', [InstitutionalModuleController::class, 'toggleResearchPublication'])
             ->middleware('permission:research.publish');
+        Route::post('research/outputs/{id}/submit', [InstitutionalModuleController::class, 'submitResearch'])
+            ->middleware('permission:research.submit');
+        Route::post('research/outputs/{id}/review', [InstitutionalModuleController::class, 'reviewResearch'])
+            ->middleware('permission:research.review');
+        Route::post('research/outputs/{id}/approve', [InstitutionalModuleController::class, 'approveResearch'])
+            ->middleware('permission:research.approve');
+        Route::post('research/outputs/{id}/reject', [InstitutionalModuleController::class, 'rejectResearch'])
+            ->middleware('permission:research.reject');
+        Route::post('research/outputs/{id}/return', [InstitutionalModuleController::class, 'returnResearch'])
+            ->middleware('permission:research.review|research.approve');
 
         Route::get('staff/records', [InstitutionalModuleController::class, 'staffRecords'])
             ->middleware('permission:staff.view');
@@ -392,6 +425,16 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:projects.view');
         Route::post('projects', [InstitutionalModuleController::class, 'storeProject'])
             ->middleware('permission:projects.submit');
+        Route::post('projects/{id}/submit', [InstitutionalModuleController::class, 'submitProject'])
+            ->middleware('permission:projects.submit');
+        Route::post('projects/{id}/review', [InstitutionalModuleController::class, 'reviewProject'])
+            ->middleware('permission:projects.review');
+        Route::post('projects/{id}/approve', [InstitutionalModuleController::class, 'approveProject'])
+            ->middleware('permission:projects.approve');
+        Route::post('projects/{id}/reject', [InstitutionalModuleController::class, 'rejectProject'])
+            ->middleware('permission:projects.reject');
+        Route::post('projects/{id}/return', [InstitutionalModuleController::class, 'returnProject'])
+            ->middleware('permission:projects.review|projects.approve');
 
         Route::get('signatures', [InstitutionalModuleController::class, 'signatures'])
             ->middleware('permission:signatures.request');

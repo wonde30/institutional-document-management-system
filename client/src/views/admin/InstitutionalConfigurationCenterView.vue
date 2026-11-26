@@ -31,6 +31,7 @@ import type {
   RetentionPolicyItem,
   GraphValidationResult,
 } from '@/types'
+import PageHeader from '@/components/PageHeader.vue'
 import {
   Sliders,
   GitBranch,
@@ -834,26 +835,17 @@ async function deleteRetentionPolicy(id: number) {
 
 <template>
   <div class="space-y-5">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-hairline pb-4">
-      <div>
-        <div class="flex items-center gap-2.5">
-          <div class="p-2 bg-primary/10 rounded-lg text-primary">
-            <Sliders class="w-5 h-5" />
-          </div>
-          <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink font-sans">Institutional Configuration Center</h1>
-        </div>
-        <p class="text-xs text-ink-muted mt-0.5">
-          Dynamic operational governance: Workflow state machines, numbering schemas, inter-unit routing, retention schedules, and reference catalogs.
-        </p>
-      </div>
-
-      <div class="flex items-center gap-2">
+    <PageHeader
+      :icon="Sliders"
+      title="Institutional Configuration Center"
+      subtitle="Dynamic operational governance: Workflow state machines, numbering schemas, inter-unit routing, retention schedules, and reference catalogs."
+    >
+      <template #actions>
         <BaseButton variant="secondary" size="sm" :loading="loading" @click="loadActiveTabData">
           <RefreshCw class="w-4 h-4 mr-1.5" /> Refresh
         </BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Navigation Tabs -->
     <div class="flex flex-wrap gap-2 border-b border-hairline pb-2" role="tablist" aria-label="Configuration sections">

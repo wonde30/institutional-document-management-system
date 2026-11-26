@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { institutionalApi } from '@/api/client'
+import PageHeader from '@/components/PageHeader.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -51,19 +52,12 @@ onMounted(() => {
 
 <template>
  <div class="space-y-6">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
- <Activity class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Operations & System Health</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Cryptographic file integrity checks, backup manifests, and verified restore drill outcomes.
- </p>
- </div>
-
- <div class="flex items-center gap-2">
+ <PageHeader
+ :icon="Activity"
+ title="Operations & System Health"
+ subtitle="Cryptographic file integrity checks, backup manifests, and verified restore drill outcomes."
+ >
+ <template #actions>
  <BaseButton
  variant="outline"
  size="sm"
@@ -72,8 +66,8 @@ onMounted(() => {
  <RotateCcw class="w-3.5 h-3.5 mr-1.5" />
  <span>Refresh health</span>
  </BaseButton>
- </div>
- </div>
+ </template>
+ </PageHeader>
 
  <!-- Institutional Policy Notice (Mandatory from UI Blueprint) -->
  <div class="wu-notice">

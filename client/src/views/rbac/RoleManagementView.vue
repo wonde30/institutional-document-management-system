@@ -269,7 +269,7 @@ onMounted(() => {
   <div class="space-y-6">
     <PageHeader
       title="Scoped Role Management"
-      subtitle="Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes"
+      subtitle="Configure institutional roles, assignable capability bundles, and multi-unit authorization scopes without code changes."
     >
       <template #actions>
         <BaseButton variant="outline" size="sm" :loading="loading" @click="loadData">
@@ -338,7 +338,7 @@ onMounted(() => {
           <div class="flex items-start justify-between gap-3 mb-2">
             <div>
               <div class="flex items-center gap-1.5">
-                <span class="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20 uppercase">
+                <span class="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20">
                   {{ role.code }}
                 </span>
                 <span
@@ -587,7 +587,7 @@ onMounted(() => {
                 <td class="px-3 py-2.5">
                   <div class="flex items-center gap-1 font-medium text-ink-secondary">
                     <span
-                      class="uppercase text-xs font-bold px-1.5 py-0.5 rounded"
+                      class="text-xs font-bold px-1.5 py-0.5 rounded"
                       :class="{
                         'bg-purple-100 text-purple-700': user.scope_kind === 'global',
                         'bg-blue-100 text-blue-700': user.scope_kind === 'unit',

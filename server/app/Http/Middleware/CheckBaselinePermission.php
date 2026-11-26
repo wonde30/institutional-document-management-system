@@ -80,7 +80,7 @@ class CheckBaselinePermission
             }
 
             if (! $doc->allowsUser($user, $permission)) {
-                $confLevel = $doc->confidentiality?->code ?? 'internal';
+                $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'internal';
                 $message = in_array($confLevel, ['confidential', 'restricted', 'secret', 'top_secret'], true)
                     ? 'Forbidden: High confidentiality document file download restricted.'
                     : "Forbidden: Missing required baseline permission [{$permission}].";
@@ -144,9 +144,11 @@ class CheckBaselinePermission
                 return null;
             } elseif (str_contains($path, 'staff/records')) {
                 $targetUnitId = PhysicalOriginal::with('document')->find($id)?->document?->owner_unit_id;
+            } elseif (str_contains($path, 'projects')) {
+                $targetUnitId = \App\Models\ProjectProposal::with('document')->find($id)?->document?->owner_unit_id;
             } elseif (str_contains($path, 'workflows/tasks')) {
                 $task = WorkflowTask::with('instance.documentVersion.document')->find($id);
-                $targetUnitId = $task?->assigned_unit_id ?? $task?->instance?->documentVersion?->document?->owner_unit_id;
+                $targetUnitId = $task ? ($task->assigned_unit_id ?? $task->instance?->documentVersion?->document?->owner_unit_id) : null;
             } elseif (str_contains($path, 'templates')) {
                 if (str_contains($path, 'render') || str_contains($path, 'generate-document')) {
                     $payloadUnitId = $request->input('owner_unit_id');
@@ -228,14 +230,9 @@ class CheckBaselinePermission
         if (! $user->hasPermission($permission, $targetUnitId)) {
             // If request had no specific unit constraint, check if user holds this permission in any active scope
             if (! $isResourceSpecific && $targetUnitId === null) {
-                $hasActiveGrant = $user->userPermissions()
-                    ->whereHas('permission', fn ($q) => $q->where('code', $permission)->where('active', 1))
-                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->exists()
-                    || $user->userRoles()
-                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->whereHas('role', fn ($rq) => $rq->where('active', 1)->whereHas('permissions', fn ($pq) => $pq->where('code', $permission)->where('active', 1)))
-                    ->exists();
+                $grants = $user->loadActiveGrants();
+                $hasActiveGrant = $grants['direct']->contains(fn ($up) => $up->permission && $up->permission->code === $permission && $up->permission->active)
+                    || $grants['roles']->contains(fn ($ur) => $ur->role && $ur->role->active && $ur->role->permissions->contains(fn ($p) => $p->code === $permission && $p->active));
 
                 if ($hasActiveGrant) {
                     return null;
@@ -263,7 +260,7 @@ class CheckBaselinePermission
      */
     protected function forbiddenDocumentResponse(Document $doc, string $permission): Response
     {
-        $confLevel = $doc->confidentiality?->code ?? 'internal';
+        $confLevel = $doc->confidentiality ? $doc->confidentiality->code : 'internal';
         $message = in_array($confLevel, ['confidential', 'restricted', 'secret', 'top_secret'], true)
             ? 'Forbidden: High confidentiality document access restricted.'
             : "Forbidden: Missing required baseline permission [{$permission}].";

@@ -20,6 +20,13 @@ class ResearchRecord extends Model
         'research_type',
         'completed_on',
         'external_selection_reference',
+        'workflow_status',
+        'submitted_by',
+        'reviewed_by',
+        'approved_by',
+        'rejected_by',
+        'submitted_at',
+        'decision_remarks',
         'recorded_by',
         'recorded_at',
     ];
@@ -29,9 +36,13 @@ class ResearchRecord extends Model
         return [
             'completed_on' => 'date',
             'recorded_at' => 'datetime',
+            'submitted_at' => 'datetime',
         ];
     }
 
+    /**
+     * @return BelongsTo<Document, $this>
+     */
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'document_id');
@@ -40,6 +51,26 @@ class ResearchRecord extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     public function authors(): HasMany

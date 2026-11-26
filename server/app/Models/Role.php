@@ -6,6 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $code
+ * @property string $name
+ * @property string|null $description
+ * @property bool $active
+ * @property bool $is_system
+ * @property \Illuminate\Database\Eloquent\Collection<int, \App\Models\Permission> $permissions
+ */
 class Role extends Model
 {
     protected $table = 'roles';
@@ -29,6 +38,9 @@ class Role extends Model
         ];
     }
 
+    /**
+     * @return BelongsToMany<Permission, $this>
+     */
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permissions');

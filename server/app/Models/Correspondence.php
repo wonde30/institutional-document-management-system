@@ -39,11 +39,17 @@ class Correspondence extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Document, $this>
+     */
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'document_id');
     }
 
+    /**
+     * @return BelongsTo<CorrespondenceType, $this>
+     */
     public function type(): BelongsTo
     {
         return $this->belongsTo(CorrespondenceType::class, 'type_id');
@@ -69,6 +75,9 @@ class Correspondence extends Model
         return $this->hasMany(CorrespondenceParticipant::class, 'correspondence_id');
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough<CorrespondenceDispatch, CorrespondenceParticipant, $this>
+     */
     public function dispatches(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
         return $this->hasManyThrough(

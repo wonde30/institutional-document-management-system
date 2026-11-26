@@ -154,7 +154,8 @@
   --wu-primary-hover: #2b8bee;
   --wu-primary-active: #1f6ac4;
   --wu-primary-subtle: #172c42;
-  --wu-on-primary: #ffffff;
+  /* NOTE: --wu-on-primary set to #0b192c in dark mode to achieve 7.22:1 WCAG AAA contrast against #62aef0 */
+  --wu-on-primary: #0b192c;
   --color-brand-primary: #2b8bee;
   --wu-soft: #222222;
 
@@ -175,16 +176,26 @@
   --wu-success-bg: #132e1f;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
   background-color: var(--wu-bg);
   color: var(--wu-text);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Institutional Anchor Offset for Fixed/Sticky Header */
+section[id], [id] {
+  scroll-margin-top: 5rem;
 }
 
 /* ==========================================================================

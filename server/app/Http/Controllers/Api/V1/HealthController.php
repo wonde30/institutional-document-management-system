@@ -57,7 +57,6 @@ class HealthController extends Controller
         }
 
         $hasAdminCapability = $actor->hasPermission('system.configure')
-            || $actor->hasPermission('settings.manage')
             || $actor->roles()->whereIn('code', ['super_admin', 'admin'])->exists()
             || in_array($actor->email, ['admin@wu.edu.et', 'superadmin@wu.edu.et'], true);
 
@@ -151,7 +150,9 @@ class HealthController extends Controller
             try {
                 $heartbeatTime = Carbon::parse($heartbeat);
                 $schedulerActive = $heartbeatTime->diffInMinutes(now()) <= 5;
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Scheduler heartbeat parse failed: ' . $e->getMessage());
+            }
         }
 
         $diagnostics['scheduler'] = [

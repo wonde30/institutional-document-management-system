@@ -6,12 +6,35 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $role_id
+ * @property int $scope_id
+ * @property int|null $granted_by
+ * @property \Carbon\Carbon|null $granted_at
+ * @property \Carbon\Carbon|null $expires_at
+ * @property \App\Models\User|null $user
+ * @property \App\Models\Role|null $role
+ * @property \App\Models\AuthorizationScope|null $scope
+ * @property \App\Models\User|null $grantedBy
+ */
 class UserRole extends Model
 {
     use HasFactory;
 
     protected $table = 'user_roles';
     public $timestamps = false;
+
+    protected static function booted(): void
+    {
+        static::saved(function ($model) {
+            User::clearUserGrantsCache($model->user_id);
+        });
+        static::deleted(function ($model) {
+            User::clearUserGrantsCache($model->user_id);
+        });
+    }
 
     protected $fillable = [
         'user_id',

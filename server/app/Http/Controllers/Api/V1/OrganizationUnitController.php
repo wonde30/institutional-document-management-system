@@ -8,6 +8,7 @@ use App\Models\OrganizationUnit;
 use App\Models\UnitType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrganizationUnitController extends Controller
 {
@@ -125,6 +126,17 @@ class OrganizationUnitController extends Controller
             'active' => 'sometimes|boolean',
         ]);
 
+        // NOTE: Cycle prevention: an organizational unit cannot have its own descendant as a parent.
+        if (! empty($validated['parent_id']) && in_array((int) $validated['parent_id'], $unit->getDescendantIds(), true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot set unit parent to one of its own descendants (cyclic relationship).',
+                'errors' => [
+                    'parent_id' => ['The selected parent unit is a descendant of this unit.'],
+                ],
+            ], 422);
+        }
+
         $unit->update($validated);
         $unit->load('unitType');
 
@@ -133,6 +145,156 @@ class OrganizationUnitController extends Controller
             'message' => 'Organization unit updated successfully.',
             'data' => new OrganizationUnitResource($unit),
         ]);
+    }
+
+    /**
+     * Delete organization unit (leaf units without dependent records only).
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        return DB::transaction(function () use ($id) {
+            $unit = OrganizationUnit::where('id', $id)->lockForUpdate()->firstOrFail();
+
+            if ($unit->children()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit that contains child units.',
+                ], 422);
+            }
+
+            if ($unit->documents()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit that owns registered documents.',
+                ], 422);
+            }
+
+            if ($unit->memberships()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit that has assigned staff members.',
+                ], 422);
+            }
+
+            if (DB::table('authorization_scopes')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit associated with active authorization scopes.',
+                ], 422);
+            }
+
+            if (DB::table('workflow_tasks')->where('assigned_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit with assigned workflow tasks.',
+                ], 422);
+            }
+
+            if (DB::table('office_procedure_versions')->where('unit_id', $id)->orWhere('registry_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit referenced in office procedure versions.',
+                ], 422);
+            }
+
+            if (DB::table('correspondences')->where('first_receiving_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit referenced in the correspondence registry.',
+                ], 422);
+            }
+
+            if (DB::table('communication_parties')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit referenced as a correspondence communication party.',
+                ], 422);
+            }
+
+            if (DB::table('document_movements')->where('from_unit_id', $id)->orWhere('to_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit with recorded document movements.',
+                ], 422);
+            }
+
+            if (DB::table('document_assignments')->where('assigned_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit with assigned documents.',
+                ], 422);
+            }
+
+            if (DB::table('staff_employment_records')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit associated with staff employment records.',
+                ], 422);
+            }
+
+            if (DB::table('physical_storage_locations')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit associated with physical storage locations.',
+                ], 422);
+            }
+
+            if (DB::table('accreditation_cycles')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit associated with accreditation cycles.',
+                ], 422);
+            }
+
+            if (DB::table('stamp_definitions')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit that has registered official stamp definitions.',
+                ], 422);
+            }
+
+            if (DB::table('routing_policies')->where(fn ($q) => $q->where('from_unit_id', $id)->orWhere('to_unit_id', $id)->orWhere('escalation_unit_id', $id))->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit configured in active routing policies.',
+                ], 422);
+            }
+
+            if (DB::table('document_grants')->where('unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit with active document grants.',
+                ], 422);
+            }
+
+            if (DB::table('document_templates')->where('owner_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit that owns document templates.',
+                ], 422);
+            }
+
+            if (DB::table('workflow_states')->where('assigned_unit_id', $id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete an organizational unit assigned to workflow states.',
+                ], 422);
+            }
+
+            try {
+                $unit->delete();
+            } catch (\Illuminate\Database\QueryException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete organizational unit due to existing database dependencies.',
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Organization unit deleted successfully.',
+            ]);
+        });
     }
 
     /**

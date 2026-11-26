@@ -58,6 +58,21 @@ class DatabaseBackupService
     }
 
     /**
+     * Build process environment guaranteeing SystemRoot and PATH exist on Windows.
+     */
+    protected function buildProcessEnv(): array
+    {
+        $env = $_SERVER;
+        if (PHP_OS_FAMILY === 'Windows') {
+            $env['SystemRoot'] = getenv('SystemRoot') ?: 'C:\\Windows';
+            $env['WINDIR'] = getenv('WINDIR') ?: 'C:\\Windows';
+            $env['PATH'] = getenv('PATH') ?: '';
+        }
+
+        return $env;
+    }
+
+    /**
      * Generate consistent single-transaction logical InnoDB dump.
      */
     public function dump(string $outputSqlPath, ?string $database = null): array
@@ -96,7 +111,8 @@ class DatabaseBackupService
             . "user = \"{$user}\"\n"
             . "password = \"{$pass}\"\n"
             . "host = \"{$host}\"\n"
-            . "port = {$port}\n";
+            . "port = {$port}\n"
+            . "protocol = TCP\n";
 
         File::put($tempCnf, $cnfContent);
         if (PHP_OS_FAMILY !== 'Windows') {
@@ -107,8 +123,10 @@ class DatabaseBackupService
             $command = [
                 $this->mysqldumpPath,
                 "--defaults-extra-file={$tempCnf}",
+                '--protocol=tcp',
                 '--single-transaction',
                 '--quick',
+                '--skip-add-locks',
                 '--routines',
                 '--triggers',
                 '--events',
@@ -118,7 +136,7 @@ class DatabaseBackupService
                 $dbName,
             ];
 
-            $process = new Process($command);
+            $process = new Process($command, null, $this->buildProcessEnv());
             $process->setTimeout(300);
             
             // Stream output directly to file to prevent memory exhaustion
@@ -196,32 +214,84 @@ class DatabaseBackupService
         $pass = $dbConfig['password'] ?? '';
 
         $tempCnf = storage_path('app/pki/mysql_restore_' . bin2hex(random_bytes(8)) . '.cnf');
-        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\n";
+        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\nprotocol = TCP\n";
         File::put($tempCnf, $cnfContent);
 
         try {
+            DB::disconnect('mysql_isolated_verify');
+            DB::purge('mysql_isolated_verify');
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
+            DB::disconnect('mysql_pitr_check');
+            DB::purge('mysql_pitr_check');
+
             // Create target isolated database if it doesn't exist
             $createDbCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
+                '--protocol=tcp',
                 '-e',
                 "CREATE DATABASE IF NOT EXISTS `{$targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             ];
-            $createProc = new Process($createDbCmd);
+            $createProc = new Process($createDbCmd, null, $this->buildProcessEnv());
             $createProc->mustRun();
 
-            // Execute restore
+            // Clean any existing tables in target isolated database to prevent collision
+            $cleanDbTables = function () use ($dbConfig, $targetDatabase) {
+                $cleanConfig = $dbConfig;
+                $cleanConfig['database'] = $targetDatabase;
+                config(['database.connections.mysql_recovery_clean' => $cleanConfig]);
+                try {
+                    $existingTables = DB::connection('mysql_recovery_clean')->select('SHOW TABLES');
+                    if (!empty($existingTables)) {
+                        DB::connection('mysql_recovery_clean')->statement('SET FOREIGN_KEY_CHECKS = 0');
+                        foreach ($existingTables as $tRow) {
+                            $tblName = array_values((array) $tRow)[0];
+                            DB::connection('mysql_recovery_clean')->statement("DROP TABLE IF EXISTS `{$tblName}`");
+                        }
+                        DB::connection('mysql_recovery_clean')->statement('SET FOREIGN_KEY_CHECKS = 1');
+                    }
+                } catch (\Throwable) {
+                } finally {
+                    DB::disconnect('mysql_recovery_clean');
+                    DB::purge('mysql_recovery_clean');
+                }
+            };
+            $cleanDbTables();
+
+            // Execute restore with retry on transient deadlock
             $restoreCmd = [
                 $this->mysqlPath,
                 "--defaults-extra-file={$tempCnf}",
+                '--protocol=tcp',
                 '--default-character-set=utf8mb4',
+                '--init-command=SET FOREIGN_KEY_CHECKS=0;',
                 $targetDatabase,
             ];
 
-            $process = new Process($restoreCmd);
-            $process->setInput(fopen($sqlPath, 'rb'));
-            $process->setTimeout(600);
-            $process->mustRun();
+            $maxAttempts = 3;
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                $fileHandle = fopen($sqlPath, 'rb');
+                try {
+                    $process = new Process($restoreCmd, null, $this->buildProcessEnv());
+                    $process->setInput($fileHandle);
+                    $process->setTimeout(600);
+                    $process->mustRun();
+                    if (is_resource($fileHandle)) {
+                        fclose($fileHandle);
+                    }
+                    break;
+                } catch (\Throwable $e) {
+                    if (is_resource($fileHandle)) {
+                        fclose($fileHandle);
+                    }
+                    if ($attempt === $maxAttempts || (! str_contains($e->getMessage(), 'Deadlock') && ! str_contains($e->getMessage(), 'Lock wait timeout'))) {
+                        throw $e;
+                    }
+                    $cleanDbTables();
+                    usleep(500000);
+                }
+            }
 
             // Verify target database schema and table count
             $verifyConfig = $dbConfig;
@@ -230,6 +300,9 @@ class DatabaseBackupService
 
             $tables = DB::connection('mysql_recovery_check')->select('SHOW TABLES');
             $tableCount = count($tables);
+
+            DB::disconnect('mysql_recovery_check');
+            DB::purge('mysql_recovery_check');
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
@@ -271,7 +344,7 @@ class DatabaseBackupService
         $pass = $dbConfig['password'] ?? '';
 
         $tempCnf = storage_path('app/pki/mysql_binlog_' . bin2hex(random_bytes(8)) . '.cnf');
-        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\n";
+        $cnfContent = "[client]\nuser = \"{$user}\"\npassword = \"{$pass}\"\nhost = \"{$host}\"\nport = {$port}\nprotocol = TCP\n";
         File::put($tempCnf, $cnfContent);
 
         try {
@@ -290,7 +363,7 @@ class DatabaseBackupService
 
             $binlogCmd[] = $binlogFilePath;
 
-            $binlogProcess = new Process($binlogCmd);
+            $binlogProcess = new Process($binlogCmd, null, $this->buildProcessEnv());
             $binlogProcess->setTimeout(300);
             $binlogProcess->mustRun();
             $sqlEvents = $binlogProcess->getOutput();
@@ -300,13 +373,27 @@ class DatabaseBackupService
                 $mysqlCmd = [
                     $this->mysqlPath,
                     "--defaults-extra-file={$tempCnf}",
+                    '--protocol=tcp',
+                    '--force',
+                    '--init-command=SET FOREIGN_KEY_CHECKS=0;',
                     $targetDatabase,
                 ];
 
-                $mysqlProcess = new Process($mysqlCmd);
-                $mysqlProcess->setInput($sqlEvents);
-                $mysqlProcess->setTimeout(300);
-                $mysqlProcess->mustRun();
+                $maxAttempts = 3;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    try {
+                        $mysqlProcess = new Process($mysqlCmd, null, $this->buildProcessEnv());
+                        $mysqlProcess->setInput($sqlEvents);
+                        $mysqlProcess->setTimeout(300);
+                        $mysqlProcess->mustRun();
+                        break;
+                    } catch (\Throwable $e) {
+                        if ($attempt === $maxAttempts || ! str_contains($e->getMessage(), 'Deadlock')) {
+                            throw $e;
+                        }
+                        usleep(500000);
+                    }
+                }
             }
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);

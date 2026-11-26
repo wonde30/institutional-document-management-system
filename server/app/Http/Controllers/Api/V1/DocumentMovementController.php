@@ -51,30 +51,34 @@ class DocumentMovementController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $movement = DocumentMovement::create([
-            'document_id' => $document->id,
-            'from_unit_id' => $validated['from_unit_id'],
-            'to_unit_id' => $validated['to_unit_id'],
-            'sent_by' => $actor->id,
-            'sent_at' => $now,
-            'instruction' => $validated['instruction'] ?? null,
-            'due_at' => $validated['due_at'] ?? null,
-            'idempotency_key' => (string) Str::uuid(),
-        ]);
-
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'document.movement_sent',
-            'target_type' => 'document_movement',
-            'target_id' => (string) $movement->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => [
+        $movement = DB::transaction(function () use ($document, $validated, $actor, $now) {
+            $movement = DocumentMovement::create([
                 'document_id' => $document->id,
                 'from_unit_id' => $validated['from_unit_id'],
                 'to_unit_id' => $validated['to_unit_id'],
-            ],
-        ]);
+                'sent_by' => $actor->id,
+                'sent_at' => $now,
+                'instruction' => $validated['instruction'] ?? null,
+                'due_at' => $validated['due_at'] ?? null,
+                'idempotency_key' => (string) Str::uuid(),
+            ]);
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'document.movement_sent',
+                'target_type' => 'document_movement',
+                'target_id' => (string) $movement->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'document_id' => $document->id,
+                    'from_unit_id' => $validated['from_unit_id'],
+                    'to_unit_id' => $validated['to_unit_id'],
+                ],
+            ]);
+
+            return $movement;
+        });
 
         return response()->json([
             'success' => true,

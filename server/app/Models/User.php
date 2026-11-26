@@ -63,6 +63,32 @@ class User extends Authenticatable
      */
     protected array $cachedSubtreeUnitIds = [];
 
+    public function clearGrantsCache(): void
+    {
+        $this->cachedSubtreeUnitIds = [];
+        static::clearUserGrantsCache($this->id);
+    }
+
+    public static function clearUserGrantsCache(?int $userId = null): void
+    {
+        if (app()->bound('request') && ($req = app('request')) && $req instanceof \Illuminate\Http\Request) {
+            if ($userId !== null) {
+                $req->attributes->remove('__user_grants_' . $userId);
+                foreach (array_keys($req->attributes->all()) as $k) {
+                    if (str_starts_with($k, '__user_permitted_units_' . $userId . '_')) {
+                        $req->attributes->remove($k);
+                    }
+                }
+            } else {
+                foreach (array_keys($req->attributes->all()) as $k) {
+                    if (str_starts_with($k, '__user_grants_') || str_starts_with($k, '__user_permitted_units_')) {
+                        $req->attributes->remove($k);
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * The attributes that should be cast.
      *
@@ -86,7 +112,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Organization units the user is a member of.
+     */
+    public function organizationUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(OrganizationUnit::class, 'organization_memberships', 'user_id', 'unit_id')
+            ->withPivot(['position_title', 'starts_at', 'ends_at', 'created_by', 'created_at']);
+    }
+
+    /**
      * Active primary membership.
+     */
+    /**
+     * @return HasOne<PrimaryMembership, $this>
      */
     public function primaryMembershipRecord(): HasOne
     {
@@ -120,6 +158,9 @@ class User extends Authenticatable
 
     /**
      * Associated staff profile.
+     */
+    /**
+     * @return HasOne<StaffProfile, $this>
      */
     public function staffProfile(): HasOne
     {
@@ -180,29 +221,17 @@ class User extends Authenticatable
     public function hasRole(string|array $roleCodes, ?int $unitId = null): bool
     {
         $codes = is_array($roleCodes) ? $roleCodes : [$roleCodes];
+        $subtreeUnitIds = $this->resolveSubtreeUnitIds($unitId);
+        $grants = $this->loadActiveGrants();
 
-        $query = $this->userRoles()
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->whereHas('role', fn ($q) => $q->whereIn('code', $codes)->where('active', 1));
-
-        if ($unitId !== null) {
-            $ancestorIds = [];
-            $targetUnit = OrganizationUnit::find($unitId);
-            if ($targetUnit) {
-                $ancestorIds = $targetUnit->getAncestorIds();
-            }
-            $subtreeUnitIds = array_merge([$unitId], $ancestorIds);
-
-            $query->whereHas('scope', function ($q) use ($unitId, $subtreeUnitIds) {
-                $q->where('kind', 'global')
-                  ->orWhere(fn ($sq) => $sq->where('kind', 'unit')->where('unit_id', $unitId))
-                  ->orWhere(fn ($sq) => $sq->where('kind', 'subtree')->whereIn('unit_id', $subtreeUnitIds));
+        return $grants['roles']
+            ->filter(fn ($ur) => $ur->role && in_array($ur->role->code, $codes, true) && $ur->role->active)
+            ->contains(function ($ur) use ($unitId, $subtreeUnitIds) {
+                if ($unitId === null) {
+                    return true;
+                }
+                return $this->scopeAppliesToUnit($ur->scope, $unitId, $subtreeUnitIds);
             });
-        }
-
-        return $query->exists();
     }
 
     /**
@@ -346,6 +375,13 @@ class User extends Authenticatable
      */
     public function getPermittedUnitIds(string $permissionCode): ?array
     {
+        $request = app()->bound('request') ? app('request') : null;
+        $reqCacheKey = '__user_permitted_units_' . $this->id . '_' . $permissionCode;
+
+        if ($request && $request instanceof \Illuminate\Http\Request && $request->attributes->has($reqCacheKey)) {
+            return $request->attributes->get($reqCacheKey);
+        }
+
         $grants = $this->loadActiveGrants();
 
         // 1. Direct permissions carrying the capability
@@ -364,15 +400,25 @@ class User extends Authenticatable
 
         // If no active grant exists for this permission, return empty array
         if ($allScopes->isEmpty()) {
+            if ($request && $request instanceof \Illuminate\Http\Request) {
+                $request->attributes->set($reqCacheKey, []);
+            }
             return [];
         }
 
         // If any scope is global, permission is unconstrained across all units
         if ($allScopes->contains(fn ($s) => $s->kind === 'global')) {
+            if ($request && $request instanceof \Illuminate\Http\Request) {
+                $request->attributes->set($reqCacheKey, null);
+            }
             return null;
         }
 
-        return $this->expandScopesToUnitIds($allScopes);
+        $unitIds = $this->expandScopesToUnitIds($allScopes);
+        if ($request && $request instanceof \Illuminate\Http\Request) {
+            $request->attributes->set($reqCacheKey, $unitIds);
+        }
+        return $unitIds;
     }
 
     /**
@@ -467,8 +513,15 @@ class User extends Authenticatable
      *
      * @return array{roles: \Illuminate\Support\Collection<int, UserRole>, direct: \Illuminate\Support\Collection<int, UserPermission>}
      */
-    public function loadActiveGrants(): array
+    public function loadActiveGrants(bool $forceRefresh = false): array
     {
+        $request = app()->bound('request') ? app('request') : null;
+        $reqCacheKey = '__user_grants_' . $this->id;
+
+        if (! $forceRefresh && $request && $request instanceof \Illuminate\Http\Request && $request->attributes->has($reqCacheKey)) {
+            return $request->attributes->get($reqCacheKey);
+        }
+
         $roles = $this->userRoles()
             ->where(function ($q) {
                 $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
@@ -485,7 +538,13 @@ class User extends Authenticatable
             ->with(['permission', 'scope'])
             ->get();
 
-        return ['roles' => $roles, 'direct' => $direct];
+        $grants = ['roles' => $roles, 'direct' => $direct];
+
+        if ($request && $request instanceof \Illuminate\Http\Request) {
+            $request->attributes->set($reqCacheKey, $grants);
+        }
+
+        return $grants;
     }
 
     /**

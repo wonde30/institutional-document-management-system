@@ -345,17 +345,91 @@ class FileSecurityService
     }
 
     /**
+     * Resolve and verify that a target path resides strictly inside an allowed root boundary directory.
+     * Prevents sibling directory prefix bypass, directory traversal, and symlink escapes.
+     *
+     * @param string $path Target file or directory path
+     * @param string $rootDirectory Allowed root boundary directory
+     * @return string|null Canonical absolute path if valid, existing, and contained; null otherwise.
+     */
+    public static function resolveContainedPath(string $path, string $rootDirectory): ?string
+    {
+        $realRoot = realpath($rootDirectory);
+        if ($realRoot === false || ! is_dir($realRoot)) {
+            return null;
+        }
+
+        // Canonical root must end with exactly one directory separator
+        $canonicalRoot = rtrim($realRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+        $realPath = realpath($path);
+        if ($realPath === false) {
+            return null;
+        }
+
+        // Check if realPath is the root directory itself
+        if ($realPath === $realRoot) {
+            return $realPath;
+        }
+
+        // Enforce strict containment within the canonical root boundary
+        if (! str_starts_with($realPath, $canonicalRoot)) {
+            return null;
+        }
+
+        return $realPath;
+    }
+
+    /**
+     * Resolve canonical physical path for a FileObject ensuring strict containment within allowed storage roots.
+     *
+     * @param FileObject $file
+     * @return string|null Canonical absolute path if found and contained, null otherwise.
+     */
+    public function resolveFileObjectPath(FileObject $file): ?string
+    {
+        if (empty($file->storage_key)) {
+            return null;
+        }
+
+        $allowedRoot = storage_path('app');
+
+        // 1. Check legacy storage_path('app/' . $key)
+        $fallback = storage_path('app/' . $file->storage_key);
+        $canonicalFallback = self::resolveContainedPath($fallback, $allowedRoot);
+        if ($canonicalFallback && File::isFile($canonicalFallback)) {
+            return $canonicalFallback;
+        }
+
+        // 2. Check disk path if disk is configured
+        try {
+            $diskName = $file->storage_disk ?: config('filesystems.default', 'local');
+            $disk = Storage::disk($diskName);
+            $diskRoot = $disk->path('');
+            $diskPath = $disk->path($file->storage_key);
+
+            $canonicalDiskPath = self::resolveContainedPath($diskPath, $diskRoot);
+            if ($canonicalDiskPath && File::isFile($canonicalDiskPath)) {
+                return $canonicalDiskPath;
+            }
+        } catch (\Throwable) {
+            // Non-local or missing disk driver
+        }
+
+        return null;
+    }
+
+    /**
      * Generate safe download response without exposing physical storage path in headers or body.
      */
     public function createDownloadResponse(FileObject $file, ?string $downloadName = null): BinaryFileResponse
     {
-        $disk = Storage::disk($file->storage_disk);
+        $fullPath = $this->resolveFileObjectPath($file);
 
-        if (!$disk->exists($file->storage_key)) {
+        if (! $fullPath || ! File::exists($fullPath)) {
             abort(404, 'Physical file not found in storage.');
         }
 
-        $fullPath = $disk->path($file->storage_key);
         $filename = $downloadName ?? $file->original_filename;
 
         return response()->download($fullPath, $filename, [

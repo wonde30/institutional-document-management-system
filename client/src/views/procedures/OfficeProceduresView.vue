@@ -3,9 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { institutionalApi, organizationUnitsApi, metadataApi } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import {
- GitBranch,
  Plus,
  Search,
  CheckCircle2,
@@ -13,7 +13,8 @@ import {
  ShieldAlert,
  Building2,
  FileCheck,
- X
+ X,
+ GitBranch
 } from 'lucide-vue-next'
 
 const toast = useToast()
@@ -135,19 +136,12 @@ async function submitProcedure() {
 
 <template>
  <div class="space-y-6">
- <!-- Header -->
- <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4">
- <div>
- <h1 class="text-xl sm:text-2xl font-bold text-ink tracking-tight flex items-center gap-2.5">
- <GitBranch class="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
- <span>Office Procedure Directives</span>
- </h1>
- <p class="text-xs text-ink-muted mt-0.5">
- Confirmed receipt and issue routing policies governing institutional correspondence channels.
- </p>
- </div>
-
- <div class="flex items-center gap-2">
+ <PageHeader
+ :icon="GitBranch"
+ title="Office Procedure Directives"
+ subtitle="Confirmed receipt and issue routing policies governing institutional correspondence channels."
+ >
+ <template #actions>
  <BaseButton
  variant="primary"
  size="sm"
@@ -156,8 +150,8 @@ async function submitProcedure() {
  <Plus class="w-4 h-4 mr-1.5" />
  <span>Add Confirmed Procedure</span>
  </BaseButton>
- </div>
- </div>
+ </template>
+ </PageHeader>
 
  <!-- Institutional Policy Notice -->
  <div class="wu-notice">

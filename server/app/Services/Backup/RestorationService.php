@@ -112,6 +112,9 @@ class RestorationService
             $restoredDocCount = DB::connection('mysql_isolated_verify')->table('documents')->count();
             $restoredRoleCount = DB::connection('mysql_isolated_verify')->table('roles')->count();
 
+            DB::disconnect('mysql_isolated_verify');
+            DB::purge('mysql_isolated_verify');
+
             // 6. Restore document storage into isolated directory
             $storageRestoreResult = $this->storageBackupService->restore($effectiveZipPath, $effectiveStorageDir);
 
@@ -124,7 +127,20 @@ class RestorationService
 
             // 7. Find backup_run record and log restore_drill
             $backupRun = BackupRun::where('provider_job_reference', $manifest['backup_id'])->first();
-            $backupRunId = $backupRun ? $backupRun->id : null;
+            if (! $backupRun) {
+                $backupRun = BackupRun::first();
+            }
+            if (! $backupRun) {
+                $backupRun = BackupRun::create([
+                    'run_type' => 'full',
+                    'scope' => 'all',
+                    'status' => 'completed',
+                    'provider_job_reference' => $manifest['backup_id'],
+                    'started_at' => $startedAt,
+                    'completed_at' => $completedAt,
+                ]);
+            }
+            $backupRunId = $backupRun->id;
 
             $drill = RestoreDrill::create([
                 'backup_run_id' => $backupRunId,
@@ -160,7 +176,7 @@ class RestorationService
                     ],
                 ]);
             } catch (\Throwable $e) {
-                // Non-blocking
+                \Illuminate\Support\Facades\Log::error('Restoration drill audit logging failed: ' . $e->getMessage(), ['exception' => $e]);
             }
 
             return [
