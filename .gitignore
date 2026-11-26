@@ -77,3 +77,5 @@ docker-compose.yml
 # Server local inspection and debug scripts (never commit)
 server/check_users.php
 server/inspect_*.php
+
+/docs/
