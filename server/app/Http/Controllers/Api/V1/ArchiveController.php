@@ -77,7 +77,8 @@ class ArchiveController extends Controller
             });
         }
 
-        $entries = $query->orderByDesc('archived_at')->paginate($request->query('per_page', 25));
+        $perPage = min(max((int) $request->query('per_page', 25), 1), 100);
+        $entries = $query->orderByDesc('archived_at')->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -112,7 +113,7 @@ class ArchiveController extends Controller
 
         $actor = $request->user();
         $doc = Document::findOrFail($validated['document_id']);
-        if (! $actor->hasPermission('system.configure') && ! $doc->allowsUser($actor, 'archive.transfer') && ! $actor->hasPermission('archive.transfer', $doc->owner_unit_id)) {
+        if (! $actor->hasPermission('system.configure') && ! $doc->allowsUser($actor, 'archive.transfer')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You do not have permission to archive this document.',
@@ -167,11 +168,17 @@ class ArchiveController extends Controller
     /**
      * List active legal holds.
      */
-    public function legalHolds(): JsonResponse
+    public function legalHolds(Request $request): JsonResponse
     {
-        $holds = LegalHold::with(['placedBy', 'releasedBy', 'documents:id,title,reference_number'])
-            ->orderByDesc('placed_at')
-            ->get();
+        $actor = $request->user();
+        $query = LegalHold::with(['placedBy', 'releasedBy', 'documents:id,title,reference_number,owner_unit_id,confidentiality_id'])
+            ->orderByDesc('placed_at');
+
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $query->whereHas('documents', fn ($dq) => $dq->accessibleBy($actor, 'archive.view'));
+        }
+
+        $holds = $query->get();
 
         return response()->json([
             'success' => true,
@@ -213,9 +220,21 @@ class ArchiveController extends Controller
         ]);
 
         $actor = $request->user();
+        if (! empty($validated['document_ids']) && $actor && ! $actor->hasPermission('system.configure')) {
+            $targetDocs = Document::with('confidentiality')->whereIn('id', array_unique($validated['document_ids']))->get();
+            foreach ($targetDocs as $doc) {
+                if (! $doc->allowsUser($actor, 'archive.transfer')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Forbidden: You do not have permission to place a legal hold on one or more specified documents.',
+                    ], 403);
+                }
+            }
+        }
+
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $hold = DB::transaction(function () use ($validated, $actor, $now) {
+        $hold = DB::transaction(function () use ($validated, $actor, $now, $request) {
             $hold = LegalHold::create([
                 'code' => $validated['code'],
                 'reason' => $validated['reason'],
@@ -231,6 +250,18 @@ class ArchiveController extends Controller
                     ]);
                 }
             }
+
+            \App\Services\AuditService::log(
+                action: 'archive.legal_hold_placed',
+                targetType: 'legal_hold',
+                targetId: (string) $hold->id,
+                details: [
+                    'code' => $hold->code,
+                    'document_ids' => array_values(array_unique($validated['document_ids'] ?? [])),
+                ],
+                actorId: $actor->id,
+                request: $request
+            );
 
             return $hold;
         });
@@ -333,7 +364,11 @@ class ArchiveController extends Controller
         $entry = ArchiveEntry::with(['document', 'retentionPolicyVersion.policy'])->findOrFail($id);
         $actor = $request->user();
 
-        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage_retention') && ! $actor->hasPermission('archive.transfer')) {
+        $canReview = $actor->hasPermission('system.configure')
+            || $actor->hasPermission('archive.manage_retention')
+            || ($entry->document && ($entry->document->allowsUser($actor, 'archive.manage_retention') || $entry->document->allowsUser($actor, 'archive.transfer')));
+
+        if (! $canReview) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You do not have permission to perform retention reviews on archived records.',
@@ -347,6 +382,14 @@ class ArchiveController extends Controller
         ]);
 
         if ($validated['review_action'] === 'request_disposal') {
+            $unitId = (int) $entry->document->owner_unit_id;
+            if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.request_disposal', $unitId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Requesting disposal during retention review requires archive.request_disposal permission.',
+                ], 403);
+            }
+
             $activeHold = DB::table('legal_hold_documents')
                 ->join('legal_holds', 'legal_holds.id', '=', 'legal_hold_documents.hold_id')
                 ->where('legal_hold_documents.document_id', $entry->document_id)
@@ -362,8 +405,9 @@ class ArchiveController extends Controller
         }
 
         $now = now()->format('Y-m-d H:i:s.u');
+        $previousReviewAt = $entry->next_review_at;
 
-        $result = DB::transaction(function () use ($entry, $validated, $actor, $now) {
+        $result = DB::transaction(function () use ($entry, $validated, $actor, $now, $previousReviewAt) {
             $action = $validated['review_action'];
             $newReviewDate = $entry->next_review_at;
             $dispositionReq = null;
@@ -394,7 +438,7 @@ class ArchiveController extends Controller
                 'occurred_at' => $now,
                 'details_json' => [
                     'review_action' => $action,
-                    'previous_next_review_at' => $entry->getOriginal('next_review_at'),
+                    'previous_next_review_at' => $previousReviewAt,
                     'new_next_review_at' => $newReviewDate,
                     'notes' => $validated['notes'],
                     'disposition_request_id' => $dispositionReq?->id,
@@ -743,6 +787,19 @@ class ArchiveController extends Controller
     public function dispose(Request $request, int $id): JsonResponse
     {
         $entry = ArchiveEntry::with('document')->findOrFail($id);
+        $actor = $request->user();
+        $unitId = (int) ($entry->document->owner_unit_id ?? 0);
+
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $canApprove = $actor->hasPermission('archive.approve_disposal', $unitId);
+            $canExecute = $actor->hasPermission('archive.execute_disposal', $unitId);
+            if (! $canApprove || ! $canExecute) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Direct disposition requires archive.approve_disposal and archive.execute_disposal permissions. Use request-disposal for multi-actor approval.',
+                ], 403);
+            }
+        }
 
         $validated = $request->validate([
             'requested_action' => 'required|in:destroy_digital,destroy_physical,transfer',
@@ -750,6 +807,13 @@ class ArchiveController extends Controller
             'external_receipt' => 'nullable|string|max:255',
             'evidence_document_id' => 'nullable|exists:documents,id',
         ]);
+
+        if ($validated['requested_action'] === 'destroy_physical' && empty($validated['external_receipt']) && empty($validated['evidence_document_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Physical destruction requires an institutional destruction certificate reference (external_receipt) or evidence_document_id.',
+            ], 422);
+        }
 
         // STRICT ENFORCEMENT: Never allow disposal if active legal hold exists
         $activeHolds = DB::table('legal_hold_documents')
@@ -778,7 +842,7 @@ class ArchiveController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $disposition = DB::transaction(function () use ($entry, $validated, $actor, $now) {
+        $disposition = DB::transaction(function () use ($entry, $validated, $actor, $now, $request) {
             $req = \App\Models\DispositionRequest::create([
                 'archive_entry_id' => $entry->id,
                 'requested_by' => $actor->id,
@@ -808,6 +872,20 @@ class ArchiveController extends Controller
                 'lifecycle' => 'tombstoned',
                 'updated_at' => $now,
             ]);
+
+            \App\Services\AuditService::log(
+                action: 'archive.disposed',
+                targetType: 'archive_entry',
+                targetId: (string) $entry->id,
+                details: [
+                    'document_id' => $entry->document_id,
+                    'requested_action' => $validated['requested_action'],
+                    'request_id' => $req->id,
+                    'execution_id' => $execution->id,
+                ],
+                actorId: $actor->id,
+                request: $request
+            );
 
             return [
                 'request' => $req,

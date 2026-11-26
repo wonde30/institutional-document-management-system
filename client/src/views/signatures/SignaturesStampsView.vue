@@ -140,7 +140,7 @@ const filteredStamps = computed(() => {
 
 function openSignatureModal() {
  const firstDoc = documents.value[0]
- const firstVerId = firstDoc?.current_version?.id || firstDoc?.versions?.[0]?.id || firstDoc?.id || ''
+ const firstVerId = firstDoc?.current_version?.id || firstDoc?.versions?.[0]?.id || ''
  form.value = {
  document_version_id: firstVerId ? String(firstVerId) : '',
  signer_id: users.value[0]?.id ? String(users.value[0].id) : '',
@@ -219,7 +219,7 @@ async function handleInspectVerification(signature: DigitalSignatureItem) {
 function openApplyStampModal(stamp: StampDefinitionItem) {
  selectedStampForApplication.value = stamp
  const firstDoc = documents.value[0]
- const firstVerId = firstDoc?.current_version?.id || firstDoc?.versions?.[0]?.id || firstDoc?.id || ''
+ const firstVerId = firstDoc?.current_version?.id || firstDoc?.versions?.[0]?.id || ''
  applyStampForm.value = {
  document_version_id: firstVerId ? String(firstVerId) : '',
  reason: `Official office seal application for ${stamp.name}`,
@@ -248,7 +248,6 @@ async function submitApplyStamp() {
  }
  } catch (err: any) {
  toast.error('Application Failed', err.response?.data?.message || err.message || 'Failed to apply stamp.')
-   error.value = err.response?.data?.message || 'Failed to load data'
  } finally {
  isApplyingStamp.value = false
  }
@@ -699,7 +698,7 @@ async function submitApplyStamp() {
  required
  class="w-full px-3 py-1.5 bg-surface border border-hairline rounded-md text-xs text-ink-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
  >
- <option v-for="d in documents" :key="d.id" :value="d.current_version?.id || d.versions?.[0]?.id || d.id">
+ <option v-for="d in documents" :key="d.id" :value="d.current_version?.id || d.versions?.[0]?.id || ''">
  {{ d.reference_number }} — {{ d.title }}
  </option>
  </select>
@@ -891,7 +890,7 @@ async function submitApplyStamp() {
  required
  class="w-full px-3 py-1.5 bg-surface border border-hairline rounded-md text-xs text-ink-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
  >
- <option v-for="d in documents" :key="d.id" :value="d.current_version?.id || d.versions?.[0]?.id || d.id">
+ <option v-for="d in documents" :key="d.id" :value="d.current_version?.id || d.versions?.[0]?.id || ''">
  {{ d.reference_number }} — {{ d.title }}
  </option>
  </select>

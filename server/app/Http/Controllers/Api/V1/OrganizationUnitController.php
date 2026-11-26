@@ -82,6 +82,23 @@ class OrganizationUnitController extends Controller
             'active' => 'nullable|boolean',
         ]);
 
+        $actor = $request->user();
+        $parentId = isset($validated['parent_id']) ? (int) $validated['parent_id'] : null;
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            if ($parentId === null && ! $actor->hasPermission('organization.manage', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Creating root organization units requires global organization.manage authority.',
+                ], 403);
+            }
+            if ($parentId !== null && ! $actor->hasPermission('organization.manage', $parentId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have organization.manage authority for the specified parent unit.',
+                ], 403);
+            }
+        }
+
         $unit = OrganizationUnit::create([
             'parent_id' => $validated['parent_id'] ?? null,
             'unit_type_id' => $validated['unit_type_id'],
@@ -137,8 +154,23 @@ class OrganizationUnitController extends Controller
             ], 422);
         }
 
+        $oldActive = (bool) $unit->active;
+        $oldParentId = $unit->parent_id;
         $unit->update($validated);
         $unit->load('unitType');
+
+        if ($oldActive !== (bool) $unit->active || $oldParentId !== $unit->parent_id) {
+            $affectedUnitIds = array_values(array_unique(array_merge([$unit->id], $unit->getDescendantIds())));
+            $scopeIds = \App\Models\AuthorizationScope::whereIn('unit_id', $affectedUnitIds)->pluck('id')->all();
+            if (! empty($scopeIds)) {
+                $roleUids = DB::table('user_roles')->whereIn('scope_id', $scopeIds)->pluck('user_id')->all();
+                $permUids = DB::table('user_permissions')->whereIn('scope_id', $scopeIds)->pluck('user_id')->all();
+                $affectedUsers = array_values(array_unique(array_merge($roleUids, $permUids)));
+                if (! empty($affectedUsers)) {
+                    \App\Models\User::whereIn('id', $affectedUsers)->increment('authz_version');
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,

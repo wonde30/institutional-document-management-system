@@ -50,7 +50,7 @@ class EmailNotificationService
 
         // 2. Email notification
         try {
-            $user = $assignment->assignedToUser;
+            $user = $assignment->assignedUser;
             if (! $user || empty($user->email)) {
                 return;
             }
@@ -278,8 +278,8 @@ class EmailNotificationService
                 'occurred_at' => $now,
             ]);
 
-            $archivistUsers = User::whereHas('userPermissions.permission', fn ($pq) => $pq->where('code', 'archive.manage'))
-                ->orWhereHas('roles.permissions', fn ($pq) => $pq->where('code', 'archive.manage'))
+            $archivistUsers = User::whereHas('userPermissions.permission', fn ($pq) => $pq->where('code', 'archive.manage_retention'))
+                ->orWhereHas('roles.permissions', fn ($pq) => $pq->where('code', 'archive.manage_retention'))
                 ->limit(10)
                 ->get();
 

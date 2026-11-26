@@ -38,7 +38,10 @@ const ETHIOPIC_MONTHS: Record<number, string> = {
  * Convert Gregorian date to Ethiopian calendar.
  */
 export function gregorianToEthiopian(date: Date | string): EthiopianDate {
-  const d = typeof date === 'string' ? new Date(date + 'T00:00:00Z') : date
+  const d =
+    typeof date === 'string'
+      ? new Date(date.includes('T') ? date : date + 'T00:00:00Z')
+      : date
   const gYear = d.getUTCFullYear()
   const gMonth = d.getUTCMonth() + 1 // 1-12
   const gDay = d.getUTCDate()
@@ -135,6 +138,19 @@ export function ethiopianToGregorian(
 export function parseAndConvertEthiopianToGregorian(str?: string | null): string | null {
   if (!str) return null
   const cleaned = str.replace(/(ዓ\.?ም\.?|[0-9]\.[0-9]|E\.?C\.?)/g, '').trim()
+
+  const isoMatch = cleaned.match(/^(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})$/)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    const month = parseInt(isoMatch[2], 10)
+    const day = parseInt(isoMatch[3], 10)
+    try {
+      return ethiopianToGregorian(year, month, day).formatted
+    } catch {
+      return null
+    }
+  }
+
   const match = cleaned.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})$/)
   if (!match) return null
 

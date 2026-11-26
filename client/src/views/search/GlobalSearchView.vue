@@ -135,7 +135,7 @@ async function executeSearch() {
      title,
      reference,
      domain: 'research',
-     office: r.document?.ownerUnit?.name ?? '',
+     office: (r.document as any)?.owner_unit?.name ?? r.document?.ownerUnit?.name ?? '',
      date: r.completed_on ?? '',
      snippet: r.document?.summary ?? '',
      route: `/research`,

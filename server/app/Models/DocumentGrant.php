@@ -18,7 +18,6 @@ class DocumentGrant extends Model
         'permission_id',
         'user_id',
         'unit_id',
-        'subject_key',
         'granted_by',
         'granted_at',
         'expires_at',

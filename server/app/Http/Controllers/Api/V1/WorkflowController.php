@@ -79,6 +79,12 @@ class WorkflowController extends Controller
                         ->orWhere('delegated_to_user_id', $actor->id)
                         ->orWhereHas('instance.documentVersion.document', fn ($dq) => $dq->whereIn('owner_unit_id', $filterUnits));
                 });
+            } elseif ($filterUnits !== null) {
+                $query->where(function ($q) use ($actor) {
+                    $q->where('assigned_user_id', $actor->id)
+                        ->orWhere('delegated_to_user_id', $actor->id)
+                        ->orWhereHas('participants', fn ($pq) => $pq->where('user_id', $actor->id));
+                });
             }
         }
 
@@ -112,11 +118,31 @@ class WorkflowController extends Controller
             'parent_instance_id' => 'nullable|exists:workflow_instances,id',
         ]);
 
+        $actor = $request->user();
+        $definition = WorkflowDefinition::where('id', $validated['workflow_definition_id'])->where('active', 1)->first();
+        if (! $definition) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected workflow definition is inactive or does not exist.',
+            ], 422);
+        }
+
+        if (! empty($validated['document_version_id'])) {
+            $docVersion = \App\Models\DocumentVersion::with('document')->findOrFail((int) $validated['document_version_id']);
+            $doc = $docVersion->document;
+            if ($doc && $actor && ! $doc->allowsUser($actor, 'workflow.review') && ! $doc->allowsUser($actor, 'documents.update') && ! $actor->hasPermission('workflow.submit', (int) $doc->owner_unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You are not authorized to initiate a workflow on this document.',
+                ], 403);
+            }
+        }
+
         $instance = $this->workflowEngine->startInstance(
             (int) $validated['workflow_definition_id'],
             isset($validated['document_version_id']) && $validated['document_version_id'] !== null ? (int) $validated['document_version_id'] : null,
             isset($validated['parent_instance_id']) ? (int) $validated['parent_instance_id'] : null,
-            $request->user()
+            $actor
         );
 
         return response()->json([
@@ -131,7 +157,21 @@ class WorkflowController extends Controller
      */
     public function addParticipants(Request $request, int $id): JsonResponse
     {
-        $task = WorkflowTask::whereNull('closed_at')->findOrFail($id);
+        $task = WorkflowTask::with('instance.documentVersion.document')->whereNull('closed_at')->findOrFail($id);
+        $actor = $request->user();
+        $unitId = $task->assigned_unit_id ?? $task->instance?->documentVersion?->document?->owner_unit_id;
+        $canManage = $actor->hasPermission('system.configure')
+            || $actor->hasPermission('workflow.reassign', $unitId)
+            || $actor->hasPermission('workflow.configure', $unitId)
+            || $actor->hasPermission('workflow.review', $unitId)
+            || $task->assigned_user_id === $actor->id;
+
+        if (! $canManage) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You are not authorized to assign participants to this workflow task.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'participants' => 'required|array|min:1',
@@ -153,14 +193,15 @@ class WorkflowController extends Controller
      */
     public function delegate(Request $request, int $id): JsonResponse
     {
-        $task = WorkflowTask::whereNull('closed_at')->findOrFail($id);
+        $task = WorkflowTask::with('instance.documentVersion.document')->whereNull('closed_at')->findOrFail($id);
 
         $actor = $request->user();
+        $unitId = $task->assigned_unit_id ?? $task->instance?->documentVersion?->document?->owner_unit_id;
         $isAssigned = $task->assigned_user_id === $actor->id;
         $canDelegate = $isAssigned
             || $actor->hasPermission('system.configure')
-            || $actor->hasPermission('workflow.reassign', $task->assigned_unit_id)
-            || $actor->hasPermission('workflow.configure', $task->assigned_unit_id);
+            || $actor->hasPermission('workflow.reassign', $unitId)
+            || $actor->hasPermission('workflow.configure', $unitId);
 
         if (! $canDelegate) {
             return response()->json([
@@ -194,9 +235,10 @@ class WorkflowController extends Controller
     public function reassign(Request $request, int $id): JsonResponse
     {
         $actor = $request->user();
-        $task = WorkflowTask::with(['instance.documentVersion.document'])->findOrFail($id);
+        $task = WorkflowTask::with(['instance.documentVersion.document'])->whereNull('closed_at')->findOrFail($id);
+        $unitId = $task->assigned_unit_id ?? $task->instance?->documentVersion?->document?->owner_unit_id;
 
-        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('workflow.configure', $task->assigned_unit_id) && ! $actor->hasPermission('workflow.reassign', $task->assigned_unit_id)) {
+        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('workflow.configure', $unitId) && ! $actor->hasPermission('workflow.reassign', $unitId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You are not authorized to reassign this workflow task.',

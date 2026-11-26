@@ -39,6 +39,12 @@ class DemoProvisionCommand extends Command
 
     public function handle(): int
     {
+        $dbName = (string) config('database.connections.mysql.database');
+        if (! app()->environment('testing') && $dbName !== 'wu_dms_demo') {
+            $this->error("CRITICAL SAFETY VIOLATION: Current database is [{$dbName}]. Demo provisioning is strictly restricted to 'wu_dms_demo'.");
+            return 1;
+        }
+
         $this->info('========================================================================');
         $this->info(' Wollo University DMS — Safe Demonstration Provisioning Engine          ');
         $this->info('========================================================================');

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Pki;
 
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 
@@ -16,13 +18,18 @@ class CertificateService
 
     public function __construct()
     {
-        $this->storageBasePath = storage_path('app/pki');
+        $this->storageBasePath = $this->getPkiBasePath();
         $this->caCertPath = $this->storageBasePath . '/ca/institutional_ca.crt';
         $this->caKeyPath = $this->storageBasePath . '/ca/institutional_ca.key';
         $this->cnfPath = $this->storageBasePath . '/openssl.cnf';
 
         $this->ensureDirectories();
         $this->ensureOpenSslConfig();
+    }
+
+    public function getPkiBasePath(): string
+    {
+        return (string) (config('services.pki.base_path') ?: storage_path('app/pki'));
     }
 
     private function ensureDirectories(): void
@@ -99,7 +106,8 @@ CONF;
     {
         if (File::exists($this->caCertPath) && File::exists($this->caKeyPath)) {
             $certPem = File::get($this->caCertPath);
-            $keyPem = File::get($this->caKeyPath);
+            $rawKey = File::get($this->caKeyPath);
+            $keyPem = $this->decryptPrivateKeyPem($rawKey);
             return [
                 'cert_pem' => $certPem,
                 'key_pem' => $keyPem,
@@ -118,7 +126,7 @@ CONF;
             throw new RuntimeException('Failed to generate Institutional CA private key: ' . openssl_error_string());
         }
 
-        openssl_pkey_export($privKey, $keyPem, null, $this->getOpenSslConfig());
+        openssl_pkey_export($privKey, $keyPem, null, $this->getOpenSslConfig()); // $keyPem is plaintext in memory
 
         $dn = [
             'countryName' => 'ET',
@@ -138,6 +146,7 @@ CONF;
         // 10-year validity for Root CA
         $caCert = openssl_csr_sign($csr, null, $privKey, 3650, $this->getOpenSslConfig([
             'digest_alg' => 'sha256',
+            'x509_extensions' => 'v3_ca',
         ]));
 
         if (! $caCert) {
@@ -146,7 +155,7 @@ CONF;
 
         openssl_x509_export($caCert, $certPem);
 
-        File::put($this->caKeyPath, $keyPem);
+        File::put($this->caKeyPath, Crypt::encryptString($keyPem));
         File::put($this->caCertPath, $certPem);
 
         return [
@@ -178,7 +187,7 @@ CONF;
             throw new RuntimeException('Failed to generate user private key: ' . openssl_error_string());
         }
 
-        openssl_pkey_export($userPrivKey, $userKeyPem, null, $this->getOpenSslConfig());
+        openssl_pkey_export($userPrivKey, $userKeyPem, null, $this->getOpenSslConfig()); // $userKeyPem is plaintext in memory; encryption happens in KeyCustodyService
 
         $dn = [
             'countryName' => 'ET',
@@ -202,6 +211,7 @@ CONF;
         $serial = time() + ($userId * 100000);
         $userCert = openssl_csr_sign($csr, $caCert, $caKey, $validDays, $this->getOpenSslConfig([
             'digest_alg' => 'sha256',
+            'x509_extensions' => 'usr_cert',
         ]), $serial);
 
         if (! $userCert) {
@@ -344,6 +354,35 @@ CONF;
             'message' => 'Certificate is cryptographically valid (Institutional Test PKI).',
             'details' => $parsed,
         ];
+    }
+
+    /**
+     * Decrypt an encrypted private key payload.
+     * Runtime operations strictly reject plaintext PEM keys; legacy plaintext keys
+     * must be migrated first via `php artisan pki:encrypt-keys-at-rest`.
+     */
+    public function decryptPrivateKeyPem(string $storedContent): string
+    {
+        $trimmed = trim($storedContent);
+        if ($trimmed === '') {
+            throw new RuntimeException('Private key material is empty.');
+        }
+
+        if (str_starts_with($trimmed, '-----BEGIN')) {
+            throw new RuntimeException('Plaintext private key material is rejected at runtime. Run pki:encrypt-keys-at-rest to migrate.');
+        }
+
+        try {
+            $decrypted = Crypt::decryptString($trimmed);
+        } catch (DecryptException $e) {
+            throw new RuntimeException('Unable to decrypt private key from secure custody.', 0, $e);
+        }
+
+        if (! str_contains($decrypted, 'PRIVATE KEY')) {
+            throw new RuntimeException('Decrypted private key material is invalid.');
+        }
+
+        return $decrypted;
     }
 
     private function formatDn(array $dn): string

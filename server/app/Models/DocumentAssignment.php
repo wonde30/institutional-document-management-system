@@ -31,7 +31,11 @@ class DocumentAssignment extends Model
 
     public function getStatusAttribute(): string
     {
-        $latestEvent = $this->events()->latest('sequence_number')->first();
+        if ($this->relationLoaded('events')) {
+            $latestEvent = $this->events->sortByDesc('sequence_number')->first();
+        } else {
+            $latestEvent = $this->events()->latest('sequence_number')->first();
+        }
 
         return $latestEvent ? $latestEvent->action : 'assigned';
     }

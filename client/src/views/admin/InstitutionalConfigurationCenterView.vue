@@ -720,7 +720,7 @@ async function runRouteSimulator() {
       document_category_id: simulator.value.document_category_id ? Number(simulator.value.document_category_id) : null,
       priority_id: simulator.value.priority_id ? Number(simulator.value.priority_id) : null,
     })
-    simulator.value.result = res.data.data.data
+    simulator.value.result = (res.data as any)?.data?.data ?? (res.data as any)?.data ?? null
     simulator.value.tested = true
   } catch (err: unknown) {
     toast.error(getApiErrorMessage(err, 'Simulation check failed.'))
@@ -746,7 +746,8 @@ function openCreateRetentionModal() {
   isRetentionModalOpen.value = true
 }
 
-function openEditRetentionModal(p: RetentionPolicyItem) {
+function openEditRetentionModal(p: any) {
+  const activeVer = p.active_version || p.activeVersion
   retentionForm.value = {
     id: p.id,
     code: p.code,
@@ -754,10 +755,10 @@ function openEditRetentionModal(p: RetentionPolicyItem) {
     description: p.description || '',
     document_category_id: p.document_category_id ?? null,
     active: Boolean(p.active),
-    trigger_code: p.activeVersion?.trigger_code || 'date_archived',
-    duration_months: p.activeVersion?.duration_months || 60,
-    disposition_action: p.activeVersion?.disposition_action || 'retain',
-    effective_from: p.activeVersion?.effective_from || new Date().toISOString().substring(0, 10),
+    trigger_code: activeVer?.trigger_code || 'date_archived',
+    duration_months: activeVer?.duration_months || 60,
+    disposition_action: activeVer?.disposition_action || 'retain',
+    effective_from: activeVer?.effective_from || new Date().toISOString().substring(0, 10),
   }
   isRetentionModalOpen.value = true
 }
@@ -1132,11 +1133,11 @@ async function deleteRetentionPolicy(id: number) {
                     <span v-if="stage.sla_hours" class="text-xs text-ink-secondary flex items-center gap-1">
                       <Clock class="w-3.5 h-3.5 text-ink-muted" /> {{ stage.sla_hours }}h SLA
                     </span>
-                    <span v-if="stage.assignedRole" class="text-xs text-primary flex items-center gap-1">
-                      <Shield class="w-3.5 h-3.5" /> {{ stage.assignedRole.name }}
+                    <span v-if="stage.assigned_role || stage.assignedRole" class="text-xs text-primary flex items-center gap-1">
+                      <Shield class="w-3.5 h-3.5" /> {{ (stage.assigned_role || stage.assignedRole)?.name }}
                     </span>
-                    <span v-if="stage.assignedUnit" class="text-xs text-ink-secondary flex items-center gap-1">
-                      <Building2 class="w-3.5 h-3.5 text-ink-muted" /> {{ stage.assignedUnit.name }}
+                    <span v-if="stage.assigned_unit || stage.assignedUnit" class="text-xs text-ink-secondary flex items-center gap-1">
+                      <Building2 class="w-3.5 h-3.5 text-ink-muted" /> {{ (stage.assigned_unit || stage.assignedUnit)?.name }}
                     </span>
 
                     <div v-if="!selectedVersion?.published_at" class="flex items-center gap-1">
@@ -1158,18 +1159,18 @@ async function deleteRetentionPolicy(id: number) {
 
                 <!-- Outgoing Transitions from this state -->
                 <div class="pl-4 border-l-2 border-hairline-strong space-y-1.5">
-                  <div v-if="!stage.outgoingTransitions?.length" class="text-xs text-ink-muted italic">
+                  <div v-if="!(stage.outgoing_transitions || stage.outgoingTransitions)?.length" class="text-xs text-ink-muted italic">
                     {{ stage.is_terminal ? 'Final terminal approval state (No outgoing transitions needed).' : 'No outgoing transitions configured.' }}
                   </div>
                   <div
-                    v-for="t in stage.outgoingTransitions || []"
+                    v-for="t in (stage.outgoing_transitions || stage.outgoingTransitions || [])"
                     :key="t.id"
                     class="flex items-center justify-between text-xs py-1 px-2.5 bg-surface border border-hairline rounded"
                   >
                     <div class="flex items-center gap-2">
                       <span class="font-medium text-ink">{{ t.action_code }}</span>
                       <ArrowRight class="w-3.5 h-3.5 text-ink-muted" />
-                      <span class="font-semibold text-primary">{{ t.toState?.name || 'Stage ' + t.to_state_id }}</span>
+                      <span class="font-semibold text-primary">{{ (t.to_state || t.toState)?.name || 'Stage ' + t.to_state_id }}</span>
                       <span class="text-ink-muted">({{ t.approval_policy }} policy)</span>
                       <span v-if="t.prohibit_self_approval" class="px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs">
                         Anti-Self-Approval
@@ -1364,11 +1365,11 @@ async function deleteRetentionPolicy(id: number) {
                 <div class="font-semibold text-ink">{{ p.name }}</div>
                 <div class="text-xs font-mono text-ink-muted">{{ p.code }}</div>
               </td>
-              <td class="p-3">{{ p.fromUnit?.name || 'Any Origin Unit' }}</td>
-              <td class="p-3 font-medium text-primary">{{ p.toUnit?.name }}</td>
+              <td class="p-3">{{ (p.from_unit || p.fromUnit)?.name || 'Any Origin Unit' }}</td>
+              <td class="p-3 font-medium text-primary">{{ (p.to_unit || p.toUnit)?.name }}</td>
               <td class="p-3">{{ p.sla_hours }} hours</td>
-              <td class="p-3">{{ p.defaultAssigneeRole?.name || 'Unit Custodian' }}</td>
-              <td class="p-3 text-ink-secondary">{{ p.escalationUnit?.name || 'None' }}</td>
+              <td class="p-3">{{ (p.default_assignee_role || p.defaultAssigneeRole)?.name || 'Unit Custodian' }}</td>
+              <td class="p-3 text-ink-secondary">{{ (p.escalation_unit || p.escalationUnit)?.name || 'None' }}</td>
               <td class="p-3 text-right space-x-1">
                 <button @click="openEditRoutingModal(p)" class="p-1 text-ink-muted hover:text-ink rounded">
                   <Edit2 class="w-3.5 h-3.5" />
@@ -1440,35 +1441,35 @@ async function deleteRetentionPolicy(id: number) {
           <div class="p-3 bg-surface-subtle rounded border border-hairline text-xs space-y-1.5">
             <div class="flex justify-between text-ink-secondary">
               <span>Category Link:</span>
-              <span class="text-ink font-medium">{{ policy.documentCategory?.name || 'All Categories' }}</span>
+              <span class="text-ink font-medium">{{ (policy.document_category || policy.documentCategory)?.name || 'All Categories' }}</span>
             </div>
             <div class="flex justify-between text-ink-secondary">
               <span>Retention Period:</span>
-              <span class="text-ink font-bold">{{ policy.activeVersion?.duration_months || 0 }} months ({{ ((policy.activeVersion?.duration_months || 0) / 12).toFixed(1) }} years)</span>
+              <span class="text-ink font-bold">{{ (policy.active_version || policy.activeVersion)?.duration_months || 0 }} months ({{ (((policy.active_version || policy.activeVersion)?.duration_months || 0) / 12).toFixed(1) }} years)</span>
             </div>
             <div class="flex justify-between text-ink-secondary">
               <span>Trigger Code:</span>
-              <span class="text-ink font-mono">{{ policy.activeVersion?.trigger_code || 'date_archived' }}</span>
+              <span class="text-ink font-mono">{{ (policy.active_version || policy.activeVersion)?.trigger_code || 'date_archived' }}</span>
             </div>
             <div class="flex justify-between text-ink-secondary">
               <span>Disposition Action:</span>
               <span
                 :class="[
                   'px-1.5 py-0.5 rounded font-semibold text-xs',
-                  policy.activeVersion?.disposition_action === 'retain'
+                  (policy.active_version || policy.activeVersion)?.disposition_action === 'retain'
                     ? 'bg-primary/10 text-primary'
-                    : policy.activeVersion?.disposition_action === 'review'
+                    : (policy.active_version || policy.activeVersion)?.disposition_action === 'review'
                     ? 'bg-warning/10 text-warning'
                     : 'bg-danger/10 text-danger'
                 ]"
               >
-                {{ policy.activeVersion?.disposition_action || 'retain' }}
+                {{ (policy.active_version || policy.activeVersion)?.disposition_action || 'retain' }}
               </span>
             </div>
           </div>
 
           <div class="flex items-center justify-between text-xs pt-2 border-t border-hairline">
-            <span class="text-ink-muted">Version {{ policy.activeVersion?.version_number || 1 }}</span>
+            <span class="text-ink-muted">Version {{ (policy.active_version || policy.activeVersion)?.version_number || 1 }}</span>
             <button
               @click="openNewRetentionVersionModal(policy.id)"
               class="text-xs text-primary font-medium hover:underline flex items-center gap-1"

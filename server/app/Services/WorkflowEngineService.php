@@ -130,19 +130,34 @@ class WorkflowEngineService
     {
         $now = now()->format('Y-m-d H:i:s.u');
 
-        foreach ($participants as $p) {
-            $userId = (int) $p['user_id'];
-            $role = $p['role'] ?? 'reviewer';
+        DB::transaction(function () use ($task, $participants, $now) {
+            WorkflowTask::lockForUpdate()->findOrFail($task->id);
 
-            WorkflowTaskParticipant::updateOrCreate(
-                ['task_id' => $task->id, 'user_id' => $userId],
-                [
-                    'participation_role' => in_array($role, ['lead_reviewer', 'reviewer', 'contributor', 'observer'], true) ? $role : 'reviewer',
-                    'status' => 'pending',
-                    'assigned_at' => $now,
-                ]
-            );
-        }
+            foreach ($participants as $p) {
+                $userId = (int) $p['user_id'];
+                $role = $p['role'] ?? 'reviewer';
+                $validRole = in_array($role, ['lead_reviewer', 'reviewer', 'contributor', 'observer'], true) ? $role : 'reviewer';
+
+                $existing = WorkflowTaskParticipant::where('task_id', $task->id)
+                    ->where('user_id', $userId)
+                    ->first();
+
+                if ($existing) {
+                    if ($existing->status === 'completed') {
+                        continue; // Preserve completed vote; never reset to pending
+                    }
+                    $existing->update(['participation_role' => $validRole]);
+                } else {
+                    WorkflowTaskParticipant::create([
+                        'task_id' => $task->id,
+                        'user_id' => $userId,
+                        'participation_role' => $validRole,
+                        'status' => 'pending',
+                        'assigned_at' => $now,
+                    ]);
+                }
+            }
+        });
     }
 
     /**
@@ -304,6 +319,10 @@ class WorkflowEngineService
                 throw new HttpException(422, "Invalid workflow transition: action '{$decision}' is not permitted from current state.");
             }
 
+            if ($transition && $transition->requires_reason && empty(trim((string) $reason))) {
+                throw new HttpException(422, "A reason or comment is required for workflow action '{$decision}'.");
+            }
+
             // Anti-Self-Approval Enforcement (INV-04)
             // Default-deny: approve decisions block self-approval unless explicitly configured otherwise
             $doc = $task->instance->documentVersion?->document;
@@ -396,6 +415,7 @@ class WorkflowEngineService
             $isAssigned = $task->assigned_user_id === $actor->id || $task->delegated_to_user_id === $actor->id;
             $directParticipant = WorkflowTaskParticipant::where('task_id', $task->id)
                 ->where('user_id', $actor->id)
+                ->whereIn('participation_role', ['lead_reviewer', 'reviewer'])
                 ->first();
 
             // Resolve represented participant seat if actor is acting as an authorized delegate

@@ -56,9 +56,7 @@ class HealthController extends Controller
             ], 401);
         }
 
-        $hasAdminCapability = $actor->hasPermission('system.configure')
-            || $actor->roles()->whereIn('code', ['super_admin', 'admin'])->exists()
-            || in_array($actor->email, ['admin@wu.edu.et', 'superadmin@wu.edu.et'], true);
+        $hasAdminCapability = $actor->hasPermission('system.configure');
 
         if (! $hasAdminCapability) {
             return response()->json([

@@ -50,13 +50,25 @@ class DocumentResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             'versions_count' => $this->whenCounted('versions'),
-            'tags' => $this->whenLoaded('tags', fn () => $this->tags->pluck('name')),
+            'tags' => $this->whenLoaded('tags', fn () => $this->tags->pluck('display_name')),
+            'current_version' => $this->whenLoaded('currentVersion', fn () => [
+                'id' => $this->currentVersion->id,
+                'document_id' => $this->currentVersion->document_id,
+                'version_number' => $this->currentVersion->version_number,
+                'ingestion_method' => $this->currentVersion->ingestion_method,
+                'template_version_id' => $this->currentVersion->template_version_id,
+                'template_data' => $this->currentVersion->template_data,
+                'created_at' => $this->currentVersion->created_at?->toISOString(),
+            ]),
             'versions' => $this->whenLoaded('versions', function () {
                 return $this->versions->map(function ($ver) {
                     return [
                         'id' => $ver->id,
                         'document_id' => $ver->document_id,
                         'version_number' => $ver->version_number,
+                        'ingestion_method' => $ver->ingestion_method,
+                        'template_version_id' => $ver->template_version_id,
+                        'template_data' => $ver->template_data,
                         'created_by' => $ver->created_by,
                         'creator' => $ver->createdBy ? [
                             'id' => $ver->createdBy->id,
@@ -222,7 +234,9 @@ class DocumentResource extends JsonResource
                             'name' => $m->sentBy->name,
                         ] : null,
                         'dispatch_method' => $m->dispatch_method,
-                        'instructions' => $m->instructions,
+                        'instruction' => $m->instruction,
+                        'instructions' => $m->instruction,
+                        'due_at' => $m->due_at?->toISOString(),
                         'receipt' => $m->receipt ? [
                             'id' => $m->receipt->id,
                             'acknowledged_by' => $m->receipt->acknowledged_by,
@@ -255,7 +269,8 @@ class DocumentResource extends JsonResource
                         ] : null,
                         'assigned_at' => $a->assigned_at?->toISOString(),
                         'due_at' => $a->due_at?->toISOString(),
-                        'instructions' => $a->instructions,
+                        'instruction' => $a->instruction,
+                        'instructions' => $a->instruction,
                     ];
                 });
             }),

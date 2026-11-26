@@ -57,11 +57,22 @@ class DashboardController extends Controller
             });
         }
 
-        $activeUsers = User::where('status', 'active')->count();
-        $totalUnits = OrganizationUnit::where('active', 1)->count();
+        $activeUsers = $isSuperAdmin
+            ? User::where('status', 'active')->count()
+            : User::where('status', 'active')
+                ->whereHas('memberships', fn ($mq) => $mq->whereIn('unit_id', $permittedDocUnits ?: [0]))
+                ->count();
+        $totalUnits = $isSuperAdmin
+            ? OrganizationUnit::where('active', 1)->count()
+            : count($permittedDocUnits ?? []);
         $totalMovements = $movementsQuery->count();
         $pendingAssignments = $pendingAssignmentsQuery->count();
-        $archivedRecords = ArchiveEntry::count();
+        $archiveCounts = ($isSuperAdmin
+            ? ArchiveEntry::query()
+            : ArchiveEntry::whereHas('document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'))
+        )->selectRaw('COUNT(*) as total, SUM(CASE WHEN next_review_at IS NOT NULL AND next_review_at <= ? THEN 1 ELSE 0 END) as awaiting_review', [now()])->first();
+        $archivedRecords = (int) ($archiveCounts->total ?? 0);
+        $recordsAwaitingRetentionReviewCount = (int) ($archiveCounts->awaiting_review ?? 0);
 
         // Operational workflow tasks query (scoped to user assignments and authorized units)
         $pendingWorkflowTasksQuery = WorkflowTask::with([
@@ -75,17 +86,27 @@ class DashboardController extends Controller
                 $q->where('assigned_user_id', $actor ? $actor->id : 0)
                   ->orWhere('delegated_to_user_id', $actor ? $actor->id : 0)
                   ->orWhereIn('assigned_unit_id', $permittedDocUnits);
+            })->where(function ($q) use ($actor) {
+                $q->whereDoesntHave('instance.documentVersion.document')
+                  ->orWhereHas('instance.documentVersion.document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'));
             });
         }
-        $pendingWorkflowTasksCount = (clone $pendingWorkflowTasksQuery)->count();
-        $overdueTasksCount = (clone $pendingWorkflowTasksQuery)->where('due_at', '<', now())->count();
         $pendingTasksList = (clone $pendingWorkflowTasksQuery)->orderBy('due_at', 'asc')->limit(5)->get();
+        if ($pendingTasksList->count() < 5) {
+            $pendingWorkflowTasksCount = $pendingTasksList->count();
+            $overdueTasksCount = $pendingTasksList->filter(fn ($t) => $t->due_at && $t->due_at->lt(now()))->count();
+        } else {
+            $taskCounts = (clone $pendingWorkflowTasksQuery)
+                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN due_at < ? THEN 1 ELSE 0 END) as overdue', [now()])
+                ->first();
+            $pendingWorkflowTasksCount = (int) ($taskCounts->total ?? 0);
+            $overdueTasksCount = (int) ($taskCounts->overdue ?? 0);
+        }
 
         // Outgoing letters awaiting authorized physical or electronic dispatch
         $outgoingAwaitingDispatchQuery = (clone $corrBase)
             ->whereHas('type', fn ($tq) => $tq->where('code', 'outgoing'))
             ->whereDoesntHave('dispatches');
-        $outgoingAwaitingDispatchCount = (clone $outgoingAwaitingDispatchQuery)->count();
         $outgoingAwaitingDispatch = (clone $outgoingAwaitingDispatchQuery)
             ->with([
                 'document:id,title,reference_number,owner_unit_id',
@@ -95,6 +116,9 @@ class DashboardController extends Controller
             ->orderByDesc('registered_at')
             ->limit(5)
             ->get();
+        $outgoingAwaitingDispatchCount = $outgoingAwaitingDispatch->count() < 5
+            ? $outgoingAwaitingDispatch->count()
+            : (clone $outgoingAwaitingDispatchQuery)->count();
 
         // Documents requiring immediate user action (assigned workflow task or directive)
         $docsRequiringActionQuery = (clone $docBase)
@@ -102,7 +126,6 @@ class DashboardController extends Controller
                 $q->whereHas('assignments', fn ($aq) => $aq->where('assigned_user_id', $actor ? $actor->id : 0))
                   ->orWhereHas('versions.workflowInstances.tasks', fn ($tq) => $tq->where('assigned_user_id', $actor ? $actor->id : 0)->whereNull('closed_at'));
             });
-        $docsRequiringActionCount = (clone $docsRequiringActionQuery)->count();
         $docsRequiringAction = (clone $docsRequiringActionQuery)
             ->with([
                 'category:id,code,name',
@@ -111,6 +134,9 @@ class DashboardController extends Controller
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();
+        $docsRequiringActionCount = $docsRequiringAction->count() < 5
+            ? $docsRequiringAction->count()
+            : (clone $docsRequiringActionQuery)->count();
 
         // Recently completed decisions by user or within user scope
         $recentDecisionsQuery = WorkflowTaskDecision::with([
@@ -121,7 +147,7 @@ class DashboardController extends Controller
         if ($permittedDocUnits !== null) {
             $recentDecisionsQuery->where(function ($q) use ($permittedDocUnits, $actor) {
                 $q->where('decided_by', $actor ? $actor->id : 0)
-                  ->orWhereHas('task.instance.documentVersion.document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedDocUnits));
+                  ->orWhereHas('task.instance.documentVersion.document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'));
             });
         }
         $recentDecisions = (clone $recentDecisionsQuery)->limit(5)->get();
@@ -146,35 +172,33 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Operational queue metrics
-        $myPendingTasksCount = WorkflowTask::whereNull('closed_at')
-            ->where(function ($q) use ($actor) {
-                $q->where('assigned_user_id', $actor ? $actor->id : 0)
-                  ->orWhere('delegated_to_user_id', $actor ? $actor->id : 0);
-            })
-            ->count();
+        // Operational queue metrics (single combined query)
+        $actorId = $actor ? $actor->id : 0;
+        $unitPlaceholders = ($permittedDocUnits !== null && ! empty($permittedDocUnits))
+            ? implode(',', array_map('intval', $permittedDocUnits))
+            : null;
+        $officeExpr = $isSuperAdmin
+            ? 'SUM(CASE WHEN assigned_user_id IS NULL THEN 1 ELSE 0 END)'
+            : ($unitPlaceholders !== null
+                ? "SUM(CASE WHEN assigned_user_id IS NULL AND assigned_unit_id IN ({$unitPlaceholders}) THEN 1 ELSE 0 END)"
+                : '0');
+        $queueCounts = WorkflowTask::whereNull('closed_at')
+            ->selectRaw("SUM(CASE WHEN assigned_user_id = ? OR delegated_to_user_id = ? THEN 1 ELSE 0 END) as my_pending, {$officeExpr} as office_pending", [$actorId, $actorId])
+            ->first();
+        $myPendingTasksCount = (int) ($queueCounts->my_pending ?? 0);
+        $myOfficePendingTasksCount = (int) ($queueCounts->office_pending ?? 0);
 
-        $myOfficePendingTasksCount = 0;
-        if ($permittedDocUnits !== null && ! empty($permittedDocUnits)) {
-            $myOfficePendingTasksCount = WorkflowTask::whereNull('closed_at')
-                ->whereNull('assigned_user_id')
-                ->whereIn('assigned_unit_id', $permittedDocUnits)
-                ->count();
-        } elseif ($isSuperAdmin) {
-            $myOfficePendingTasksCount = WorkflowTask::whereNull('closed_at')
-                ->whereNull('assigned_user_id')
-                ->count();
-        }
+        $pendingDispositionRequestsCount = $archivedRecords === 0
+            ? 0
+            : ($isSuperAdmin
+            ? \App\Models\DispositionRequest::whereDoesntHave('decision')->count()
+            : \App\Models\DispositionRequest::whereDoesntHave('decision')
+                ->whereHas('archiveEntry.document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'))->count());
 
-        $recordsAwaitingRetentionReviewCount = ArchiveEntry::whereNotNull('next_review_at')
-            ->where('next_review_at', '<=', now())
-            ->count();
-
-        $pendingDispositionRequestsCount = \App\Models\DispositionRequest::whereDoesntHave('decision')
-            ->count();
-
-        $unreceivedDispatchesCount = \App\Models\CorrespondenceDispatch::whereNull('evidence_file_id')
-            ->count();
+        $unreceivedDispatchesCount = $isSuperAdmin
+            ? \App\Models\CorrespondenceDispatch::whereNull('evidence_file_id')->count()
+            : \App\Models\CorrespondenceDispatch::whereNull('evidence_file_id')
+                ->whereHas('documentVersion.document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'))->count();
 
         $incomingUnreceivedCount = (clone $corrBase)
             ->whereHas('type', fn ($tq) => $tq->where('code', 'incoming'))

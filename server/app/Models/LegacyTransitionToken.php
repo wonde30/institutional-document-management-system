@@ -44,13 +44,26 @@ class LegacyTransitionToken extends Model implements HasAbilities
         }
 
         $user = User::find($session->user_id);
-        if (! $user) {
+        if (! $user || $user->status !== 'active') {
             return null;
         }
 
-        // Validate authorization version if stored in session payload
+        // Validate authorization version if stored in session payload (JSON primary, safe unserialize fallback)
         if (! empty($session->payload)) {
-            $payloadData = @unserialize(base64_decode($session->payload));
+            $decoded = base64_decode($session->payload, true);
+            $payloadData = null;
+            if ($decoded !== false) {
+                $json = json_decode($decoded, true);
+                if (is_array($json)) {
+                    $payloadData = $json;
+                } else {
+                    $unserialized = @unserialize($decoded, ['allowed_classes' => false]);
+                    if (is_array($unserialized)) {
+                        $payloadData = $unserialized;
+                    }
+                }
+            }
+
             if (is_array($payloadData) && isset($payloadData['authz_version'])) {
                 if ((int) $payloadData['authz_version'] !== (int) $user->authz_version) {
                     return null;
@@ -61,7 +74,7 @@ class LegacyTransitionToken extends Model implements HasAbilities
         $instance = new self();
         $instance->tokenable = $user;
         $instance->created_at = Carbon::now();
-        $instance->expires_at = Carbon::now()->addMinutes(120);
+        $instance->expires_at = Carbon::now()->addMinutes((int) config('session.lifetime', 120));
 
         return $instance;
     }

@@ -26,6 +26,17 @@ class TemplateController extends Controller
         $query = DocumentTemplate::with(['category', 'ownerUnit', 'versions', 'publishedVersion'])
             ->where('is_active', 1);
 
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $permittedUnits = $actor->getPermittedUnitIds('documents.view');
+            if ($permittedUnits !== null) {
+                $query->where(function ($q) use ($permittedUnits) {
+                    $q->where('visibility_scope', 'global')
+                      ->orWhereNull('owner_unit_id')
+                      ->orWhereIn('owner_unit_id', $permittedUnits ?: [0]);
+                });
+            }
+        }
+
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->query('category_id'));
         }
@@ -77,7 +88,17 @@ class TemplateController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $template = $this->templateService->createTemplate($validated, $request->user());
+        $actor = $request->user();
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            if (empty($validated['owner_unit_id']) && ! $actor->hasPermission('documents.create', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Creating global document templates requires global documents.create or system.configure authority.',
+                ], 403);
+            }
+        }
+
+        $template = $this->templateService->createTemplate($validated, $actor);
 
         return response()->json([
             'success' => true,
@@ -115,10 +136,16 @@ class TemplateController extends Controller
     public function storeVersion(Request $request, int $id): JsonResponse
     {
         $template = DocumentTemplate::findOrFail($id);
+        $user = $request->user();
 
-        if ($template->owner_unit_id !== null) {
-            $user = $request->user();
-            if ($user && ! $user->hasPermission('system.configure') && ! $user->hasPermission('documents.create', (int) $template->owner_unit_id)) {
+        if ($user && ! $user->hasPermission('system.configure')) {
+            if ($template->owner_unit_id === null && ! $user->hasPermission('documents.create', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Creating versions on global templates requires global documents.create or system.configure authority.',
+                ], 403);
+            }
+            if ($template->owner_unit_id !== null && ! $user->hasPermission('documents.create', (int) $template->owner_unit_id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Forbidden: You do not have permission to create template versions for this organization unit.',
@@ -152,6 +179,23 @@ class TemplateController extends Controller
     public function publishVersion(Request $request, int $id, int $versionId): JsonResponse
     {
         $template = DocumentTemplate::findOrFail($id);
+        $user = $request->user();
+
+        if ($user && ! $user->hasPermission('system.configure')) {
+            if ($template->owner_unit_id === null && ! $user->hasPermission('documents.create', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Publishing global template versions requires global documents.create or system.configure authority.',
+                ], 403);
+            }
+            if ($template->owner_unit_id !== null && ! $user->hasPermission('documents.create', (int) $template->owner_unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have permission to publish versions for this organization unit template.',
+                ], 403);
+            }
+        }
+
         $version = TemplateVersion::where('template_id', $template->id)->findOrFail($versionId);
 
         $published = $this->templateService->publishVersion($version, $request->user());
@@ -169,6 +213,16 @@ class TemplateController extends Controller
     public function render(Request $request, int $id): JsonResponse
     {
         $template = DocumentTemplate::findOrFail($id);
+
+        if ($template->visibility_scope === 'unit_restricted' && $template->owner_unit_id !== null) {
+            $actor = $request->user();
+            if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('documents.create', (int) $template->owner_unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: This template is restricted to its owner organization unit.',
+                ], 403);
+            }
+        }
 
         $versionId = $request->input('template_version_id');
         $version = $versionId
@@ -192,9 +246,18 @@ class TemplateController extends Controller
             ], 403);
         }
 
+        // Prevent signature/stamp forgery by stripping reserved verification context keys from caller-supplied template_data
+        $safeTemplateData = $validated['template_data'];
+        unset(
+            $safeTemplateData['document_version_id'],
+            $safeTemplateData['document_version'],
+            $safeTemplateData['digital_signature'],
+            $safeTemplateData['reference_number']
+        );
+
         $doc = $this->templateService->generateDocument(
             $version,
-            $validated['template_data'],
+            $safeTemplateData,
             [
                 'title' => $validated['title'],
                 'summary' => $validated['summary'] ?? null,

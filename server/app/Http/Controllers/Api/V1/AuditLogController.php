@@ -14,7 +14,23 @@ class AuditLogController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $actor = $request->user();
         $query = AuditEvent::with('actor');
+
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $permittedUnits = $actor->getPermittedUnitIds('audit.view');
+            if ($permittedUnits !== null) {
+                $query->where(function ($q) use ($actor, $permittedUnits) {
+                    $q->where('actor_id', $actor->id);
+                    if (! empty($permittedUnits)) {
+                        $q->orWhere(function ($dq) use ($permittedUnits) {
+                            $dq->where('target_type', 'document')
+                               ->whereIn('target_id', \App\Models\Document::whereIn('owner_unit_id', $permittedUnits)->selectRaw('CAST(id AS CHAR)'));
+                        });
+                    }
+                });
+            }
+        }
 
         if ($request->filled('actor_id')) {
             $query->where('actor_id', $request->query('actor_id'));
@@ -32,7 +48,8 @@ class AuditLogController extends Controller
             $query->where('occurred_at', '>=', $request->query('from_date'));
         }
 
-        $events = $query->orderByDesc('occurred_at')->paginate($request->query('per_page', 50));
+        $perPage = min(max((int) $request->query('per_page', 50), 1), 100);
+        $events = $query->orderByDesc('occurred_at')->paginate($perPage);
 
         return response()->json([
             'success' => true,

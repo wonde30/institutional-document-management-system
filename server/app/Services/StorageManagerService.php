@@ -43,19 +43,26 @@ class StorageManagerService
         $targetDir = rtrim($directory, '/') . '/' . $currentYear;
 
         if ($file instanceof UploadedFile) {
-            $sha256 = hash_file('sha256', $file->getRealPath());
-            $filename = $customFilename ?: $file->getClientOriginalName();
-            $detectedMime = $mimeType ?: ($file->getClientMimeType() ?: 'application/octet-stream');
-            $byteSize = $file->getSize();
-            $storageKey = $file->store($targetDir, $diskName);
+            $fileObject = app(FileSecurityService::class)->storeUploadedFile($file, $directory);
+
+            return [
+                'storage_disk' => $fileObject->storage_disk,
+                'storage_key' => $fileObject->storage_key,
+                'original_filename' => $fileObject->original_filename,
+                'detected_mime' => $fileObject->detected_mime,
+                'byte_size' => $fileObject->byte_size,
+                'sha256' => $fileObject->sha256,
+            ];
         } else {
             // Raw string bytes
             $sha256 = hash('sha256', (string) $file);
-            $filename = $customFilename ?: ('doc_' . Str::random(12) . '.pdf');
+            $filename = static::sanitize($customFilename ?: ('doc_' . Str::random(12) . '.pdf'));
             $detectedMime = $mimeType ?: 'application/pdf';
             $byteSize = strlen((string) $file);
-            $storageKey = $targetDir . '/' . Str::uuid() . '_' . $this->sanitizeFilename($filename);
-            $filesystem->put($storageKey, (string) $file);
+            $storageKey = $targetDir . '/' . Str::uuid() . '_' . $filename;
+            if (! $filesystem->put($storageKey, (string) $file)) {
+                throw new RuntimeException("Failed to store file on disk '{$diskName}'.");
+            }
         }
 
         if (! $storageKey) {
@@ -205,7 +212,12 @@ class StorageManagerService
      */
     public static function sanitize(string $name): string
     {
-        return preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
+        $clean = basename(str_replace(['\\', '/'], '/', $name));
+        $clean = preg_replace('/[^A-Za-z0-9._-]/', '_', $clean) ?? '';
+        $clean = preg_replace('/\.{2,}/', '.', $clean) ?? '';
+        $clean = trim($clean, '._');
+
+        return $clean !== '' ? $clean : 'document.dat';
     }
 }
 

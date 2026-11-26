@@ -23,8 +23,8 @@ class RetentionPolicyController extends Controller
     {
         $policies = RetentionPolicy::with([
             'documentCategory:id,code,name',
-            'activeVersion.approvedBy:id,username,email',
-            'versions.approvedBy:id,username,email',
+            'activeVersion.approvedBy:id,name,email',
+            'versions.approvedBy:id,name,email',
         ])
             ->orderBy('name')
             ->get();
@@ -113,7 +113,7 @@ class RetentionPolicyController extends Controller
     {
         $policy = RetentionPolicy::with([
             'documentCategory',
-            'versions.approvedBy:id,username,email',
+            'versions.approvedBy:id,name,email',
         ])->findOrFail($id);
 
         return response()->json([

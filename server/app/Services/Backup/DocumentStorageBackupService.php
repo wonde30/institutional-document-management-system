@@ -171,6 +171,15 @@ class DocumentStorageBackupService
             throw new RuntimeException("Archive corruption: Invalid or unparseable manifest.json");
         }
 
+        // Guard against Zip Slip / directory traversal entries before extraction
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = str_replace('\\', '/', (string) $zip->getNameIndex($i));
+            if ($entryName === '' || str_starts_with($entryName, '/') || str_contains($entryName, '..') || preg_match('/^[A-Za-z]:/', $entryName)) {
+                $zip->close();
+                throw new RuntimeException("Security violation: Unsafe archive entry path detected ({$entryName}).");
+            }
+        }
+
         // Extract files
         $extractResult = $zip->extractTo($targetDirectory);
         $zip->close();

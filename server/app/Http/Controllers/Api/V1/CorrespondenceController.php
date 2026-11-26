@@ -50,7 +50,7 @@ class CorrespondenceController extends Controller
             'assignments.assignedUnit',
         ]);
 
-        // Departmental Scope Isolation for Correspondence:
+        // Departmental Scope & Confidentiality Isolation for Correspondence:
         $permittedUnitIds = $actor ? $actor->getPermittedUnitIds('correspondence.view') : [];
         if ($permittedUnitIds !== null) {
             $query->where(function ($q) use ($permittedUnitIds) {
@@ -59,6 +59,21 @@ class CorrespondenceController extends Controller
                   ->orWhereHas('movements', fn ($mq) => $mq->whereIn('to_unit_id', $permittedUnitIds))
                   ->orWhereHas('assignments', fn ($aq) => $aq->whereIn('assigned_unit_id', $permittedUnitIds));
             });
+        }
+
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $highConfIds = Document::getHighConfidentialityIds();
+            if (! empty($highConfIds)) {
+                $sensitiveUnits = $actor->getPermittedUnitIds('staff.view_sensitive');
+                if ($sensitiveUnits !== null) {
+                    $query->whereHas('document', function ($dq) use ($highConfIds, $sensitiveUnits, $actor) {
+                        $dq->whereNotIn('confidentiality_id', $highConfIds)
+                           ->orWhereIn('owner_unit_id', $sensitiveUnits ?: [0])
+                           ->orWhere('created_by', $actor->id)
+                           ->orWhere('custodian_id', $actor->id);
+                    });
+                }
+            }
         }
 
         if ($request->filled('type_id')) {
@@ -81,7 +96,11 @@ class CorrespondenceController extends Controller
             });
         }
 
-        $records = $query->orderByDesc('registered_at')->paginate($request->query('per_page', 25));
+        $allowedSortBy = ['registered_at', 'correspondence_date', 'id'];
+        $sortBy = in_array($request->query('sort_by'), $allowedSortBy, true) ? $request->query('sort_by') : 'registered_at';
+        $sortOrder = strtolower((string) $request->query('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $perPage = min(max((int) $request->query('per_page', 25), 1), 100);
+        $records = $query->orderBy($sortBy, $sortOrder)->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -208,7 +227,7 @@ class CorrespondenceController extends Controller
                 );
 
                 VersionFile::create([
-                    'version_id' => $ver->id,
+                    'document_version_id' => $ver->id,
                     'file_object_id' => $fileObject->id,
                     'purpose' => 'primary',
                     'display_order' => 1,
@@ -340,7 +359,7 @@ class CorrespondenceController extends Controller
     /**
      * Show single correspondence with full movement trail and assignments.
      */
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $correspondence = Correspondence::with([
             'document.category',
@@ -349,7 +368,9 @@ class CorrespondenceController extends Controller
             'priority',
             'firstReceivingUnit',
             'registrar',
-            'participants.party',
+            'participants.party.unit',
+            'participants.party.user',
+            'participants.party.externalParty',
             'movements.fromUnit',
             'movements.toUnit',
             'movements.sentBy',
@@ -357,6 +378,19 @@ class CorrespondenceController extends Controller
             'assignments.assignedUser',
             'assignments.assignedUnit',
         ])->findOrFail($id);
+
+        $actor = $request->user();
+        if ($actor && $correspondence->document) {
+            $doc = $correspondence->document;
+            $confCode = $doc->confidentiality?->code ?? 'internal';
+            $isHighConf = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
+            if ($isHighConf && ! $actor->hasPermission('system.configure') && ! $doc->hasConfidentialClearance($actor, (int) $doc->owner_unit_id) && $doc->created_by !== $actor->id && $doc->custodian_id !== $actor->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Security clearance required to view this classified correspondence.',
+                ], 403);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -369,7 +403,14 @@ class CorrespondenceController extends Controller
      */
     public function recordMovement(Request $request, int $id): JsonResponse
     {
-        $corr = Correspondence::findOrFail($id);
+        $corr = Correspondence::with('document')->findOrFail($id);
+
+        if ($corr->document && $corr->document->lifecycle !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot record movement for a retired or tombstoned correspondence document.',
+            ], 422);
+        }
 
         $validated = $request->validate([
             'from_unit_id' => 'required|exists:organization_units,id',
@@ -379,6 +420,13 @@ class CorrespondenceController extends Controller
         ]);
 
         $actor = $request->user();
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('correspondence.forward', (int) $validated['from_unit_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to forward correspondence from the specified originating unit.',
+            ], 403);
+        }
+
         $now = now()->format('Y-m-d H:i:s.u');
 
         $movement = DocumentMovement::create([
@@ -408,19 +456,15 @@ class CorrespondenceController extends Controller
         $movement = DocumentMovement::where('document_id', $corr->document_id)->findOrFail($movementId);
         $actor = $request->user();
 
-        // Check if movement is already acknowledged
-        $existingReceipt = MovementReceipt::where('movement_id', $movement->id)->first();
-        if ($existingReceipt) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Movement has already been acknowledged.',
-                'data' => $existingReceipt->load('acknowledgedBy'),
-            ], 422);
-        }
-
         $now = now()->format('Y-m-d H:i:s.u');
 
         $receipt = DB::transaction(function () use ($movement, $actor, $now, $corr) {
+            DocumentMovement::lockForUpdate()->findOrFail($movement->id);
+            $existingReceipt = MovementReceipt::where('movement_id', $movement->id)->first();
+            if ($existingReceipt) {
+                return null;
+            }
+
             $rcpt = MovementReceipt::create([
                 'movement_id' => $movement->id,
                 'acknowledged_by' => $actor->id,
@@ -443,6 +487,14 @@ class CorrespondenceController extends Controller
 
             return $rcpt;
         });
+
+        if (! $receipt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Movement has already been acknowledged.',
+                'data' => MovementReceipt::with('acknowledgedBy')->where('movement_id', $movement->id)->first(),
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,
@@ -630,10 +682,10 @@ class CorrespondenceController extends Controller
             ], 403);
         }
 
-        if ($corr->document->lifecycle === 'closed') {
+        if ($corr->document->lifecycle !== 'active') {
             return response()->json([
                 'success' => false,
-                'message' => 'Operation rejected: Cannot dispatch an already closed correspondence record.',
+                'message' => 'Operation rejected: Cannot dispatch a closed, retired, or tombstoned correspondence record.',
             ], 422);
         }
 
@@ -657,6 +709,17 @@ class CorrespondenceController extends Controller
             'recipient_party_id' => 'nullable|exists:communication_parties,id',
             'tracking_reference' => 'nullable|string|max:160',
         ]);
+
+        // Ensure the dispatched version actually belongs to this correspondence's document
+        $belongsToDocument = DocumentVersion::where('id', (int) $validated['document_version_id'])
+            ->where('document_id', $corr->document_id)
+            ->exists();
+        if (! $belongsToDocument) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: The specified document_version_id does not belong to this correspondence record.',
+            ], 422);
+        }
 
         $proc = OfficeProcedureVersion::where('unit_id', $ownerUnitId)
             ->where('correspondence_type_id', $corr->type_id)

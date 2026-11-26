@@ -189,11 +189,27 @@ class RouteScopeResolver
         if (str_contains($path, 'archive/disposition-requests')) {
             $disp = \App\Models\DispositionRequest::with('archiveEntry.document.confidentiality')->find($id);
 
-            if (! $disp) {
+            if (! $disp || ! $disp->archiveEntry?->document) {
                 return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
             }
 
             return RouteAuthorizationTarget::forDocument($disp->archiveEntry->document);
+        }
+
+        if (str_contains($path, 'archive/legal-holds')) {
+            return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        if (str_contains($path, 'accreditation/cycles')) {
+            $cycle = \App\Models\AccreditationCycle::find($id);
+            if ($cycle && $cycle->unit_id !== null) {
+                return RouteAuthorizationTarget::forUnit((int) $cycle->unit_id);
+            }
+            return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        if (str_contains($path, 'organization-units')) {
+            return RouteAuthorizationTarget::forUnit($id);
         }
 
         if (str_contains($path, 'archive/files')) {

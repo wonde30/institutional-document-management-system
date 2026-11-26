@@ -19,6 +19,7 @@ class PrimaryMembership extends Model
 
     protected $table = 'primary_memberships';
     public $timestamps = false;
+    public $incrementing = false;
     protected $primaryKey = 'user_id';
 
     protected $fillable = [

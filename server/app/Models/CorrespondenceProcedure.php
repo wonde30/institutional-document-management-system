@@ -12,6 +12,7 @@ class CorrespondenceProcedure extends Model
 
     protected $table = 'correspondence_procedures';
     public $timestamps = false;
+    public $incrementing = false;
     protected $primaryKey = 'correspondence_id';
 
     protected $fillable = [

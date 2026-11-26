@@ -199,7 +199,7 @@ const tableColumns: TableColumn[] = [
 async function loadData(page = 1) {
  loading.value = true
  try {
- const [userRes, unitRes, roleRes, permRes] = await Promise.all([
+ const [userSettled, unitSettled, roleSettled, permSettled] = await Promise.allSettled([
  usersApi.list({
  page,
  per_page: pagination.value.per_page,
@@ -213,6 +213,11 @@ async function loadData(page = 1) {
  permissionsApi.list(),
  ])
 
+ if (userSettled.status === 'rejected') {
+ throw userSettled.reason
+ }
+
+ const userRes = userSettled.value
  users.value = userRes.data.data
  const meta = (userRes.data as any).meta
  if (meta) {
@@ -225,9 +230,9 @@ async function loadData(page = 1) {
  to: meta.to,
  }
  }
- units.value = unitRes.data.data
- availableRoles.value = roleRes.data.data
- availablePermissions.value = permRes.data.data
+ units.value = unitSettled.status === 'fulfilled' ? unitSettled.value.data.data : []
+ availableRoles.value = roleSettled.status === 'fulfilled' ? roleSettled.value.data.data : []
+ availablePermissions.value = permSettled.status === 'fulfilled' ? permSettled.value.data.data : []
  } catch (err: any) {
  toast.error('Roster Error', err.response?.data?.message || 'Failed to load user accounts.')
  } finally {

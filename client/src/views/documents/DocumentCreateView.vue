@@ -38,6 +38,10 @@ const toast = useToast()
 // Mode: 'letter' (Official University Letter), 'template' (Institutional Template), or 'upload' (File/Scan Intake)
 const creationMode = ref<'letter' | 'template' | 'upload'>('letter')
 
+function setCreationMode(mode: 'letter' | 'template' | 'upload') {
+  creationMode.value = mode
+}
+
 // Shared Metadata
 const units = ref<OrganizationUnit[]>([])
 const isLoading = ref(false)
@@ -451,7 +455,7 @@ watchEffect(() => {
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
           :class="creationMode === 'letter' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
-          @click="creationMode = 'letter'"
+          @click="setCreationMode('letter')"
         >
           <FileSignature class="w-4 h-4" />
           <span>Official University Letter</span>
@@ -460,7 +464,7 @@ watchEffect(() => {
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
           :class="creationMode === 'template' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
-          @click="creationMode = 'template'"
+          @click="setCreationMode('template')"
         >
           <FileText class="w-4 h-4" />
           <span>From Institutional Template</span>
@@ -469,7 +473,7 @@ watchEffect(() => {
           type="button"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
           :class="creationMode === 'upload' ? 'bg-primary text-white' : 'text-ink-secondary hover:text-ink'"
-          @click="creationMode === 'upload'"
+          @click="setCreationMode('upload')"
         >
           <UploadCloud class="w-4 h-4" />
           <span>Physical / Digital Scan Intake</span>

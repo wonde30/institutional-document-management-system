@@ -178,15 +178,18 @@ class FileSecurityService
         }
 
         $allowedMimes = self::ALLOWED_MIME_TYPES[$extension];
+        $allowedSafeTextMimes = ['text/plain', 'text/csv', 'text/rtf', 'application/csv', 'text/x-csv', 'text/tab-separated-values'];
         if (!in_array($realMime, $allowedMimes, true)) {
             // Check for plain text files or special office container variations
-            $isTextMismatch = in_array($extension, ['txt', 'csv', 'rtf'], true) && str_starts_with($realMime, 'text/');
+            $isTextMismatch = in_array($extension, ['txt', 'csv', 'rtf'], true) && in_array($realMime, $allowedSafeTextMimes, true);
             $isXmlOfficeMismatch = in_array($extension, ['docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp'], true) && in_array($realMime, ['application/zip', 'application/octet-stream'], true);
 
             if (!$isTextMismatch && !$isXmlOfficeMismatch) {
                 // In automated testing environments, support Laravel UploadedFile::fake() instances
-                // that have legitimate client MIME types, while still strictly enforcing blocked extensions.
+                // that have legitimate client MIME types, while still strictly rejecting dangerous detected MIMEs.
+                $dangerousDetectedMimes = ['text/html', 'text/x-php', 'application/x-httpd-php', 'text/javascript', 'application/javascript', 'text/x-shellscript', 'application/x-executable', 'image/svg+xml'];
                 $isTestingFake = app()->environment('testing')
+                    && ! in_array($realMime, $dangerousDetectedMimes, true)
                     && ($file instanceof \Illuminate\Http\Testing\File || ($file->isValid() && in_array($realMime, ['text/plain', 'application/x-empty', 'application/octet-stream'], true)))
                     && in_array($file->getClientMimeType(), $allowedMimes, true);
 
@@ -227,8 +230,9 @@ class FileSecurityService
         }
 
         $allowedMimes = self::ALLOWED_MIME_TYPES[$extension];
+        $allowedSafeTextMimes = ['text/plain', 'text/csv', 'text/rtf', 'application/csv', 'text/x-csv', 'text/tab-separated-values'];
         if (!in_array($realMime, $allowedMimes, true)) {
-            $isTextMismatch = in_array($extension, ['txt', 'csv', 'rtf'], true) && str_starts_with($realMime, 'text/');
+            $isTextMismatch = in_array($extension, ['txt', 'csv', 'rtf'], true) && in_array($realMime, $allowedSafeTextMimes, true);
             $isXmlOfficeMismatch = in_array($extension, ['docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp'], true) && in_array($realMime, ['application/zip', 'application/octet-stream'], true);
 
             if (!$isTextMismatch && !$isXmlOfficeMismatch) {
@@ -430,12 +434,21 @@ class FileSecurityService
             abort(404, 'Physical file not found in storage.');
         }
 
-        $filename = $downloadName ?? $file->original_filename;
+        if (! empty($file->sha256)) {
+            $actualHash = hash_file('sha256', $fullPath);
+            if ($actualHash === false || ! hash_equals(strtolower($file->sha256), strtolower($actualHash))) {
+                abort(500, 'File integrity verification failed.');
+            }
+        }
+
+        $filename = $this->sanitizeFilename($downloadName ?? $file->original_filename);
 
         return response()->download($fullPath, $filename, [
             'Content-Type' => $file->detected_mime,
             'X-Checksum-Sha256' => $file->sha256,
             'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, no-cache',
+            'Content-Security-Policy' => 'sandbox',
         ]);
     }
 }

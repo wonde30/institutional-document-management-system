@@ -117,6 +117,8 @@ class AssignmentService
         $now = now()->format('Y-m-d H:i:s.u');
 
         return DB::transaction(function () use ($assignment, $userId, $roleCode, $actor, $now) {
+            DocumentAssignment::lockForUpdate()->findOrFail($assignment->id);
+
             $participant = AssignmentParticipant::updateOrCreate(
                 ['assignment_id' => $assignment->id, 'user_id' => $userId],
                 ['role_code' => $roleCode, 'status' => 'pending', 'assigned_at' => $now]
@@ -169,6 +171,7 @@ class AssignmentService
         ];
 
         DB::transaction(function () use ($assignment, $participant, $userId, $actor, $now, $previousState) {
+            DocumentAssignment::lockForUpdate()->findOrFail($assignment->id);
             $participant->delete();
 
             // The domain lifecycle event, following the convention of the
@@ -218,9 +221,19 @@ class AssignmentService
         $action = $data['action'];
 
         return DB::transaction(function () use ($assignment, $data, $actor, $now, $action) {
-            $seq = (DB::table('assignment_events')->where('assignment_id', $assignment->id)->max('sequence_number') ?? 0) + 1;
+            $locked = DocumentAssignment::lockForUpdate()->findOrFail($assignment->id);
+            $latestAction = DB::table('assignment_events')
+                ->where('assignment_id', $locked->id)
+                ->orderByDesc('sequence_number')
+                ->value('action');
+
+            if (in_array($latestAction, ['completed', 'cancelled'], true) && $action !== 'reassigned') {
+                abort(422, "Cannot record '{$action}' on an assignment that is already '{$latestAction}'.");
+            }
+
+            $seq = (DB::table('assignment_events')->where('assignment_id', $locked->id)->max('sequence_number') ?? 0) + 1;
             $event = AssignmentEvent::create([
-                'assignment_id' => $assignment->id,
+                'assignment_id' => $locked->id,
                 'sequence_number' => $seq,
                 'actor_id' => $actor->id,
                 'target_user_id' => $data['target_user_id'] ?? null,
@@ -228,6 +241,12 @@ class AssignmentService
                 'occurred_at' => $now,
                 'comment' => $data['comment'] ?? null,
             ]);
+
+            if ($action === 'reassigned' && ! empty($data['target_user_id'])) {
+                $locked->update(['assigned_user_id' => (int) $data['target_user_id']]);
+            } elseif ($action === 'claimed') {
+                $locked->update(['assigned_user_id' => $actor->id]);
+            }
 
             return $event;
         });
@@ -249,6 +268,7 @@ class AssignmentService
         $isFulfilling = (bool) ($data['is_fulfilling'] ?? 1);
 
         return DB::transaction(function () use ($assignment, $responseDoc, $relationshipRole, $isFulfilling, $actor, $now) {
+            DocumentAssignment::lockForUpdate()->findOrFail($assignment->id);
             // 1. Create or update assignment_responses entry
             $response = AssignmentResponse::updateOrCreate(
                 [

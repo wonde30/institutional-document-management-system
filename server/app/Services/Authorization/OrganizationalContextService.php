@@ -111,17 +111,19 @@ class OrganizationalContextService
      * A session unit that is no longer available (for example after the grant
      * was revoked) is discarded rather than honoured.
      */
-    public function resolveActiveUnitId(User $user, Request $request, ?array $availableUnitIds = null): ?int
+    public function resolveActiveUnitId(User $user, ?Request $request = null, ?array $availableUnitIds = null): ?int
     {
         $available = $availableUnitIds ?? $this->availableUnitIds($user);
 
         if (empty($available)) {
-            $this->forgetActiveUnit($request);
+            if ($request) {
+                $this->forgetActiveUnit($request);
+            }
 
             return null;
         }
 
-        $sessionUnitId = $this->sessionUnitId($request);
+        $sessionUnitId = $request ? $this->sessionUnitId($request) : null;
 
         if ($sessionUnitId !== null && in_array($sessionUnitId, $available, true)) {
             return $sessionUnitId;
@@ -129,19 +131,23 @@ class OrganizationalContextService
 
         // The recorded unit is no longer available: fall back rather than
         // honouring a unit the user may not act in.
-        if ($sessionUnitId !== null) {
+        if ($request && $sessionUnitId !== null) {
             $this->forgetActiveUnit($request);
         }
 
         $primaryUnitId = $user->getPrimaryUnitId();
         if ($primaryUnitId !== null && in_array($primaryUnitId, $available, true)) {
-            $this->rememberActiveUnit($request, $primaryUnitId);
+            if ($request) {
+                $this->rememberActiveUnit($request, $primaryUnitId);
+            }
 
             return $primaryUnitId;
         }
 
         if (count($available) === 1) {
-            $this->rememberActiveUnit($request, $available[0]);
+            if ($request) {
+                $this->rememberActiveUnit($request, $available[0]);
+            }
 
             return $available[0];
         }
@@ -193,7 +199,7 @@ class OrganizationalContextService
      *
      * @return array<string, mixed>
      */
-    public function buildContext(User $user, Request $request): array
+    public function buildContext(User $user, ?Request $request = null): array
     {
         // One load of the grants serves the available units and the capability
         // sets, so a context build never repeats the grant query.

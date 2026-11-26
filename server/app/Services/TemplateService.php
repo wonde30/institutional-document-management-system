@@ -337,7 +337,7 @@ class TemplateService
         $html = view('letters.official_institution_letter', $viewData)->render();
 
         return Pdf::setOptions([
-            'isRemoteEnabled' => true,
+            'isRemoteEnabled' => false,
             'isFontSubsettingEnabled' => true,
             'fontDir' => storage_path('fonts'),
             'fontCache' => storage_path('fonts'),
@@ -498,12 +498,14 @@ class TemplateService
 
         $contentHtml = $this->renderHtml($version, $data);
 
+        $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
         $fullHtml = <<<HTML
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>{$title}</title>
+    <title>{$safeTitle}</title>
     <style>
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 12pt; line-height: 1.6; color: #1f2937; margin: 40px; }
         .institution-header { text-align: center; border-bottom: 2px solid #002855; padding-bottom: 15px; margin-bottom: 25px; }

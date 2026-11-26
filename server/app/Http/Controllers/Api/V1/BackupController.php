@@ -121,17 +121,27 @@ class BackupController extends Controller
         }
 
         $manifest = json_decode(File::get($run->manifest_reference), true);
+        if (! is_array($manifest) || ! isset($manifest['database']['file_name'], $manifest['database']['sha256'], $manifest['document_storage']['file_name'], $manifest['document_storage']['sha256'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Backup manifest is malformed or missing required artifact entries.',
+            ], 422);
+        }
+
         $backupDir = dirname($run->manifest_reference);
 
-        $dbFile = "{$backupDir}/" . $manifest['database']['file_name'];
-        $storageFile = "{$backupDir}/" . $manifest['document_storage']['file_name'];
+        $dbFile = $backupDir . DIRECTORY_SEPARATOR . basename((string) $manifest['database']['file_name']);
+        $storageFile = $backupDir . DIRECTORY_SEPARATOR . basename((string) $manifest['document_storage']['file_name']);
 
-        $dbHashMatch = File::exists($dbFile) && hash_file('sha256', $dbFile) === $manifest['database']['sha256'];
-        $storageHashMatch = File::exists($storageFile) && hash_file('sha256', $storageFile) === $manifest['document_storage']['sha256'];
+        $dbSha = File::exists($dbFile) ? @hash_file('sha256', $dbFile) : false;
+        $storageSha = File::exists($storageFile) ? @hash_file('sha256', $storageFile) : false;
+
+        $dbHashMatch = is_string($dbSha) && hash_equals(strtolower((string) $manifest['database']['sha256']), strtolower($dbSha));
+        $storageHashMatch = is_string($storageSha) && hash_equals(strtolower((string) $manifest['document_storage']['sha256']), strtolower($storageSha));
 
         $verified = $dbHashMatch && $storageHashMatch;
         $run->update([
-            'verification_status' => $verified ? 'verified' : 'corrupted',
+            'verification_status' => $verified ? 'verified' : 'failed',
         ]);
 
         AuditEvent::create([
@@ -166,7 +176,7 @@ class BackupController extends Controller
     public function runDrill(Request $request, RestorationService $restorationService): JsonResponse
     {
         $validated = $request->validate([
-            'backup_id' => 'required|string',
+            'backup_id' => ['required', 'string', 'regex:/^[A-Za-z0-9_.-]+$/'],
             'secret' => 'nullable|string',
         ]);
 

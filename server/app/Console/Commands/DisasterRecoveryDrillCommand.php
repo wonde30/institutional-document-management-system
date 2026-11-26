@@ -50,16 +50,16 @@ class DisasterRecoveryDrillCommand extends Command
         $fileObjects = FileObject::take(10)->get();
         $integrityResults = [];
 
-        foreach ($fileObjects as $file) {
-            $computedSha256 = $file->sha256;
-            $outcome = 'match';
+        $storageManager = app(\App\Services\StorageManagerService::class);
+        $mismatchCount = 0;
 
-            FileIntegrityCheck::create([
-                'file_object_id' => $file->id,
-                'checked_at' => $now,
-                'observed_sha256' => $computedSha256,
-                'outcome' => $outcome,
-            ]);
+        foreach ($fileObjects as $file) {
+            $check = $storageManager->verifyIntegrity($file);
+            $computedSha256 = $check['observed_sha256'] ?? '';
+            $outcome = $check['outcome'] ?? 'missing';
+            if ($outcome !== 'match') {
+                $mismatchCount++;
+            }
 
             $integrityResults[] = [
                 'file_id' => $file->id,
@@ -74,7 +74,11 @@ class DisasterRecoveryDrillCommand extends Command
         } else {
             $this->line("--> No standalone file objects in current database view; proceeding to storage repository check.");
         }
-        $this->info('--> SHA-256 File Byte Preservation: 100% MATCH.');
+        if ($mismatchCount > 0) {
+            $this->error("--> SHA-256 File Byte Preservation: {$mismatchCount} MISMATCH/MISSING FILE(S) DETECTED.");
+        } else {
+            $this->info('--> SHA-256 File Byte Preservation: 100% MATCH.');
+        }
 
         // 3. Real Backup Execution
         $this->line('');

@@ -275,25 +275,33 @@ class SettingsService
         $previousValue = $previous?->typedValue() ?? $definition['default'];
 
         DB::transaction(function () use ($key, $definition, $normalised, $unitId, $request, $previous, $previousValue) {
-            $attributes = [
-                'value_type' => $definition['type'],
-                'string_value' => null,
-                'integer_value' => null,
-                'boolean_value' => null,
-                'updated_by' => $request->user()?->id,
-            ];
-
-            $attributes = array_merge($attributes, $this->typedColumns($definition['type'], $normalised));
-
-            if ($previous) {
-                $previous->update($attributes);
-                $setting = $previous;
+            if ($normalised === null && $definition['default'] === null && $unitId === null) {
+                // system_settings_ck_value requires string_value NOT NULL for value_type='string';
+                // clearing a global nullable setting with default=null removes the override row.
+                if ($previous) {
+                    $previous->delete();
+                }
             } else {
-                $setting = SystemSetting::create(array_merge($attributes, [
-                    'setting_key' => $key,
-                    'scope_unit_id' => $unitId,
-                    'scope_key' => $unitId ?? 0,
-                ]));
+                $persisted = $normalised ?? '';
+                $attributes = [
+                    'value_type' => $definition['type'],
+                    'string_value' => null,
+                    'integer_value' => null,
+                    'boolean_value' => null,
+                    'updated_by' => $request->user()?->id,
+                ];
+
+                $attributes = array_merge($attributes, $this->typedColumns($definition['type'], $persisted));
+
+                if ($previous) {
+                    $previous->update($attributes);
+                } else {
+                    SystemSetting::create(array_merge($attributes, [
+                        'setting_key' => $key,
+                        'scope_unit_id' => $unitId,
+                        'scope_key' => $unitId ?? 0,
+                    ]));
+                }
             }
 
             // The audit event is written inside the same transaction, so a
@@ -316,8 +324,10 @@ class SettingsService
             $this->forget($key, $unitId);
         });
 
+        $updated = collect($this->catalogueWithValues($unitId))->firstWhere('key', $key) ?? [];
+
         return [
-            'setting' => $this->catalogueWithValues($unitId)[0] ?? [],
+            'setting' => $updated,
             'previous' => $previousValue,
         ];
     }
@@ -376,8 +386,10 @@ class SettingsService
             $this->forget($key, $unitId);
         });
 
+        $updated = collect($this->catalogueWithValues($unitId))->firstWhere('key', $key) ?? [];
+
         return [
-            'setting' => $this->catalogueWithValues($unitId)[0] ?? [],
+            'setting' => $updated,
             'previous' => $previousValue,
         ];
     }
@@ -478,8 +490,16 @@ class SettingsService
     /**
      * Cast a validated value to the type declared by the catalogue.
      */
-    protected function normalise(string $type, mixed $value): string|int|bool
+    protected function normalise(string $type, mixed $value): string|int|bool|null
     {
+        if ($value === null) {
+            return match ($type) {
+                'integer' => 0,
+                'boolean' => false,
+                default => null,
+            };
+        }
+
         return match ($type) {
             'integer' => (int) $value,
             'boolean' => (bool) $value,
@@ -492,7 +512,7 @@ class SettingsService
      *
      * @return array<string, mixed>
      */
-    protected function typedColumns(string $type, string|int|bool $value): array
+    protected function typedColumns(string $type, string|int|bool|null $value): array
     {
         return match ($type) {
             'integer' => ['integer_value' => $value],

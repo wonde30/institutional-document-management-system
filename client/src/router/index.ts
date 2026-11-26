@@ -26,7 +26,7 @@ const routes: RouteRecordRaw[] = [
     path: '/verify-email',
     name: 'verify-email',
     component: () => import('@/views/auth/VerifyEmailView.vue'),
-    meta: { title: 'Verify Email', requiresAuth: true },
+    meta: { title: 'Verify Email', isPublic: true },
   },
   {
     path: '/account',

@@ -46,7 +46,7 @@ Route::prefix('v1')->group(function () {
 
     // System Health & Diagnostics (Readiness & Liveness Probe)
     Route::get('health', [HealthController::class, 'check']);
-    Route::get('health/readiness', [HealthController::class, 'readiness'])->middleware(['auth:sanctum']);
+    Route::get('health/readiness', [HealthController::class, 'readiness'])->middleware(['auth:sanctum', 'authz_version', 'active_account']);
 
     // 1. Public Authentication (Rate Limited)
     Route::prefix('auth')->group(function () {
@@ -336,7 +336,7 @@ Route::prefix('v1')->group(function () {
         Route::get('archive/entries/{id}/disposal-eligibility', [ArchiveController::class, 'disposalEligibility'])
             ->middleware('permission:archive.view');
         Route::post('archive/entries/{id}/review', [ArchiveController::class, 'review'])
-            ->middleware('permission:archive.transfer');
+            ->middleware('permission:archive.transfer|archive.manage_retention');
         Route::post('archive/entries/{id}/request-disposal', [ArchiveController::class, 'requestDisposal'])
             ->middleware('permission:archive.request_disposal');
         Route::post('archive/disposition-requests/{id}/decide', [ArchiveController::class, 'decideDisposal'])

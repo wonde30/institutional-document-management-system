@@ -10,7 +10,11 @@ class UserResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $context = app(OrganizationalContextService::class)->buildContext($this->resource, $request);
+        $isSelf = $request->user()?->id === $this->resource->id;
+        $context = app(OrganizationalContextService::class)->buildContext(
+            $this->resource,
+            $isSelf ? $request : null
+        );
 
         return [
             'id' => $this->id,

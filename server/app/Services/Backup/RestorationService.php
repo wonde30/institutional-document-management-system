@@ -39,44 +39,50 @@ class RestorationService
         $startTime = microtime(true);
         $startedAt = now();
 
-        // 1. Locate backup directory
-        $backupDir = File::isDirectory($backupIdOrPath)
-            ? $backupIdOrPath
-            : storage_path("app/backups/{$backupIdOrPath}");
+        // 1. Locate backup directory safely inside backups root
+        $backupsRoot = storage_path('app/backups');
+        if (preg_match('/^[A-Za-z0-9_.-]+$/', $backupIdOrPath)) {
+            $backupDir = \App\Services\FileSecurityService::resolveContainedPath(
+                "{$backupsRoot}/{$backupIdOrPath}",
+                $backupsRoot
+            );
+        } else {
+            $backupDir = \App\Services\FileSecurityService::resolveContainedPath($backupIdOrPath, $backupsRoot);
+        }
 
-        if (!File::isDirectory($backupDir)) {
-            throw new RuntimeException("Backup directory not found: {$backupDir}");
+        if (! $backupDir || ! File::isDirectory($backupDir)) {
+            throw new RuntimeException("Backup directory not found or outside permitted backups boundary: {$backupIdOrPath}");
         }
 
         $manifestPath = "{$backupDir}/manifest.json";
-        if (!File::exists($manifestPath)) {
+        if (! File::exists($manifestPath)) {
             throw new RuntimeException("Missing manifest.json in backup directory: {$backupDir}");
         }
 
         $manifest = json_decode(file_get_contents($manifestPath), true);
-        if (!$manifest) {
+        if (! is_array($manifest) || ! isset($manifest['database']['file_name'], $manifest['database']['sha256'], $manifest['document_storage']['file_name'], $manifest['document_storage']['sha256'])) {
             throw new RuntimeException("Failed to decode backup manifest: {$manifestPath}");
         }
 
         $isEncrypted = $manifest['is_encrypted'] ?? false;
-        $dbFileName = $manifest['database']['file_name'];
-        $storageFileName = $manifest['document_storage']['file_name'];
+        $dbFileName = basename((string) $manifest['database']['file_name']);
+        $storageFileName = basename((string) $manifest['document_storage']['file_name']);
 
         $dbFilePath = "{$backupDir}/{$dbFileName}";
         $storageFilePath = "{$backupDir}/{$storageFileName}";
 
-        if (!File::exists($dbFilePath) || !File::exists($storageFilePath)) {
+        if (! File::exists($dbFilePath) || ! File::exists($storageFilePath)) {
             throw new RuntimeException("One or more required backup artifacts are missing from {$backupDir}");
         }
 
         // 2. Pre-restoration integrity check: verify artifact SHA-256 hashes against manifest
         $observedDbSha256 = hash_file('sha256', $dbFilePath);
-        if ($observedDbSha256 !== $manifest['database']['sha256']) {
+        if (! is_string($observedDbSha256) || ! hash_equals(strtolower((string) $manifest['database']['sha256']), strtolower($observedDbSha256))) {
             throw new RuntimeException("Integrity failure: Database artifact SHA-256 does not match manifest!");
         }
 
         $observedStorageSha256 = hash_file('sha256', $storageFilePath);
-        if ($observedStorageSha256 !== $manifest['document_storage']['sha256']) {
+        if (! is_string($observedStorageSha256) || ! hash_equals(strtolower((string) $manifest['document_storage']['sha256']), strtolower($observedStorageSha256))) {
             throw new RuntimeException("Integrity failure: Storage artifact SHA-256 does not match manifest!");
         }
 

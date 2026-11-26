@@ -46,6 +46,20 @@ class RolePermissionController extends Controller
             'permission_ids.*' => 'exists:permissions,id',
         ]);
 
+        $actor = $request->user();
+        if (! empty($validated['permission_ids']) && $actor && ! $actor->hasPermission('system.configure')) {
+            $hasProtectedPerm = Permission::whereIn('id', $validated['permission_ids'])
+                ->get()
+                ->contains(fn (Permission $p) => (bool) $p->is_protected);
+
+            if ($hasProtectedPerm) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Creating a role with protected administrative capabilities requires system.configure authority.',
+                ], 403);
+            }
+        }
+
         $role = Role::create([
             'code' => strtolower($validated['code']),
             'name' => $validated['name'],
@@ -59,6 +73,15 @@ class RolePermissionController extends Controller
         }
 
         $role->load('permissions');
+
+        AuditService::recordAuthEvent(
+            action: 'auth.role_created',
+            actorId: $actor?->id,
+            targetType: 'role',
+            targetId: (string) $role->id,
+            details: ['code' => $role->code, 'permission_ids' => $validated['permission_ids'] ?? []],
+            request: $request
+        );
 
         return response()->json([
             'success' => true,
@@ -305,18 +328,55 @@ class RolePermissionController extends Controller
      */
     public function syncRolePermissions(Request $request, int $id): JsonResponse
     {
-        $role = Role::findOrFail($id);
+        $role = Role::with('permissions')->findOrFail($id);
 
         $validated = $request->validate([
             'permission_ids' => 'required|array',
             'permission_ids.*' => 'exists:permissions,id',
         ]);
 
+        $actor = $request->user();
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            if ($role->is_system || $role->code === 'super_admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Modifying permissions of a system role requires system.configure authority.',
+                ], 403);
+            }
+
+            $existingHasProtected = $role->permissions->contains(fn (Permission $p) => (bool) $p->is_protected);
+            $incomingHasProtected = Permission::whereIn('id', $validated['permission_ids'])
+                ->get()
+                ->contains(fn (Permission $p) => (bool) $p->is_protected);
+
+            if ($existingHasProtected || $incomingHasProtected) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Assigning or removing protected capabilities on a role requires system.configure authority.',
+                ], 403);
+            }
+        }
+
         $role->permissions()->sync($validated['permission_ids']);
         $role->load('permissions');
 
-        // Increment authz_version for all users holding this role to invalidate stale cached permissions
-        User::whereHas('userRoles', fn ($q) => $q->where('role_id', $role->id))->increment('authz_version');
+        // Increment authz_version and clear request grants cache for all users holding this role
+        $affectedUserIds = UserRole::where('role_id', $role->id)->pluck('user_id')->unique()->all();
+        if (! empty($affectedUserIds)) {
+            User::whereIn('id', $affectedUserIds)->increment('authz_version');
+            foreach ($affectedUserIds as $uid) {
+                User::clearUserGrantsCache((int) $uid);
+            }
+        }
+
+        AuditService::recordAuthEvent(
+            action: 'auth.role_permissions_synced',
+            actorId: $actor?->id,
+            targetType: 'role',
+            targetId: (string) $role->id,
+            details: ['code' => $role->code, 'permission_ids' => $validated['permission_ids']],
+            request: $request
+        );
 
         return response()->json([
             'success' => true,
@@ -364,6 +424,25 @@ class RolePermissionController extends Controller
 
         $oldActive = $permission->active;
         $permission->update($validated);
+
+        if ((bool) $oldActive !== (bool) $permission->active) {
+            $roleUserIds = DB::table('user_roles')
+                ->join('role_permissions', 'role_permissions.role_id', '=', 'user_roles.role_id')
+                ->where('role_permissions.permission_id', $permission->id)
+                ->pluck('user_roles.user_id')
+                ->all();
+            $directUserIds = DB::table('user_permissions')
+                ->where('permission_id', $permission->id)
+                ->pluck('user_id')
+                ->all();
+            $affectedUserIds = array_values(array_unique(array_merge($roleUserIds, $directUserIds)));
+            if (! empty($affectedUserIds)) {
+                User::whereIn('id', $affectedUserIds)->increment('authz_version');
+                foreach ($affectedUserIds as $uid) {
+                    User::clearUserGrantsCache((int) $uid);
+                }
+            }
+        }
 
         AuditService::recordAuthEvent(
             action: 'auth.permission_status_changed',
@@ -431,7 +510,22 @@ class RolePermissionController extends Controller
         }
 
         // Resolve or create authorization scope
-        $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : $validated['unit_id'];
+        $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : (int) $validated['unit_id'];
+
+        if (! $actor->hasPermission('system.configure')) {
+            if ($validated['scope_kind'] === 'global' && ! $actor->hasPermission('roles.assign', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Assigning global-scoped roles requires global roles.assign authority.',
+                ], 403);
+            }
+            if ($scopeUnitId !== null && ! $actor->hasPermission('roles.assign', $scopeUnitId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have roles.assign authority for the target organizational unit.',
+                ], 403);
+            }
+        }
         
         $scope = AuthorizationScope::firstOrCreate([
             'kind' => $validated['scope_kind'],
@@ -452,8 +546,9 @@ class RolePermissionController extends Controller
             ]
         );
 
-        // Bump authz_version on target user
+        // Bump authz_version on target user and clear request-level cache
         User::where('id', $validated['user_id'])->increment('authz_version');
+        User::clearUserGrantsCache((int) $validated['user_id']);
 
         AuditService::recordAuthEvent(
             action: 'auth.authorization_version_changed',
@@ -530,6 +625,22 @@ class RolePermissionController extends Controller
             }
         }
 
+        $scope = AuthorizationScope::findOrFail($validated['scope_id']);
+        if (! $request->user()->hasPermission('system.configure')) {
+            if ($scope->kind === 'global' && ! $request->user()->hasPermission('roles.assign', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Revoking global-scoped roles requires global roles.assign authority.',
+                ], 403);
+            }
+            if ($scope->unit_id !== null && ! $request->user()->hasPermission('roles.assign', (int) $scope->unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have roles.assign authority for the target organizational unit.',
+                ], 403);
+            }
+        }
+
         DB::table('user_roles')
             ->where('user_id', $validated['user_id'])
             ->where('role_id', $validated['role_id'])
@@ -537,6 +648,7 @@ class RolePermissionController extends Controller
             ->delete();
 
         User::where('id', $validated['user_id'])->increment('authz_version');
+        User::clearUserGrantsCache((int) $validated['user_id']);
 
         AuditService::recordAuthEvent(
             action: 'auth.authorization_version_changed',
@@ -584,7 +696,22 @@ class RolePermissionController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         // Resolve or create authorization scope
-        $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : $validated['unit_id'];
+        $scopeUnitId = ($validated['scope_kind'] === 'global') ? null : (int) $validated['unit_id'];
+
+        if (! $actor->hasPermission('system.configure')) {
+            if ($validated['scope_kind'] === 'global' && ! $actor->hasPermission('permissions.assign', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Granting global-scoped direct permissions requires global permissions.assign authority.',
+                ], 403);
+            }
+            if ($scopeUnitId !== null && ! $actor->hasPermission('permissions.assign', $scopeUnitId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have permissions.assign authority for the target organizational unit.',
+                ], 403);
+            }
+        }
 
         $scope = AuthorizationScope::firstOrCreate([
             'kind' => $validated['scope_kind'],
@@ -605,8 +732,9 @@ class RolePermissionController extends Controller
             ]
         );
 
-        // Bump authz_version on target user
+        // Bump authz_version on target user and clear request-level cache
         User::where('id', $validated['user_id'])->increment('authz_version');
+        User::clearUserGrantsCache((int) $validated['user_id']);
 
         AuditService::recordAuthEvent(
             action: 'auth.authorization_version_changed',
@@ -669,6 +797,22 @@ class RolePermissionController extends Controller
             }
         }
 
+        $scope = AuthorizationScope::findOrFail($validated['scope_id']);
+        if (! $request->user()->hasPermission('system.configure')) {
+            if ($scope->kind === 'global' && ! $request->user()->hasPermission('permissions.assign', null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Revoking global-scoped direct permissions requires global permissions.assign authority.',
+                ], 403);
+            }
+            if ($scope->unit_id !== null && ! $request->user()->hasPermission('permissions.assign', (int) $scope->unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have permissions.assign authority for the target organizational unit.',
+                ], 403);
+            }
+        }
+
         DB::table('user_permissions')
             ->where('user_id', $validated['user_id'])
             ->where('permission_id', $validated['permission_id'])
@@ -676,6 +820,7 @@ class RolePermissionController extends Controller
             ->delete();
 
         User::where('id', $validated['user_id'])->increment('authz_version');
+        User::clearUserGrantsCache((int) $validated['user_id']);
 
         AuditService::recordAuthEvent(
             action: 'auth.authorization_version_changed',

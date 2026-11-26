@@ -61,3 +61,19 @@ GEMINI.md
 .codex
 .mcp.json
 mcp.json
+
+
+# ============================================================
+# Root-level exclusions — local only, never publish to GitHub
+# Added 2026-11-26 as part of repository cleanup
+# ============================================================
+.github/
+tools/
+docker/
+docker-compose.yml
+*.sql
+*.bak
+
+# Server local inspection and debug scripts (never commit)
+server/check_users.php
+server/inspect_*.php

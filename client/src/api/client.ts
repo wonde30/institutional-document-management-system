@@ -99,7 +99,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    if (error.response?.status === 419 && !originalRequest._retry) {
+    if (error.response?.status === 419 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true
       await ensureCsrfCookie()
       return apiClient(originalRequest)
@@ -112,7 +112,7 @@ apiClient.interceptors.response.use(
       emitUnauthorized()
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      const publicPaths = ['/', '/login', '/privacy-policy', '/terms', '/forgot-password', '/reset-password']
+      const publicPaths = ['/', '/login', '/privacy', '/privacy-policy', '/terms', '/forgot-password', '/reset-password', '/verify-email']
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
       const isPublicPath = publicPaths.includes(currentPath)
 
@@ -450,7 +450,8 @@ export const archiveApi = {
   transfer: (data: {
     document_id: number
     collection_id: number
-    retention_policy_version_id: number
+    retention_policy_version_id?: number
+    retention_policy_id?: number
     next_review_at?: string
   }) => apiClient.post<ApiResponse<ArchiveEntry>>('/archive/transfer', data),
   legalHolds: () => apiClient.get<ApiResponse<LegalHold[]>>('/archive/legal-holds'),

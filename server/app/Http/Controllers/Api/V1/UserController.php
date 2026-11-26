@@ -157,6 +157,17 @@ class UserController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $user = User::findOrFail($id);
+        $actor = $request->user();
+
+        $targetIsAdmin = $user->hasPermission('system.configure')
+            || $user->userRoles()->whereHas('role', fn ($q) => $q->where('code', 'super_admin'))->exists();
+
+        if ($targetIsAdmin && $actor && ! $actor->hasPermission('system.configure')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: Only an authorized System Administrator can modify a privileged administrator account.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:160',
@@ -164,6 +175,26 @@ class UserController extends Controller
             'status' => ['sometimes', 'required', Rule::in(['active', 'inactive', 'locked'])],
             'password' => ['nullable', 'string', Password::min(8)->letters()->numbers()],
         ]);
+
+        if (isset($validated['status']) && $validated['status'] !== $user->status) {
+            if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('users.deactivate')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: Changing user account status requires users.deactivate permission.',
+                ], 403);
+            }
+
+            if ($actor && $user->id === $actor->id && in_array($validated['status'], ['inactive', 'locked'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Security restriction: You cannot suspend or lock your own active session account.',
+                ], 422);
+            }
+        }
+
+        if (isset($validated['email']) && strtolower($validated['email']) !== strtolower($user->email)) {
+            $validated['email_verified_at'] = null;
+        }
 
         if (! empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
@@ -186,7 +217,7 @@ class UserController extends Controller
             if (in_array($validated['status'], ['inactive', 'locked'], true)) {
                 AuditService::recordAuthEvent(
                     action: 'auth.account_suspended',
-                    actorId: $user->id,
+                    actorId: $actor?->id,
                     targetType: 'user',
                     targetId: (string) $user->id,
                     details: ['status' => $validated['status']],

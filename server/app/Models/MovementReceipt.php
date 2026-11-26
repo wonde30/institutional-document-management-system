@@ -12,6 +12,7 @@ class MovementReceipt extends Model
 
     protected $table = 'movement_receipts';
     public $timestamps = false;
+    public $incrementing = false;
     protected $primaryKey = 'movement_id';
 
     protected $fillable = [

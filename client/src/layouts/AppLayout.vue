@@ -160,7 +160,7 @@ async function handleLogout() {
  </button>
 
  <router-link to="/dashboard" class="xl:hidden flex items-center gap-2.5 group">
- <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center ">\n WU
+ <span class="w-8 h-8 rounded-[6px] bg-[#213183] text-white font-bold text-xs flex items-center justify-center ">WU
  </span>
  <div class="flex flex-col">
  <span class="text-sm font-semibold tracking-tight leading-tight text-ink">
@@ -183,7 +183,7 @@ async function handleLogout() {
  >
  <Search class="w-3.5 h-3.5" />
  <span class="hidden md:inline text-xs">Search records...</span>
- <kbd class="hidden md:inline text-xs bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-secondary">{{ isMac ? '?K' : 'Ctrl K' }}</kbd>
+ <kbd class="hidden md:inline text-xs bg-surface px-1.5 py-0.5 rounded-[4px] border border-hairline font-mono text-ink-secondary">{{ isMac ? '⌘K' : 'Ctrl K' }}</kbd>
  </router-link>
 
  <!-- Tri-Mode Theme Toggle (Light / Dark / System) -->

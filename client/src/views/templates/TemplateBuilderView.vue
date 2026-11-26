@@ -331,10 +331,10 @@ onMounted(() => {
 
     <!-- Search & Filter -->
     <SearchFilterBar
-      v-model:search="searchQuery"
+      v-model="searchQuery"
       search-placeholder="Search templates by code or title..."
       @search="loadTemplates(1)"
-      @reset="searchQuery = ''; loadTemplates(1)"
+      @clear="searchQuery = ''; loadTemplates(1)"
     />
 
     <!-- Error State -->
@@ -350,9 +350,9 @@ onMounted(() => {
       <DataTable
       :columns="columns"
       :items="templates"
-      :is-loading="isLoading"
+      :loading="isLoading"
       empty-title="No Document Templates Found"
-      empty-message="Create your first standardized institutional letter or memorandum template."
+      empty-description="Create your first standardized institutional letter or memorandum template."
     >
       <template #code="{ item }">
         <span class="font-mono text-xs font-semibold text-primary bg-primary-subtle px-2 py-0.5 rounded border border-primary/20">

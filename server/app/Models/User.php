@@ -178,9 +178,14 @@ class User extends Authenticatable
     /**
      * Correspondence participation entries.
      */
-    public function correspondenceParticipations(): HasMany
+    public function correspondenceParticipations(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasMany(CorrespondenceParticipant::class, 'user_id');
+        return $this->hasManyThrough(
+            CorrespondenceParticipant::class,
+            CommunicationParty::class,
+            'user_id',
+            'party_id'
+        );
     }
 
     /**

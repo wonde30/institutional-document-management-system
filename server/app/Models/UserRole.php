@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCompositePrimaryKey;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property int $id
  * @property int $user_id
  * @property int $role_id
  * @property int $scope_id
@@ -21,10 +21,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class UserRole extends Model
 {
-    use HasFactory;
+    use HasCompositePrimaryKey, HasFactory;
 
     protected $table = 'user_roles';
     public $timestamps = false;
+    public $incrementing = false;
+
+    public function getCompositeKey(): array
+    {
+        return ['user_id', 'role_id', 'scope_id'];
+    }
 
     protected static function booted(): void
     {

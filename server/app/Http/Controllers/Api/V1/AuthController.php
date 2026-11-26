@@ -173,13 +173,20 @@ class AuthController extends Controller
 
         if ($logoutAll && $user) {
             \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
-        } elseif ($request->hasSession()) {
+        }
+
+        if ($request->hasSession()) {
             $currentSessionId = $request->session()->getId();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            if ($currentSessionId) {
+            if (! $logoutAll && $currentSessionId) {
                 \Illuminate\Support\Facades\DB::table('sessions')->where('id', $currentSessionId)->delete();
+            }
+        } elseif (! $logoutAll) {
+            $bearer = $request->bearerToken();
+            if (is_string($bearer) && strlen($bearer) === 60) {
+                \Illuminate\Support\Facades\DB::table('sessions')->where('id', $bearer)->delete();
             }
         }
 
@@ -250,7 +257,7 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:8|different:current_password',
+            'new_password' => ['required', 'string', 'different:current_password', PasswordRule::min(8)->letters()->numbers()],
         ]);
 
         $user = $request->user();
@@ -262,13 +269,15 @@ class AuthController extends Controller
         }
 
         $newAuthzVersion = $user->authz_version + 1;
-        $user->update([
+        $user->forceFill([
             'password' => Hash::make($validated['new_password']),
             'authz_version' => $newAuthzVersion,
-        ]);
+            'remember_token' => \Illuminate\Support\Str::random(60),
+        ])->save();
 
-        // Retain the current device's session by syncing its authorization version
+        // Retain the current device's session by regenerating session ID and syncing its authorization version
         if ($request->hasSession()) {
+            $request->session()->regenerate();
             $request->session()->put('authz_version', $newAuthzVersion);
         }
 

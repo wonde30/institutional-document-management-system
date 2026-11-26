@@ -528,7 +528,7 @@ export interface PhysicalOriginal {
   id: number
   document_id: number
   physical_reference?: string | null
-  retention_requirement: 'required' | 'optional' | 'none'
+  retention_requirement: 'unknown' | 'required' | 'not_required' | 'optional' | 'none'
   retention_policy_version_id?: number | null
   created_at: string
   created_by?: number
@@ -712,7 +712,9 @@ export interface WorkflowAdminTransition {
   join_policy?: 'all_branches' | 'any_branch' | null
   fork_state_ids?: number[] | null
   fromState?: { id: number; code: string; name: string }
+  from_state?: { id: number; code: string; name: string }
   toState?: { id: number; code: string; name: string }
+  to_state?: { id: number; code: string; name: string }
   permission?: { id: number; code: string; name: string } | null
 }
 
@@ -727,8 +729,11 @@ export interface WorkflowAdminState {
   assigned_unit_id?: number | null
   sla_hours?: number | null
   assignedRole?: { id: number; code: string; name: string } | null
+  assigned_role?: { id: number; code: string; name: string } | null
   assignedUnit?: { id: number; code: string; name: string } | null
+  assigned_unit?: { id: number; code: string; name: string } | null
   outgoingTransitions?: WorkflowAdminTransition[]
+  outgoing_transitions?: WorkflowAdminTransition[]
 }
 
 export interface WorkflowAdminVersion {
@@ -782,7 +787,9 @@ export interface RoutingPolicyItem {
   document_category?: { id: number; code: string; name: string } | null
   priority?: { id: number; code: string; name: string } | null
   defaultAssigneeRole?: { id: number; code: string; name: string } | null
+  default_assignee_role?: { id: number; code: string; name: string } | null
   escalationUnit?: { id: number; code: string; name: string } | null
+  escalation_unit?: { id: number; code: string; name: string } | null
 }
 
 export interface RetentionPolicyVersionItem {
@@ -795,7 +802,8 @@ export interface RetentionPolicyVersionItem {
   approved_by?: number | null
   approved_at?: string | null
   effective_from: string
-  approvedBy?: { id: number; username?: string; email: string } | null
+  approvedBy?: { id: number; name?: string; username?: string; email: string } | null
+  approved_by_user?: { id: number; name?: string; email: string } | null
 }
 
 export interface RetentionPolicyItem {
@@ -806,7 +814,9 @@ export interface RetentionPolicyItem {
   document_category_id?: number | null
   active: boolean
   documentCategory?: { id: number; code: string; name: string } | null
+  document_category?: { id: number; code: string; name: string } | null
   activeVersion?: RetentionPolicyVersionItem | null
+  active_version?: RetentionPolicyVersionItem | null
   versions?: RetentionPolicyVersionItem[]
 }
 

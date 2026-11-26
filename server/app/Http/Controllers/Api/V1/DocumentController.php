@@ -187,75 +187,86 @@ class DocumentController extends Controller
             (int) $validated['owner_unit_id']
         );
 
-        $document = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request, $confidentialityId, $workflowDef) {
-            // 1. Generate reference number atomically via canonical repository sequence engine
-            $referenceNumber = app(\App\Services\DocumentRepositoryService::class)->generateReferenceNumber(
-                'DOC',
-                (int) $validated['owner_unit_id'],
-                (int) $validated['category_id']
-            );
+        $storedFileObject = null;
 
-            // 2. Create document record
-            $doc = Document::create([
-                'reference_number' => $referenceNumber,
-                'title' => $validated['title'],
-                'summary' => $validated['summary'] ?? null,
-                'category_id' => $validated['category_id'],
-                'confidentiality_id' => $confidentialityId,
-                'owner_unit_id' => $validated['owner_unit_id'],
-                'custodian_id' => $validated['custodian_id'] ?? null,
-                'created_by' => $actor->id,
-                'document_date' => $validated['document_date'],
-                'registered_at' => $now,
-                'lifecycle' => 'active',
-                'lock_version' => 0,
-            ]);
-
-            // 3. Handle initial version & file if provided, or create version for workflow pinning
-            $version = null;
-            if ($request->hasFile('file')) {
-                $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
-                    $request->file('file'),
-                    'documents/'.$currentYear,
-                    $actor->id
+        try {
+            $document = DB::transaction(function () use ($validated, $actor, $now, $currentYear, $request, $confidentialityId, $workflowDef, &$storedFileObject) {
+                // 1. Generate reference number atomically via canonical repository sequence engine
+                $referenceNumber = app(\App\Services\DocumentRepositoryService::class)->generateReferenceNumber(
+                    'DOC',
+                    (int) $validated['owner_unit_id'],
+                    (int) $validated['category_id']
                 );
 
-                $version = DocumentVersion::create([
-                    'document_id' => $doc->id,
-                    'version_number' => 1,
+                // 2. Create document record
+                $doc = Document::create([
+                    'reference_number' => $referenceNumber,
+                    'title' => $validated['title'],
+                    'summary' => $validated['summary'] ?? null,
+                    'category_id' => $validated['category_id'],
+                    'confidentiality_id' => $confidentialityId,
+                    'owner_unit_id' => $validated['owner_unit_id'],
+                    'custodian_id' => $validated['custodian_id'] ?? null,
                     'created_by' => $actor->id,
-                    'change_note' => $validated['change_note'] ?? 'Initial registered version',
-                    'created_at' => $now,
+                    'document_date' => $validated['document_date'],
+                    'registered_at' => $now,
+                    'lifecycle' => 'active',
+                    'lock_version' => 0,
                 ]);
 
-                VersionFile::create([
-                    'document_version_id' => $version->id,
-                    'file_object_id' => $fileObject->id,
-                    'purpose' => 'primary',
-                    'display_order' => 1,
-                ]);
-            } elseif ($workflowDef) {
-                $version = DocumentVersion::create([
-                    'document_id' => $doc->id,
-                    'version_number' => 1,
-                    'created_by' => $actor->id,
-                    'change_note' => $validated['change_note'] ?? 'Initial registered version for workflow execution',
-                    'created_at' => $now,
-                ]);
+                // 3. Handle initial version & file if provided, or create version for workflow pinning
+                $version = null;
+                if ($request->hasFile('file')) {
+                    $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
+                        $request->file('file'),
+                        'documents/'.$currentYear,
+                        $actor->id
+                    );
+                    $storedFileObject = $fileObject;
+
+                    $version = DocumentVersion::create([
+                        'document_id' => $doc->id,
+                        'version_number' => 1,
+                        'created_by' => $actor->id,
+                        'change_note' => $validated['change_note'] ?? 'Initial registered version',
+                        'created_at' => $now,
+                    ]);
+
+                    VersionFile::create([
+                        'document_version_id' => $version->id,
+                        'file_object_id' => $fileObject->id,
+                        'purpose' => 'primary',
+                        'display_order' => 1,
+                    ]);
+                } elseif ($workflowDef) {
+                    $version = DocumentVersion::create([
+                        'document_id' => $doc->id,
+                        'version_number' => 1,
+                        'created_by' => $actor->id,
+                        'change_note' => $validated['change_note'] ?? 'Initial registered version for workflow execution',
+                        'created_at' => $now,
+                    ]);
+                }
+
+                // 4. Start workflow instance if applicable
+                if ($workflowDef) {
+                    app(\App\Services\WorkflowEngineService::class)->startInstance(
+                        $workflowDef->id,
+                        $version->id,
+                        null,
+                        $actor
+                    );
+                }
+
+                return $doc;
+            });
+        } catch (\Throwable $e) {
+            if ($storedFileObject) {
+                \Illuminate\Support\Facades\Storage::disk($storedFileObject->storage_disk ?: config('filesystems.default', 'local'))
+                    ->delete($storedFileObject->storage_key);
             }
-
-            // 4. Start workflow instance if applicable
-            if ($workflowDef) {
-                app(\App\Services\WorkflowEngineService::class)->startInstance(
-                    $workflowDef->id,
-                    $version->id,
-                    null,
-                    $actor
-                );
-            }
-
-            return $doc;
-        });
+            throw $e;
+        }
 
         $document->load([
             'category',
@@ -305,7 +316,7 @@ class DocumentController extends Controller
             'incomingRelations.relationType',
             'incomingRelations.sourceDocument',
             'grants',
-            'comments.user',
+            'comments.author',
             'correspondence.type',
             'correspondence.priority',
             'correspondence.firstReceivingUnit',
@@ -337,14 +348,21 @@ class DocumentController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $document = Document::findOrFail($id);
+        $document = Document::with('confidentiality')->findOrFail($id);
         $actor = $request->user();
 
-        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('documents.update', $document->owner_unit_id)) {
+        if ($actor && ! $document->allowsUser($actor, 'documents.update')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: You do not have permission to update documents in this organizational unit.',
             ], 403);
+        }
+
+        if ($document->lifecycle === 'tombstoned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Disposed (tombstoned) documents cannot be modified.',
+            ], 422);
         }
 
         $validated = $request->validate([
@@ -354,20 +372,53 @@ class DocumentController extends Controller
             'confidentiality_id' => 'sometimes|required|exists:confidentiality_levels,id',
             'custodian_id' => 'nullable|exists:users,id',
             'document_date' => 'sometimes|required|date',
-            'lifecycle' => 'sometimes|required|in:active,retired,tombstoned',
+            'lifecycle' => 'sometimes|required|in:active,retired',
             'lock_version' => 'required|integer',
         ]);
 
-        if ((int) $validated['lock_version'] !== (int) $document->lock_version) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Conflict: The document metadata was updated by another process. Please refresh and retry.',
-            ], 409);
+        // Prevent unprivileged downgrade of high-confidentiality documents
+        if (isset($validated['confidentiality_id']) && (int) $validated['confidentiality_id'] !== (int) $document->confidentiality_id) {
+            $oldCode = $document->confidentiality?->code ?? 'internal';
+            $newCode = DB::table('confidentiality_levels')->where('id', $validated['confidentiality_id'])->value('code') ?? 'internal';
+            $highLevels = ['confidential', 'restricted', 'secret', 'top_secret'];
+            if (in_array($oldCode, $highLevels, true) && ! in_array($newCode, $highLevels, true)) {
+                if (! $actor || (! $actor->hasPermission('system.configure') && ! $document->hasConfidentialClearance($actor, (int) $document->owner_unit_id))) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Forbidden: Security clearance required to downgrade document confidentiality.',
+                    ], 403);
+                }
+            }
         }
 
-        $validated['lock_version'] = $document->lock_version + 1;
-        $document->update($validated);
-        $document->load(['category', 'confidentiality', 'ownerUnit', 'custodian']);
+        $outcome = DB::transaction(function () use ($id, $validated) {
+            $locked = Document::lockForUpdate()->findOrFail($id);
+
+            if ($locked->lifecycle === 'tombstoned') {
+                return ['status' => 422, 'message' => 'Disposed (tombstoned) documents cannot be modified.'];
+            }
+
+            if ((int) $validated['lock_version'] !== (int) $locked->lock_version) {
+                return [
+                    'status' => 409,
+                    'message' => 'Conflict: The document metadata was updated by another process. Please refresh and retry.',
+                ];
+            }
+
+            $validated['lock_version'] = $locked->lock_version + 1;
+            $locked->update($validated);
+
+            return ['status' => 200, 'document' => $locked];
+        });
+
+        if ($outcome['status'] !== 200) {
+            return response()->json([
+                'success' => false,
+                'message' => $outcome['message'],
+            ], $outcome['status']);
+        }
+
+        $document = $outcome['document']->load(['category', 'confidentiality', 'ownerUnit', 'custodian']);
 
         return response()->json([
             'success' => true,
@@ -383,6 +434,13 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
 
+        if ($document->lifecycle === 'tombstoned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Disposed (tombstoned) documents cannot receive new versions.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'file' => 'required|file|max:'.$this->maxUploadSizeKilobytes(),
             'change_note' => 'required|string|max:1000',
@@ -392,40 +450,51 @@ class DocumentController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
         $currentYear = date('Y');
+        $storedFileObject = null;
 
-        $version = DB::transaction(function () use ($document, $validated, $actor, $now, $currentYear, $request) {
-            $latestVersionNumber = DB::table('document_versions')
-                ->where('document_id', $document->id)
-                ->max('version_number') ?? 0;
+        try {
+            $version = DB::transaction(function () use ($id, $validated, $actor, $now, $currentYear, $request, &$storedFileObject) {
+                $lockedDoc = Document::lockForUpdate()->findOrFail($id);
+                $latestVersionNumber = DB::table('document_versions')
+                    ->where('document_id', $lockedDoc->id)
+                    ->max('version_number') ?? 0;
 
-            $nextVersionNumber = $latestVersionNumber + 1;
+                $nextVersionNumber = $latestVersionNumber + 1;
 
-            $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
-                $request->file('file'),
-                'documents/'.$currentYear,
-                $actor->id,
-                $validated['purpose'] ?? 'primary'
-            );
+                $fileObject = app(\App\Services\FileSecurityService::class)->storeUploadedFile(
+                    $request->file('file'),
+                    'documents/'.$currentYear,
+                    $actor->id,
+                    $validated['purpose'] ?? 'primary'
+                );
+                $storedFileObject = $fileObject;
 
-            $ver = DocumentVersion::create([
-                'document_id' => $document->id,
-                'version_number' => $nextVersionNumber,
-                'created_by' => $actor->id,
-                'change_note' => $validated['change_note'],
-                'created_at' => $now,
-            ]);
+                $ver = DocumentVersion::create([
+                    'document_id' => $lockedDoc->id,
+                    'version_number' => $nextVersionNumber,
+                    'created_by' => $actor->id,
+                    'change_note' => $validated['change_note'],
+                    'created_at' => $now,
+                ]);
 
-            VersionFile::create([
-                'document_version_id' => $ver->id,
-                'file_object_id' => $fileObject->id,
-                'purpose' => $validated['purpose'] ?? 'primary',
-                'display_order' => 1,
-            ]);
+                VersionFile::create([
+                    'document_version_id' => $ver->id,
+                    'file_object_id' => $fileObject->id,
+                    'purpose' => $validated['purpose'] ?? 'primary',
+                    'display_order' => 1,
+                ]);
 
-            $document->increment('lock_version');
+                $lockedDoc->increment('lock_version');
 
-            return $ver;
-        });
+                return $ver;
+            });
+        } catch (\Throwable $e) {
+            if ($storedFileObject) {
+                \Illuminate\Support\Facades\Storage::disk($storedFileObject->storage_disk ?: config('filesystems.default', 'local'))
+                    ->delete($storedFileObject->storage_key);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
@@ -472,11 +541,25 @@ class DocumentController extends Controller
             ], 403);
         }
 
+        if ($doc->lifecycle === 'tombstoned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document has been disposed and is no longer available for download.',
+            ], 404);
+        }
+
         if ($file->storage_status !== 'ready') {
             return response()->json([
                 'success' => false,
                 'message' => "File is not ready for download (status: {$file->storage_status}).",
             ], 404);
+        }
+
+        if (! empty($file->scan_status) && in_array($file->scan_status, ['infected', 'quarantined', 'failed', 'malicious'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => "File failed security scan clearance (status: {$file->scan_status}).",
+            ], 403);
         }
 
         // Security Hardening: Audit confidential document access
@@ -603,7 +686,7 @@ class DocumentController extends Controller
 
         $validated = $request->validate([
             'physical_reference' => 'nullable|string|max:100',
-            'retention_requirement' => 'nullable|in:required,optional,none',
+            'retention_requirement' => 'nullable|in:unknown,required,not_required',
             'retention_policy_version_id' => 'nullable|exists:retention_policy_versions,id',
             'storage_location_id' => 'nullable|exists:physical_storage_locations,id',
             'custodian_id' => 'nullable|exists:users,id',
@@ -644,8 +727,15 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
 
+        if ($document->lifecycle === 'tombstoned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Disposed (tombstoned) documents cannot be digitized.',
+            ], 422);
+        }
+
         $validated = $request->validate([
-            'file' => 'required|file|max:102400',
+            'file' => 'required|file|max:'.$this->maxUploadSizeKilobytes(),
             'physical_original_id' => 'nullable|exists:physical_originals,id',
             'verification_note' => 'nullable|string|max:500',
         ]);
@@ -791,10 +881,25 @@ class DocumentController extends Controller
         $document = Document::findOrFail($id);
 
         $validated = $request->validate([
-            'target_document_id' => 'required|exists:documents,id|different:id',
+            'target_document_id' => 'required|exists:documents,id',
             'relation_type' => 'nullable|string|in:references,supersedes,supplements,responds_to',
             'relation_type_id' => 'nullable|exists:document_relation_types,id',
         ]);
+
+        if ((int) $validated['target_document_id'] === $document->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A document cannot be linked to itself.',
+            ], 422);
+        }
+
+        $targetDoc = Document::findOrFail((int) $validated['target_document_id']);
+        if ($request->user() && ! $targetDoc->allowsUser($request->user(), 'documents.view')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to reference the target document.',
+            ], 403);
+        }
 
         $relTypeId = $validated['relation_type_id'] ?? null;
         if (! $relTypeId) {
@@ -918,6 +1023,13 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
 
+        if ($document->lifecycle === 'tombstoned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Disposed (tombstoned) documents cannot be shared.',
+            ], 422);
+        }
+
         if (! $document->allowsUser($request->user(), 'documents.share')) {
             return response()->json([
                 'success' => false,
@@ -942,6 +1054,14 @@ class DocumentController extends Controller
             ], 422);
         }
 
+        $targetUser = $hasUser ? \App\Models\User::find($validated['target_user_id']) : null;
+        if ($hasUser && (! $targetUser || $targetUser->status !== 'active')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unprocessable: Target user account is not active.',
+            ], 422);
+        }
+
         // For confidential or restricted documents the TARGET must hold clearance (422 otherwise)
         $confCode = $document->confidentiality?->code;
         $isHighConf = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
@@ -953,7 +1073,6 @@ class DocumentController extends Controller
                 ], 422);
             }
 
-            $targetUser = \App\Models\User::find($validated['target_user_id']);
             if (! $targetUser || ! $document->hasConfidentialClearance($targetUser, (int) $document->owner_unit_id)) {
                 return response()->json([
                     'success' => false,
@@ -992,15 +1111,32 @@ class DocumentController extends Controller
             ], 422);
         }
 
-        $grantId = DB::transaction(function () use ($document, $validated, $permId, $request) {
+        $expiresAtFormatted = ! empty($validated['expires_at'])
+            ? \Carbon\Carbon::parse($validated['expires_at'])->format('Y-m-d H:i:s.u')
+            : null;
+
+        $grantId = DB::transaction(function () use ($document, $validated, $permId, $request, $hasUser, $expiresAtFormatted) {
+            // Remove any previously expired grant for the same subject/permission before inserting
+            $expiredQuery = DB::table('document_grants')
+                ->where('document_id', $document->id)
+                ->where('permission_id', $permId)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now());
+            if ($hasUser) {
+                $expiredQuery->where('user_id', $validated['target_user_id']);
+            } else {
+                $expiredQuery->where('unit_id', $validated['target_unit_id']);
+            }
+            $expiredQuery->delete();
+
             $grantId = DB::table('document_grants')->insertGetId([
                 'document_id' => $document->id,
                 'permission_id' => $permId,
                 'user_id' => $validated['target_user_id'] ?? null,
                 'unit_id' => $validated['target_unit_id'] ?? null,
                 'granted_by' => $request->user()->id,
-                'granted_at' => now(),
-                'expires_at' => $validated['expires_at'] ?? null,
+                'granted_at' => now()->format('Y-m-d H:i:s.u'),
+                'expires_at' => $expiresAtFormatted,
             ]);
 
             AuditService::recordDocumentEvent(

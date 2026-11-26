@@ -487,7 +487,7 @@ async function submitArchiveTransfer() {
  await archiveApi.transfer({
  document_id: docId,
  collection_id: Number(selectedCollectionId.value),
- retention_policy_version_id: Number(selectedPolicyVersionId.value),
+ retention_policy_id: Number(selectedPolicyVersionId.value),
  next_review_at: new Date(Date.now() + 10 * 365 * 24 * 3600 * 1000).toISOString().split('T')[0],
  })
  toast.success('Document successfully transferred to institutional archive.')
@@ -772,9 +772,9 @@ async function handleVerifySig(sigId: number) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   metaStore.loadAll()
-  loadDocument()
+  await loadDocument()
   loadTimeline()
   loadOcrExtractions()
   loadSignatures()
@@ -1358,28 +1358,46 @@ onMounted(() => {
                 <span class="font-medium text-xs text-ink">
                   {{ sig.signer?.name || 'Authorized Institutional Signer' }}
                 </span>
-                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]">
-                  {{ sig.verification_status || 'Verified' }}
+                <span
+                  :class="[
+                    'px-2 py-0.5 rounded text-xs font-semibold',
+                    sig.digital_signature?.verification_status === 'verified'
+                      ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#14301d] dark:text-[#34d399]'
+                      : sig.digital_signature?.verification_status === 'invalid'
+                      ? 'bg-[#fdecec] text-[#e03e3e] dark:bg-[#3a1414] dark:text-[#f87171]'
+                      : 'bg-surface-muted text-ink-muted'
+                  ]"
+                >
+                  {{ sig.digital_signature?.verification_status || 'Pending Signature' }}
                 </span>
                 <span class="px-2 py-0.5 rounded text-xs font-mono text-ink-muted bg-surface-muted">
-                  {{ sig.trust_tier || 'Development Certificate' }}
+                  {{ sig.digital_signature?.trust_tier || 'Institutional PKI' }}
                 </span>
               </div>
               <div class="text-xs text-ink-muted">
-                Signed: {{ formatDate(sig.signed_at || sig.created_at) }} · Format: {{ sig.signature_format || 'PAdES-B-LT' }}
+                {{ sig.digital_signature?.signed_at ? `Signed: ${formatDate(sig.digital_signature.signed_at)}` : `Requested: ${formatDate(sig.requested_at || sig.created_at)}` }} · Format: {{ sig.digital_signature?.signature_format || 'PAdES-B-LT' }}
               </div>
             </div>
 
             <div class="flex items-center gap-2">
-              <span v-if="sigResults[sig.id]" class="text-xs font-medium text-[#1aae39] dark:text-[#34d399] flex items-center gap-1">
-                <CheckCircle2 class="w-3.5 h-3.5" /> {{ sigResults[sig.id].outcome || 'Valid' }}
+              <span
+                v-if="sig.digital_signature?.id && sigResults[sig.digital_signature.id]"
+                :class="[
+                  'text-xs font-medium flex items-center gap-1',
+                  sigResults[sig.digital_signature.id].outcome === 'valid'
+                    ? 'text-[#1aae39] dark:text-[#34d399]'
+                    : 'text-[#e03e3e] dark:text-[#f87171]'
+                ]"
+              >
+                <CheckCircle2 class="w-3.5 h-3.5" /> {{ sigResults[sig.digital_signature.id].outcome || 'Checked' }}
               </span>
               <BaseButton
+                v-if="sig.digital_signature?.id"
                 size="sm"
                 variant="outline"
                 class="text-xs h-7"
-                :loading="isVerifyingSig === sig.id"
-                @click="handleVerifySig(sig.id)"
+                :loading="isVerifyingSig === sig.digital_signature.id"
+                @click="handleVerifySig(sig.digital_signature.id)"
               >
                 <ShieldCheck class="w-3.5 h-3.5 mr-1" />
                 <span>Verify PKI</span>

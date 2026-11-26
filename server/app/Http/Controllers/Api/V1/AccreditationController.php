@@ -59,11 +59,26 @@ class AccreditationController extends Controller
      */
     public function cycles(Request $request): JsonResponse
     {
+        $actor = $request->user();
         $query = AccreditationCycle::with(['unit', 'frameworkVersion.framework'])
             ->withCount('evidence');
 
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $permittedUnits = $actor->getPermittedUnitIds('accreditation.view');
+            if ($permittedUnits !== null) {
+                $query->whereIn('unit_id', $permittedUnits ?: [0]);
+            }
+        }
+
         if ($request->filled('unit_id')) {
-            $query->where('unit_id', $request->input('unit_id'));
+            $unitId = (int) $request->input('unit_id');
+            if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('accreditation.view', $unitId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have accreditation.view permission for the specified organizational unit.',
+                ], 403);
+            }
+            $query->where('unit_id', $unitId);
         }
 
         if ($request->filled('active')) {
@@ -199,6 +214,7 @@ class AccreditationController extends Controller
      */
     public function evidence(Request $request): JsonResponse
     {
+        $actor = $request->user();
         $query = AccreditationEvidence::with([
             'cycle.unit',
             'standard',
@@ -207,6 +223,14 @@ class AccreditationController extends Controller
             'reviews.reviewer',
             'latestReview.reviewer',
         ]);
+
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $permittedUnits = $actor->getPermittedUnitIds('accreditation.view');
+            if ($permittedUnits !== null) {
+                $query->whereHas('cycle', fn ($cq) => $cq->whereIn('unit_id', $permittedUnits ?: [0]));
+            }
+            $query->whereHas('documentVersion.document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'));
+        }
 
         if ($request->filled('cycle_id')) {
             $query->where('cycle_id', $request->input('cycle_id'));
@@ -270,7 +294,22 @@ class AccreditationController extends Controller
             'note' => 'nullable|string|max:1000',
         ]);
 
+        $actor = $request->user();
         $cycle = AccreditationCycle::findOrFail($validated['cycle_id']);
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('accreditation.submit_evidence', (int) $cycle->unit_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to submit accreditation evidence for this unit cycle.',
+            ], 403);
+        }
+
+        $docVersion = \App\Models\DocumentVersion::with('document')->findOrFail((int) $validated['document_version_id']);
+        if ($actor && $docVersion->document && ! $docVersion->document->allowsUser($actor, 'documents.view')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have authorization to attach this document version as evidence.',
+            ], 403);
+        }
 
         // Guard: Prevent submissions to closed accreditation cycles
         if ($cycle->ends_on && $cycle->ends_on->isPast()) {
@@ -352,6 +391,14 @@ class AccreditationController extends Controller
     public function reviewEvidence(Request $request, int $id): JsonResponse
     {
         $evidence = AccreditationEvidence::with('cycle')->findOrFail($id);
+        $actor = $request->user();
+
+        if ($actor && (int) $evidence->submitted_by === (int) $actor->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Separation of duties violation: Submitters cannot review their own accreditation evidence.',
+            ], 422);
+        }
 
         if ($evidence->cycle->ends_on && $evidence->cycle->ends_on->isPast()) {
             return response()->json([
@@ -500,6 +547,7 @@ class AccreditationController extends Controller
     public function export(Request $request, int $cycleId): JsonResponse
     {
         $cycle = AccreditationCycle::with(['unit', 'frameworkVersion.framework'])->findOrFail($cycleId);
+        $actor = $request->user();
 
         $evidence = AccreditationEvidence::where('cycle_id', $cycleId)
             ->with([
@@ -509,7 +557,12 @@ class AccreditationController extends Controller
                 'submittedBy',
                 'reviews.reviewer',
             ])
-            ->get();
+            ->get()
+            ->filter(function ($e) use ($actor) {
+                $doc = $e->documentVersion?->document;
+                return ! $actor || ! $doc || $doc->allowsUser($actor, 'documents.view');
+            })
+            ->values();
 
         $dossier = [
             'institution' => 'Wollo University',

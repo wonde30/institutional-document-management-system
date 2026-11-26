@@ -36,7 +36,7 @@ return [
     ],
 
     'backup' => [
-        'encryption_key' => env('DMS_BACKUP_ENCRYPTION_KEY'),
+        'encryption_key' => env('DMS_BACKUP_ENCRYPTION_KEY') ?: env('BACKUP_ENCRYPTION_SECRET'),
     ],
 
 ];

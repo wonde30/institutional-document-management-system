@@ -163,9 +163,14 @@ class Document extends Model
         return $this->hasMany(DocumentComment::class, 'document_id');
     }
 
-    public function releaseEvents(): HasMany
+    public function releaseEvents(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasMany(DocumentReleaseEvent::class, 'document_id');
+        return $this->hasManyThrough(
+            DocumentReleaseEvent::class,
+            DocumentVersion::class,
+            'document_id',
+            'document_version_id'
+        );
     }
 
     public function correspondence(): HasOne
@@ -319,23 +324,31 @@ class Document extends Model
 
         // 3. Active explicit discretionary grant in document_grants for this specific permission
         $permId = DB::table('permissions')->where('code', $permission)->value('id');
-        $userUnitIds = $user->memberships()->pluck('unit_id')->filter()->all();
+        $userUnitIds = $user->getActiveMembershipUnitIds();
 
-        $hasActiveGrant = $permId ? DB::table('document_grants')
+        $hasUserGrant = $permId ? DB::table('document_grants')
             ->where('document_id', $this->id)
             ->where('permission_id', $permId)
-            ->where(function ($gq) use ($user, $userUnitIds) {
-                $gq->where('user_id', $user->id);
-                if (! empty($userUnitIds)) {
-                    $gq->orWhereIn('unit_id', $userUnitIds);
-                }
-            })
+            ->where('user_id', $user->id)
             ->where(function ($gq) {
                 $gq->whereNull('expires_at')->orWhere('expires_at', '>', now());
             })
             ->exists() : false;
 
-        if ($hasActiveGrant) {
+        if ($hasUserGrant) {
+            return true;
+        }
+
+        $hasUnitGrant = ($permId && ! empty($userUnitIds)) ? DB::table('document_grants')
+            ->where('document_id', $this->id)
+            ->where('permission_id', $permId)
+            ->whereIn('unit_id', $userUnitIds)
+            ->where(function ($gq) {
+                $gq->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->exists() : false;
+
+        if ($hasUnitGrant && (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId))) {
             return true;
         }
 
@@ -360,12 +373,12 @@ class Document extends Model
         }
 
         // SEC-002: Creator / Custodian intrinsic access applies ONLY to approved read operations
-        $isReadOnlyOp = in_array($permission, ['documents.view', 'documents.download', 'documents.share'], true);
+        $isReadOnlyOp = in_array($permission, ['documents.view', 'documents.download'], true);
         if ($isReadOnlyOp && ($this->created_by === $user->id || $this->custodian_id === $user->id)) {
             return true;
         }
 
-        // Mutating/destructive operations (update, version, delete) NEVER transfer to receiving units or assignees
+        // Mutating/destructive operations (update, version, delete, share) NEVER transfer via creator/movement/assignment fallback
         if (! $isReadOnlyOp) {
             return false;
         }
@@ -378,7 +391,9 @@ class Document extends Model
             ->first();
 
         if ($latestMovement && $user->hasPermission($permission, (int) $latestMovement->to_unit_id)) {
-            return true;
+            if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
+                return true;
+            }
         }
 
         // 6. Direct user assignment (active: unexpired and not cancelled/completed/returned)
@@ -398,7 +413,7 @@ class Document extends Model
 
         if ($hasActiveUserAssignment) {
             $hasBasePerm = $user->hasPermission($permission, null)
-                || $user->memberships()->pluck('unit_id')->contains(fn ($uId) => $user->hasPermission($permission, (int) $uId));
+                || collect($user->getActiveMembershipUnitIds())->contains(fn ($uId) => $user->hasPermission($permission, (int) $uId));
             if ($hasBasePerm) {
                 return true;
             }
@@ -423,7 +438,9 @@ class Document extends Model
 
         foreach ($activeUnitAssignmentIds as $aUnitId) {
             if ($user->hasPermission($permission, (int) $aUnitId)) {
-                return true;
+                if (! $isHighConfidentiality || $this->hasConfidentialClearance($user, $ownerUnitId)) {
+                    return true;
+                }
             }
         }
 
@@ -454,16 +471,31 @@ class Document extends Model
 
         $permittedUnitIds = $user->getPermittedUnitIds($permission);
         $userId = $user->id;
+        $permId = DB::table('permissions')->where('code', $permission)->value('id');
+
+        $activeAssignmentFilter = function ($aq) {
+            $aq->where(function ($dq) {
+                $dq->whereNull('due_at')->orWhere('due_at', '>=', now());
+            })->whereNotExists(function ($eq) {
+                $eq->select(DB::raw(1))
+                   ->from('assignment_events')
+                   ->whereColumn('assignment_events.assignment_id', 'document_assignments.id')
+                   ->whereIn('action', ['cancelled', 'completed', 'returned']);
+            });
+        };
 
         // If user holds no units for this permission and not global, check personal grants/assignments/creator only
         if ($permittedUnitIds !== null && empty($permittedUnitIds)) {
-            return $query->where(function (Builder $q) use ($userId, $permission) {
+            return $query->where(function (Builder $q) use ($userId, $permId, $activeAssignmentFilter) {
                 $q->where('documents.created_by', $userId)
                   ->orWhere('documents.custodian_id', $userId)
-                  ->orWhereHas('assignments', fn ($aq) => $aq->where('assigned_user_id', $userId))
-                  ->orWhereHas('grants', function ($gq) use ($userId, $permission) {
+                  ->orWhereHas('assignments', function ($aq) use ($userId, $activeAssignmentFilter) {
+                      $aq->where('assigned_user_id', $userId);
+                      $activeAssignmentFilter($aq);
+                  })
+                  ->orWhereHas('grants', function ($gq) use ($userId, $permId) {
                       $gq->where('user_id', $userId)
-                         ->whereHas('permission', fn ($pq) => $pq->where('code', $permission))
+                         ->where('permission_id', $permId ?: 0)
                          ->where(fn ($sq) => $sq->whereNull('expires_at')->orWhere('expires_at', '>', now()));
                   });
             });
@@ -515,39 +547,48 @@ class Document extends Model
         return $query->where(function (Builder $q) use (
             $permittedUnitIds,
             $userId,
+            $permId,
+            $activeAssignmentFilter,
             $highConfIds,
             $hasGlobalSensitive,
             $sensitiveUnitIds
         ) {
             // 1. Departmental / Ownership confinement
-            $q->where(function (Builder $unitQ) use ($permittedUnitIds, $userId) {
+            $q->where(function (Builder $unitQ) use ($permittedUnitIds, $userId, $permId, $activeAssignmentFilter) {
                 if ($permittedUnitIds === null) {
                     $unitQ->whereRaw('1 = 1');
                 } else {
                     $unitQ->whereIn('documents.owner_unit_id', $permittedUnitIds)
                           ->orWhereHas('movements', fn ($mq) => $mq->whereIn('to_unit_id', $permittedUnitIds))
-                          ->orWhereHas('assignments', fn ($aq) => $aq->whereIn('assigned_unit_id', $permittedUnitIds)->orWhere('assigned_user_id', $userId))
-                          ->orWhereHas('grants', fn ($gq) => $gq->where(fn ($sq) => $sq->where('user_id', $userId)->orWhereIn('unit_id', $permittedUnitIds))->where(fn ($sq) => $sq->whereNull('expires_at')->orWhere('expires_at', '>', now())));
+                          ->orWhereHas('assignments', function ($aq) use ($permittedUnitIds, $userId, $activeAssignmentFilter) {
+                              $aq->where(fn ($sq) => $sq->whereIn('assigned_unit_id', $permittedUnitIds)->orWhere('assigned_user_id', $userId));
+                              $activeAssignmentFilter($aq);
+                          })
+                          ->orWhereHas('grants', fn ($gq) => $gq->where('permission_id', $permId ?: 0)->where(fn ($sq) => $sq->where('user_id', $userId)->orWhereIn('unit_id', $permittedUnitIds))->where(fn ($sq) => $sq->whereNull('expires_at')->orWhere('expires_at', '>', now())));
                 }
             });
 
             // 2. Elevated Confidentiality boundary
             if (! empty($highConfIds)) {
-                $q->where(function (Builder $confQ) use ($highConfIds, $hasGlobalSensitive, $sensitiveUnitIds, $userId) {
+                $q->where(function (Builder $confQ) use ($highConfIds, $hasGlobalSensitive, $sensitiveUnitIds, $userId, $permId, $activeAssignmentFilter) {
                     $confQ->whereNotIn('documents.confidentiality_id', $highConfIds)
-                          ->orWhere(function (Builder $elevatedQ) use ($hasGlobalSensitive, $sensitiveUnitIds, $userId) {
+                          ->orWhere(function (Builder $elevatedQ) use ($hasGlobalSensitive, $sensitiveUnitIds, $userId, $permId, $activeAssignmentFilter) {
                               if ($hasGlobalSensitive) {
                                   $elevatedQ->whereRaw('1 = 1');
                               } else {
-                                  $elevatedQ->where(function (Builder $sq) use ($sensitiveUnitIds, $userId) {
+                                  $elevatedQ->where(function (Builder $sq) use ($sensitiveUnitIds, $userId, $permId, $activeAssignmentFilter) {
                                       if (! empty($sensitiveUnitIds)) {
                                           $sq->whereIn('documents.owner_unit_id', $sensitiveUnitIds);
                                       }
                                       $sq->orWhere('documents.created_by', $userId)
                                          ->orWhere('documents.custodian_id', $userId)
-                                         ->orWhereHas('assignments', fn ($aq) => $aq->where('assigned_user_id', $userId))
-                                         ->orWhereHas('grants', function ($gq) use ($userId) {
+                                         ->orWhereHas('assignments', function ($aq) use ($userId, $activeAssignmentFilter) {
+                                             $aq->where('assigned_user_id', $userId);
+                                             $activeAssignmentFilter($aq);
+                                         })
+                                         ->orWhereHas('grants', function ($gq) use ($userId, $permId) {
                                              $gq->where('user_id', $userId)
+                                                ->where('permission_id', $permId ?: 0)
                                                 ->where(fn ($sub) => $sub->whereNull('expires_at')->orWhere('expires_at', '>', now()));
                                          });
                                   });

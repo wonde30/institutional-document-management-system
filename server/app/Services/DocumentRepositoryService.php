@@ -242,39 +242,44 @@ class DocumentRepositoryService
         ?string $originalFilename = null,
         ?string $mimeType = null
     ): VersionFile {
-        $now = now()->format('Y-m-d H:i:s.u');
         $currentYear = date('Y');
-        $disk = config('filesystems.default', 'local');
+        $fileSecurity = app(FileSecurityService::class);
 
         if ($file instanceof UploadedFile) {
-            $hash = hash_file('sha256', $file->getRealPath());
-            $storedPath = $file->store('documents/'.$currentYear, $disk);
-            $filename = $file->getClientOriginalName();
-            $detectedMime = $file->getClientMimeType() ?: 'application/octet-stream';
-            $size = $file->getSize();
+            $fileObject = $fileSecurity->storeUploadedFile(
+                $file,
+                'documents/'.$currentYear,
+                $actorId,
+                $purpose
+            );
         } else {
-            // Raw binary content string
+            // Raw binary content string: sanitize filename, inspect/store safely
+            $now = now()->format('Y-m-d H:i:s.u');
+            $disk = config('filesystems.default', 'local');
             $hash = hash('sha256', $file);
-            $filename = $originalFilename ?? 'document_'.time().'.pdf';
+            $filename = $fileSecurity->sanitizeFilename($originalFilename ?? 'document_'.time().'.pdf');
+            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'pdf';
             $detectedMime = $mimeType ?? 'application/pdf';
             $size = strlen($file);
-            $storedPath = 'documents/'.$currentYear.'/'.Str::uuid().'.pdf';
-            Storage::disk($disk)->put($storedPath, $file);
-        }
+            $storedPath = 'documents/'.$currentYear.'/'.Str::uuid().'.'.$extension;
+            if (! Storage::disk($disk)->put($storedPath, $file)) {
+                throw new \RuntimeException('Failed to write generated document content to storage.');
+            }
 
-        $fileObject = FileObject::create([
-            'storage_disk' => $disk,
-            'storage_key' => $storedPath,
-            'original_filename' => $filename,
-            'detected_mime' => $detectedMime,
-            'byte_size' => $size,
-            'sha256' => $hash,
-            'uploaded_by' => $actorId,
-            'uploaded_at' => $now,
-            'scan_status' => 'clean',
-            'scanned_at' => $now,
-            'storage_status' => 'ready',
-        ]);
+            $fileObject = FileObject::create([
+                'storage_disk' => $disk,
+                'storage_key' => $storedPath,
+                'original_filename' => $filename,
+                'detected_mime' => $detectedMime,
+                'byte_size' => $size,
+                'sha256' => $hash,
+                'uploaded_by' => $actorId,
+                'uploaded_at' => $now,
+                'scan_status' => 'clean',
+                'scanned_at' => $now,
+                'storage_status' => 'ready',
+            ]);
+        }
 
         return VersionFile::create([
             'document_version_id' => $version->id,

@@ -925,13 +925,20 @@ class InstitutionalModuleController extends Controller
      */
     public function projects(Request $request): JsonResponse
     {
-        $proposals = ProjectProposal::with(['projectType', 'document.ownerUnit', 'recordedBy'])
-            ->orderByDesc('id')
-            ->get();
+        $actor = $request->user();
+        $isAdmin = $actor && $actor->hasPermission('system.configure');
+        $permittedUnits = ($actor && ! $isAdmin) ? $actor->getPermittedUnitIds('projects.view') : null;
 
-        $activeProjects = Project::with(['proposal.document.ownerUnit', 'proposal.projectType'])
-            ->orderByDesc('id')
-            ->get();
+        $proposalsQuery = ProjectProposal::with(['projectType', 'document.ownerUnit', 'recordedBy'])->orderByDesc('id');
+        $projectsQuery = Project::with(['proposal.document.ownerUnit', 'proposal.projectType'])->orderByDesc('id');
+
+        if ($permittedUnits !== null) {
+            $proposalsQuery->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnits ?: [0]));
+            $projectsQuery->whereHas('proposal.document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnits ?: [0]));
+        }
+
+        $proposals = $proposalsQuery->get();
+        $activeProjects = $projectsQuery->get();
 
         $projectTypes = ProjectType::where('active', true)->get();
 
@@ -1277,6 +1284,14 @@ class InstitutionalModuleController extends Controller
         ]);
 
         $actor = $request->user();
+        $docVersion = DocumentVersion::with('document')->findOrFail((int) $validated['document_version_id']);
+        $doc = $docVersion->document;
+        if ($doc && $actor && ! $actor->hasPermission('system.configure') && ! $doc->allowsUser($actor, 'signatures.request') && ! $actor->hasPermission('signatures.request', (int) $doc->owner_unit_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to request signatures on this document.',
+            ], 403);
+        }
         $now = now()->format('Y-m-d H:i:s.u');
 
         $sig = SignatureRequest::create([
@@ -1388,7 +1403,17 @@ class InstitutionalModuleController extends Controller
      */
     public function verifySignature(Request $request, int $id, PdfSignatureVerificationService $verifier): JsonResponse
     {
-        $signature = DigitalSignature::with(['signedFile', 'signingIdentity', 'request'])->findOrFail($id);
+        $signature = DigitalSignature::with(['signedFile', 'signingIdentity', 'request.documentVersion.document'])->findOrFail($id);
+        $actor = $request->user();
+        $doc = $signature->request?->documentVersion?->document
+            ?? ($signature->signed_file_id ? Document::resolveForFile((int) $signature->signed_file_id) : null);
+
+        if ($actor && $doc && ! $actor->hasPermission('system.configure') && ! $doc->allowsUser($actor, 'signatures.request') && ! $actor->hasPermission('signatures.request', (int) $doc->owner_unit_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You are not authorized to verify signatures for this document.',
+            ], 403);
+        }
 
         if (! $signature->signedFile || ! $signature->signedFile->storage_key) {
             return response()->json([
@@ -1458,6 +1483,16 @@ class InstitutionalModuleController extends Controller
             $filePath = $request->file('file')->getRealPath();
         } elseif ($request->filled('file_id')) {
             $fileObject = FileObject::findOrFail($request->integer('file_id'));
+            $actor = $request->user();
+            $doc = Document::resolveForFile($fileObject->id);
+            if ($actor && ! $actor->hasPermission('system.configure')) {
+                if (! $doc || (! $doc->allowsUser($actor, 'documents.view') && ! $actor->hasPermission('signatures.request', (int) $doc->owner_unit_id))) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Forbidden: You are not authorized to verify this file.',
+                    ], 403);
+                }
+            }
             $filePath = app(FileSecurityService::class)->resolveFileObjectPath($fileObject);
 
             if (! $filePath) {
@@ -1556,6 +1591,20 @@ class InstitutionalModuleController extends Controller
             ], 403);
         }
 
+        // 3b. Enforce authorization on the target document version's owning unit
+        $targetDoc = $docVersion->document;
+        if ($targetDoc && ! $actor->hasPermission('system.configure')) {
+            $docAuthorized = $targetDoc->allowsUser($actor, 'documents.update')
+                || $actor->hasPermission('stamps.apply', (int) $targetDoc->owner_unit_id)
+                || $actor->hasPermission('stamps.manage', (int) $targetDoc->owner_unit_id);
+            if (! $docAuthorized) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You are not authorized to apply stamps to documents in this organizational unit.',
+                ], 403);
+            }
+        }
+
         // 4. Asset must be institutionally controlled
         $imageFile = $stampVersion->imageFile;
         if (! $imageFile) {
@@ -1610,7 +1659,7 @@ class InstitutionalModuleController extends Controller
                     'original_filename' => 'stamped_' . ($sourceFile->original_filename ?: 'letter.pdf'),
                     'detected_mime' => 'application/pdf',
                     'byte_size' => strlen($sourceBytes),
-                    'sha256' => hash('sha256', $sourceBytes . '_STAMP_' . $stampVersion->id . '_' . $formattedNow),
+                    'sha256' => hash('sha256', $sourceBytes),
                     'uploaded_by' => $actor->id,
                     'uploaded_at' => $formattedNow,
                     'scan_status' => 'clean',

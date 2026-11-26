@@ -23,6 +23,7 @@ class AssignmentController extends Controller
     public function index(Request $request, ?int $documentId = null): JsonResponse
     {
         $docId = $documentId ?? ($request->route('id') ? (int) $request->route('id') : null) ?? ($request->query('document_id') ? (int) $request->query('document_id') : null);
+        $actor = $request->user();
 
         $query = DocumentAssignment::with([
             'document',
@@ -33,7 +34,7 @@ class AssignmentController extends Controller
             'events.actor',
             'events.targetUser',
             'responses.responseDocument',
-        ]);
+        ])->whereHas('document', fn ($dq) => $dq->accessibleBy($actor, 'documents.view'));
 
         if ($docId) {
             $query->where('document_id', $docId);
@@ -136,7 +137,7 @@ class AssignmentController extends Controller
      */
     public function recordEvent(Request $request, int $id): JsonResponse
     {
-        $assignment = DocumentAssignment::findOrFail($id);
+        $assignment = DocumentAssignment::with(['document', 'participants'])->findOrFail($id);
 
         $validated = $request->validate([
             'action' => 'required|in:assigned,claimed,delegated,delegation_accepted,delegation_revoked,reassigned,accepted,completed,returned,cancelled',
@@ -144,20 +145,36 @@ class AssignmentController extends Controller
             'comment' => 'nullable|string|max:1000',
         ]);
 
+        if (in_array($validated['action'], ['delegated', 'reassigned'], true) && empty($validated['target_user_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Validation error: target_user_id is required when recording '{$validated['action']}'.",
+            ], 422);
+        }
+
         $actor = $request->user();
+        $scopeUnitId = $assignment->assigned_unit_id ?? $assignment->document?->owner_unit_id;
+        $isParticipant = $assignment->participants->contains(fn ($p) => (int) $p->user_id === (int) $actor->id);
+        $hasUnitManage = $actor->hasPermission('system.configure')
+            || $actor->hasPermission('correspondence.assign', $scopeUnitId)
+            || $actor->hasPermission('documents.update', $scopeUnitId);
+
         if ($validated['action'] === 'reassigned') {
-            $isAuthorized = $actor->hasPermission('system.configure')
+            $isAuthorized = $hasUnitManage
+                || $assignment->assigned_by === $actor->id
+                || $assignment->assigned_user_id === $actor->id;
+        } else {
+            $isAuthorized = $hasUnitManage
                 || $assignment->assigned_by === $actor->id
                 || $assignment->assigned_user_id === $actor->id
-                || $actor->hasPermission('correspondence.assign', $assignment->assigned_unit_id)
-                || $actor->hasPermission('documents.update', $assignment->assigned_unit_id);
+                || $isParticipant;
+        }
 
-            if (! $isAuthorized) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Forbidden: You are not authorized to reassign this document assignment.',
-                ], 403);
-            }
+        if (! $isAuthorized) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You are not authorized to record lifecycle events on this document assignment.',
+            ], 403);
         }
 
         $event = $this->assignmentService->recordEvent($assignment, $validated, $actor);
@@ -177,12 +194,25 @@ class AssignmentController extends Controller
         $assignment = DocumentAssignment::findOrFail($id);
 
         $validated = $request->validate([
-            'response_document_id' => 'required|exists:documents,id|different:'.$assignment->document_id,
+            'response_document_id' => 'required|exists:documents,id',
             'relationship_role' => 'nullable|in:full_reply,interim_reply,supporting_report,partial_reply',
             'is_fulfilling' => 'nullable|boolean',
         ]);
 
+        if ((int) $validated['response_document_id'] === (int) $assignment->document_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: A document cannot be linked as a response to itself.',
+            ], 422);
+        }
+
         $responseDoc = Document::findOrFail($validated['response_document_id']);
+        if ($request->user() && ! $responseDoc->allowsUser($request->user(), 'documents.view')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to access the linked response document.',
+            ], 403);
+        }
 
         $response = $this->assignmentService->linkResponse(
             $assignment,

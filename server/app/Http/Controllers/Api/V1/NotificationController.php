@@ -15,7 +15,7 @@ class NotificationController extends Controller
         $userId = $user->id;
         $permittedDocUnits = $user->getPermittedUnitIds('documents.view');
 
-        $notifications = UserNotification::with(['event.document.ownerUnit', 'event.actor'])
+        $notifications = UserNotification::with(['event.document.ownerUnit', 'event.document.confidentiality', 'event.actor'])
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -24,14 +24,14 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->count();
 
-        $items = collect($notifications->items())->map(function ($notif) use ($permittedDocUnits) {
+        $items = collect($notifications->items())->map(function ($notif) use ($user) {
             $event = $notif->event;
             $doc = $event?->document;
             $docData = null;
             $targetUrl = '/notifications';
 
             if ($doc) {
-                $isPermitted = ($permittedDocUnits === null) || in_array($doc->owner_unit_id, $permittedDocUnits);
+                $isPermitted = $doc->allowsUser($user, 'documents.view');
 
                 if ($isPermitted) {
                     $docData = [
@@ -45,7 +45,7 @@ class NotificationController extends Controller
                     $docData = [
                         'id' => $doc->id,
                         'title' => '[Restricted Institutional Record]',
-                        'reference_number' => $doc->reference_number,
+                        'reference_number' => '[Restricted]',
                         'is_restricted' => true,
                     ];
                 }

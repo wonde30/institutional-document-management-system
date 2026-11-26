@@ -204,7 +204,7 @@ class DataTransferController extends Controller
 
         return response()->download($fullPath, 'import-errors-'.$operation->id.'.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        ])->deleteFileAfterSend(true);
     }
 
     /**
@@ -297,6 +297,11 @@ class DataTransferController extends Controller
     public function downloadExport(Request $request, int $id)
     {
         $operation = DataExportOperation::query()->findOrFail($id);
+        $actor = $request->user();
+
+        if (! $actor || ((int) $operation->created_by !== (int) $actor->id && ! $actor->hasPermission('system.configure'))) {
+            abort(403, 'Forbidden: You are not authorized to download this export operation.');
+        }
 
         if (! $operation->isRetrievable()) {
             abort(404, 'The export file is no longer available.');
@@ -308,7 +313,7 @@ class DataTransferController extends Controller
             abort(404, 'The export file is no longer available.');
         }
 
-        $this->assertDatasetPermission($request, $dataset);
+        $this->assertDatasetPermission($request, $dataset, $operation->scope_unit_id ? (int) $operation->scope_unit_id : null);
 
         $path = Storage::disk('local')->path((string) $operation->storage_path);
 

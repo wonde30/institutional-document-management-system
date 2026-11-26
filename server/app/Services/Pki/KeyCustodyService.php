@@ -7,6 +7,7 @@ namespace App\Services\Pki;
 use App\Models\FileObject;
 use App\Models\SigningIdentity;
 use App\Models\User;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -19,7 +20,7 @@ class KeyCustodyService
     public function __construct(CertificateService $certService)
     {
         $this->certService = $certService;
-        $this->keysDirectory = storage_path('app/pki/keys');
+        $this->keysDirectory = $this->certService->getPkiBasePath() . '/keys';
 
         if (! File::isDirectory($this->keysDirectory)) {
             File::makeDirectory($this->keysDirectory, 0700, true, true);
@@ -56,8 +57,8 @@ class KeyCustodyService
             'Institutional Faculty & Staff'
         );
 
-        // Store private key securely on filesystem (strictly mode 0600)
-        File::put($keyPath, $certResult['private_key_pem']);
+        // Store private key securely on filesystem (strictly mode 0600), encrypted at rest
+        File::put($keyPath, Crypt::encryptString($certResult['private_key_pem']));
         @chmod($keyPath, 0600);
 
         // Store public certificate in FileObject repository
@@ -114,7 +115,8 @@ class KeyCustodyService
             $this->getOrCreateIdentity($actor);
         }
 
-        $privateKeyPem = File::get($keyPath);
+        $rawContent = File::get($keyPath);
+        $privateKeyPem = $this->certService->decryptPrivateKeyPem($rawContent);
         $privateKey = openssl_pkey_get_private($privateKeyPem);
 
         if (! $privateKey) {
@@ -136,7 +138,7 @@ class KeyCustodyService
      */
     public function getUserCertificatePem(int $userId): string
     {
-        $certPath = storage_path("app/pki/certs/user_{$userId}_cert.pem");
+        $certPath = $this->certService->getPkiBasePath() . "/certs/user_{$userId}_cert.pem";
         if (File::exists($certPath)) {
             return File::get($certPath);
         }

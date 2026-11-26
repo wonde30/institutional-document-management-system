@@ -2,13 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCompositePrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserPermission extends Model
 {
+    use HasCompositePrimaryKey;
+
     public $timestamps = false;
+    public $incrementing = false;
     protected $table = 'user_permissions';
+
+    public function getCompositeKey(): array
+    {
+        return ['user_id', 'permission_id', 'scope_id'];
+    }
 
     protected static function booted(): void
     {

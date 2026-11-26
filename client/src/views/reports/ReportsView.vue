@@ -72,30 +72,36 @@ function exportCsvReport() {
  lines.push('')
 
  lines.push('DOCUMENTS BY CATEGORY')
+ const safeCsvCell = (val: unknown) => {
+   const s = String(val ?? '')
+   const escaped = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s
+   return `"${escaped.replace(/"/g, '""')}"`
+ }
+
  lines.push('Category,Volume')
  summary.value.documents_by_category.forEach((item) => {
- lines.push(`"${item.category}",${item.count}`)
+ lines.push(`${safeCsvCell(item.category)},${item.count}`)
  })
  lines.push('')
 
  lines.push('DOCUMENTS BY CONFIDENTIALITY LEVEL')
  lines.push('Confidentiality,Volume')
  summary.value.documents_by_confidentiality.forEach((item) => {
- lines.push(`"${item.confidentiality}",${item.count}`)
+ lines.push(`${safeCsvCell(item.confidentiality)},${item.count}`)
  })
  lines.push('')
 
  lines.push('CORRESPONDENCE BY TYPE')
  lines.push('Type,Volume')
  summary.value.correspondence_by_type.forEach((item) => {
- lines.push(`"${item.type}",${item.count}`)
+ lines.push(`${safeCsvCell(item.type)},${item.count}`)
  })
  lines.push('')
 
  lines.push('TOP INTER-UNIT MOVEMENT DESTINATIONS')
  lines.push('Receiving Unit,Dispatched Count')
  summary.value.top_movement_destinations.forEach((item) => {
- lines.push(`"${item.unit}",${item.count}`)
+ lines.push(`${safeCsvCell(item.unit)},${item.count}`)
  })
 
  downloadBlob(
@@ -244,7 +250,7 @@ onMounted(() => {
  </span>
  </div>
 
- <EmptyState v-if="summary.documents_by_category.length === 0" icon="Inbox" message="No document category records in selected date range" class="p-8" />
+ <EmptyState v-if="summary.documents_by_category.length === 0" title="No Category Records" description="No document category records in selected date range" class="p-8" />
 
  <div v-else class="space-y-3">
  <div

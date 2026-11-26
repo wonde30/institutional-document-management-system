@@ -903,15 +903,16 @@ class DataTransferService
     protected function documentExportRows(array $dataset, array $filters, ?int $scopeUnitId, User $actor): \Generator
     {
         $permitted = $actor->getPermittedUnitIds('documents.view');
+        $maxRows = (int) ($dataset['max_rows'] ?? 10000);
 
         $query = Document::query()
             ->with(['category', 'confidentiality', 'ownerUnit'])
             ->when($permitted !== null, fn ($q) => $q->whereIn('owner_unit_id', $permitted))
+            ->when($scopeUnitId !== null, fn ($q) => $q->where('owner_unit_id', $scopeUnitId))
             ->when(! empty($filters['lifecycle']), fn ($q) => $q->where('lifecycle', $filters['lifecycle']))
             ->when(! empty($filters['date_from']), fn ($q) => $q->whereDate('document_date', '>=', $filters['date_from']))
             ->when(! empty($filters['date_to']), fn ($q) => $q->whereDate('document_date', '<=', $filters['date_to']))
-            ->orderBy('id')
-            ->limit((int) ($dataset['max_rows'] ?? 10000) + 1);
+            ->orderBy('id');
 
         if (! empty($filters['category_code'])) {
             $query->whereHas('category', fn ($q) => $q->where('code', $filters['category_code']));
@@ -921,6 +922,7 @@ class DataTransferService
             $query->whereHas('confidentiality', fn ($q) => $q->where('code', $filters['confidentiality_code']));
         }
 
+        $emitted = 0;
         foreach ($query->cursor() as $document) {
             if (! $document->allowsUser($actor, 'documents.view')) {
                 continue;
@@ -937,6 +939,10 @@ class DataTransferService
                 'registered_at' => $document->registered_at,
                 'lifecycle' => $document->lifecycle,
             ];
+
+            if (++$emitted > $maxRows) {
+                break;
+            }
         }
     }
 
@@ -946,20 +952,22 @@ class DataTransferService
     protected function correspondenceExportRows(array $dataset, array $filters, ?int $scopeUnitId, User $actor): \Generator
     {
         $permitted = $actor->getPermittedUnitIds('correspondence.view');
+        $maxRows = (int) ($dataset['max_rows'] ?? 10000);
 
         $query = \App\Models\Correspondence::query()
             ->with(['document.ownerUnit', 'type', 'priority'])
             ->when($permitted !== null, fn ($q) => $q->whereHas('document', fn ($d) => $d->whereIn('owner_unit_id', $permitted)))
+            ->when($scopeUnitId !== null, fn ($q) => $q->whereHas('document', fn ($d) => $d->where('owner_unit_id', $scopeUnitId)))
             ->when(! empty($filters['purpose_code']), fn ($q) => $q->where('purpose_code', $filters['purpose_code']))
             ->when(! empty($filters['date_from']), fn ($q) => $q->whereDate('correspondence_date', '>=', $filters['date_from']))
             ->when(! empty($filters['date_to']), fn ($q) => $q->whereDate('correspondence_date', '<=', $filters['date_to']))
-            ->orderBy('id')
-            ->limit((int) ($dataset['max_rows'] ?? 10000) + 1);
+            ->orderBy('id');
 
         if (! empty($filters['type_code'])) {
             $query->whereHas('type', fn ($q) => $q->where('code', $filters['type_code']));
         }
 
+        $emitted = 0;
         foreach ($query->cursor() as $correspondence) {
             if ($correspondence->document && ! $correspondence->document->allowsUser($actor, 'correspondence.view')) {
                 continue;
@@ -976,6 +984,10 @@ class DataTransferService
                 'received_at' => $correspondence->received_at,
                 'requested_due_at' => $correspondence->requested_due_at,
             ];
+
+            if (++$emitted > $maxRows) {
+                break;
+            }
         }
     }
 

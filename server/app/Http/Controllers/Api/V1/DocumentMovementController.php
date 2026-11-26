@@ -41,6 +41,13 @@ class DocumentMovementController extends Controller
     {
         $document = Document::findOrFail($documentId);
 
+        if ($document->lifecycle !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot record movement for a retired or tombstoned document.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'from_unit_id' => 'required|exists:organization_units,id',
             'to_unit_id' => 'required|exists:organization_units,id|different:from_unit_id',
@@ -49,6 +56,12 @@ class DocumentMovementController extends Controller
         ]);
 
         $actor = $request->user();
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('correspondence.forward', (int) $validated['from_unit_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to forward documents from the specified originating unit.',
+            ], 403);
+        }
         $now = now()->format('Y-m-d H:i:s.u');
 
         $movement = DB::transaction(function () use ($document, $validated, $actor, $now) {
@@ -95,18 +108,15 @@ class DocumentMovementController extends Controller
         $movement = DocumentMovement::with('document')->findOrFail($id);
         $actor = $request->user();
 
-        $existingReceipt = MovementReceipt::where('movement_id', $movement->id)->first();
-        if ($existingReceipt) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Movement has already been acknowledged.',
-                'data' => $existingReceipt->load('acknowledgedBy'),
-            ], 422);
-        }
-
         $now = now()->format('Y-m-d H:i:s.u');
 
         $receipt = DB::transaction(function () use ($movement, $actor, $now) {
+            DocumentMovement::lockForUpdate()->findOrFail($movement->id);
+            $existingReceipt = MovementReceipt::where('movement_id', $movement->id)->first();
+            if ($existingReceipt) {
+                return null;
+            }
+
             $rcpt = MovementReceipt::create([
                 'movement_id' => $movement->id,
                 'acknowledged_by' => $actor->id,
@@ -129,6 +139,14 @@ class DocumentMovementController extends Controller
 
             return $rcpt;
         });
+
+        if (! $receipt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Movement has already been acknowledged.',
+                'data' => MovementReceipt::with('acknowledgedBy')->where('movement_id', $movement->id)->first(),
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,

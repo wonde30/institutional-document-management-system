@@ -57,6 +57,10 @@ class OcrController extends Controller
             ], 422);
         }
 
+        $validated = $request->validate([
+            'languages' => 'nullable|string|in:amh,eng,amh+eng,eng+amh',
+        ]);
+
         $fileObject = $versionFile->fileObject;
         $isSync = $request->boolean('sync', false);
 
@@ -64,7 +68,7 @@ class OcrController extends Controller
             $extraction = $this->ocrService->executeExtraction(
                 $version,
                 $fileObject,
-                $request->only(['languages']),
+                $validated,
                 $request->user()
             );
 
@@ -77,7 +81,7 @@ class OcrController extends Controller
             ], $extraction->processing_status === 'completed' ? 200 : 202);
         }
 
-        OcrExtractionJob::dispatch($version, $fileObject, $request->only(['languages']), $request->user());
+        OcrExtractionJob::dispatch($version, $fileObject, $validated, $request->user());
 
         return response()->json([
             'success' => true,
@@ -106,6 +110,18 @@ class OcrController extends Controller
             'processing_status' => 'nullable|string|in:pending,processing,completed,failed',
             'error_details' => 'nullable|string',
         ]);
+
+        if (! empty($validated['file_object_id'])) {
+            $belongsToOtherVersion = \App\Models\VersionFile::where('file_object_id', (int) $validated['file_object_id'])
+                ->where('document_version_id', '!=', $version->id)
+                ->exists();
+            if ($belongsToOtherVersion) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error: The specified file_object_id does not belong to this document version.',
+                ], 422);
+            }
+        }
 
         $extraction = $this->ocrService->storeExtraction($version, $validated, $request->user());
 
@@ -140,7 +156,24 @@ class OcrController extends Controller
     public function verify(Request $request, int $id, ?int $versionId = null, ?int $extractionId = null): JsonResponse
     {
         $extId = $extractionId ?? ($request->route('extractionId') ? (int) $request->route('extractionId') : $id);
-        $extraction = DocumentTextExtraction::findOrFail($extId);
+        $extraction = DocumentTextExtraction::with('documentVersion.document')->findOrFail($extId);
+
+        if ($versionId !== null && (int) $extraction->document_version_id !== $versionId) {
+            abort(404, 'OCR extraction does not belong to the specified document version.');
+        }
+
+        $doc = $extraction->documentVersion?->document;
+        if ($extractionId !== null && (! $doc || (int) $doc->id !== $id)) {
+            abort(404, 'OCR extraction does not belong to the specified document.');
+        }
+
+        $actor = $request->user();
+        if ($actor && $doc && ! $doc->allowsUser($actor, 'documents.update')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have permission to verify OCR extractions for this document.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'verified_text' => 'required|string',

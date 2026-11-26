@@ -22,6 +22,8 @@ class DocumentTextExtraction extends Model
         'language_detected',
         'confidence_score',
         'ocr_engine',
+        'processing_status',
+        'error_details',
         'extracted_at',
         'verified_by',
         'verified_at',

@@ -17,7 +17,10 @@ Schedule::call(function () {
 // Institutional automated operational schedules
 Schedule::command('dms:check-due-dates')->everyMinute()->withoutOverlapping();
 Schedule::command('dms:cleanup-import-uploads')->dailyAt('02:30')->withoutOverlapping();
-Schedule::command('dms:backup')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('dms:backup --encrypt')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('dms:backup-cleanup')->dailyAt('03:00')->withoutOverlapping();
+
+// PKI key-at-rest encryption migration (run once after deploy; safe to re-run)
+// php artisan pki:encrypt-keys-at-rest
 
 

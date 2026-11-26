@@ -149,11 +149,18 @@ class Permission extends Model
             'system.configure',
             'roles.view',
             'roles.create',
+            'roles.update',
+            'roles.delete',
             'roles.assign',
             'permissions.view',
+            'permissions.assign',
             'users.view',
             'users.create',
+            'users.update',
             'users.deactivate',
+            'backups.manage',
+            'backups.restore',
+            'archive.execute_disposal',
         ];
 
         return in_array((string) $this->code, $protected, true);

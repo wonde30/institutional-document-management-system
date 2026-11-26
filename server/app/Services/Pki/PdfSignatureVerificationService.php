@@ -19,6 +19,7 @@ class PdfSignatureVerificationService
 
     /**
      * Independently verify a signed PDF file.
+     * Supports multi-signature PDFs (PDF incremental updates).
      *
      * @param string $pdfContentOrPath Absolute path or raw PDF byte string
      * @return array Verification results with structured outcome, certificate status, timestamp status, and details
@@ -36,25 +37,103 @@ class PdfSignatureVerificationService
                 'certificate_status' => 'error',
                 'timestamp_status' => 'not_present',
                 'message' => 'The provided file is not a valid PDF document.',
-                'details' => ['file_size' => $fileSize],
+                'details' => ['file_size' => $fileSize, 'tamper_detected' => true],
             ];
         }
 
-        // 1. Locate /ByteRange
-        if (! preg_match('/\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/', $pdfBytes, $m)) {
+        // 1. Find ALL /ByteRange entries (multi-signature support)
+        preg_match_all(
+            '/\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/',
+            $pdfBytes,
+            $allMatches,
+            PREG_SET_ORDER
+        );
+
+        if (empty($allMatches)) {
             return [
                 'outcome' => 'invalid',
                 'certificate_status' => 'not_present',
                 'timestamp_status' => 'not_present',
                 'message' => 'No digital signature ByteRange dictionary found in PDF.',
-                'details' => ['has_byte_range' => false],
+                'details' => ['has_byte_range' => false, 'tamper_detected' => true],
             ];
         }
 
-        $offset0 = (int) $m[1];
-        $len1 = (int) $m[2];
-        $offset2 = (int) $m[3];
-        $len2 = (int) $m[4];
+        // 2. Verify each signature independently and enforce monotonic non-overlapping ByteRange coverage
+        $signatureResults = [];
+        $lastIndex = count($allMatches) - 1;
+        $prevEndOffset = 0;
+        foreach ($allMatches as $idx => $match) {
+            $res = $this->verifySingleSignature($pdfBytes, $match, $fileSize, $idx === $lastIndex);
+            $currentEndOffset = (int) $match[3] + (int) $match[4];
+            if ($idx > 0 && $currentEndOffset <= $prevEndOffset && $res['outcome'] === 'valid') {
+                $res = [
+                    'outcome' => 'invalid',
+                    'certificate_status' => $res['certificate_status'] ?? 'error',
+                    'timestamp_status' => 'not_present',
+                    'message' => 'Malformed multi-signature ByteRange: signature coverage does not monotonically extend previous revision.',
+                    'details' => ['tamper_detected' => true, 'byte_range' => [(int) $match[1], (int) $match[2], (int) $match[3], (int) $match[4]]],
+                ];
+            }
+            $prevEndOffset = max($prevEndOffset, $currentEndOffset);
+            $signatureResults[] = $res;
+        }
+
+        $signatureCount = count($signatureResults);
+
+        // 3. Determine overall outcome
+        $allValid = collect($signatureResults)->every(fn ($r) => $r['outcome'] === 'valid');
+        $anyValid = collect($signatureResults)->contains(fn ($r) => $r['outcome'] === 'valid');
+
+        if ($signatureCount === 1) {
+            // Single-signature: return the result directly for backward compatibility,
+            // but merge in signature_count and signatures array.
+            $single = $signatureResults[0];
+            return array_merge($single, [
+                'signature_count' => 1,
+                'signatures' => $signatureResults,
+            ]);
+        }
+
+        // Multi-signature aggregate result
+        $overallOutcome = $allValid ? 'valid' : ($anyValid ? 'partially_valid' : 'invalid');
+
+        $firstValid = collect($signatureResults)->firstWhere('outcome', 'valid');
+        $firstResult = $firstValid ?? $signatureResults[0];
+
+        return [
+            'outcome' => $overallOutcome,
+            'certificate_status' => $firstResult['certificate_status'] ?? 'unverified',
+            'timestamp_status' => $firstResult['timestamp_status'] ?? 'not_present',
+            'message' => $allValid
+                ? "All {$signatureCount} digital signatures verified successfully."
+                : ($anyValid
+                    ? "Partially valid: some signatures are valid, others are not."
+                    : 'All signatures failed verification.'),
+            'signature_count' => $signatureCount,
+            'signatures' => $signatureResults,
+            'details' => [
+                'byte_range_valid' => $allValid,
+                'tamper_detected' => ! $allValid,
+                'signature_count' => $signatureCount,
+                'regulatory_classification' => 'TEST PKI (NOT GOVERNMENT ACCREDITED UNDER PROC 1072/2018)',
+            ],
+        ];
+    }
+
+    /**
+     * Verify a single signature identified by its ByteRange match.
+     *
+     * @param string $pdfBytes  Full PDF content
+     * @param array  $match     preg_match_all PREG_SET_ORDER entry [0..4]
+     * @param int    $fileSize  Total file size in bytes
+     */
+    private function verifySingleSignature(string $pdfBytes, array $match, int $fileSize, bool $isLastSignature = true): array
+    {
+        $offset0 = (int) $match[1];
+        $len1    = (int) $match[2];
+        $offset2 = (int) $match[3];
+        $len2    = (int) $match[4];
 
         if ($offset0 !== 0 || $len1 <= 0 || $offset2 <= $len1 || $len2 <= 0) {
             return [
@@ -66,16 +145,9 @@ class PdfSignatureVerificationService
             ];
         }
 
-        // Check for post-signing modifications (trailing bytes after len2)
         $expectedTotalSize = $offset2 + $len2;
-        $postSigningModifications = false;
-        if ($fileSize > $expectedTotalSize) {
-            $trailingBytes = substr($pdfBytes, $expectedTotalSize);
-            // Allow trailing whitespace/newlines
-            if (trim($trailingBytes) !== '') {
-                $postSigningModifications = true;
-            }
-        } elseif ($fileSize < $expectedTotalSize) {
+
+        if ($fileSize < $expectedTotalSize) {
             return [
                 'outcome' => 'invalid',
                 'certificate_status' => 'error',
@@ -85,21 +157,41 @@ class PdfSignatureVerificationService
             ];
         }
 
-        // 2. Extract signed byte slices
+        // Check post-signing bytes: for the final signature, any non-whitespace trailing
+        // bytes are unauthorized; for earlier signatures, trailing bytes are permitted only
+        // when they belong to a subsequent signature incremental update.
+        $postSigningModifications = false;
+        if ($fileSize > $expectedTotalSize) {
+            $trailingBytes = substr($pdfBytes, $expectedTotalSize);
+            $trimmed = trim($trailingBytes);
+            if ($trimmed !== '') {
+                if ($isLastSignature) {
+                    $postSigningModifications = true;
+                } else {
+                    $trimmedLeading = ltrim($trailingBytes);
+                    $isValidIncrementalUpdate = preg_match('/^\d+\s+0\s+obj\b/', $trimmedLeading) === 1
+                        && str_contains($trailingBytes, '/ByteRange')
+                        && str_contains($trailingBytes, '/Type /Sig');
+                    $postSigningModifications = ! $isValidIncrementalUpdate;
+                }
+            }
+        }
+
+        // Extract signed byte slices
         $part1 = substr($pdfBytes, 0, $len1);
         $part2 = substr($pdfBytes, $offset2, $len2);
         $signedData = $part1 . $part2;
         $observedSha256 = hash('sha256', $signedData);
 
-        // 3. Extract /Contents hex string
+        // Extract /Contents hex string from the gap between the two ranges (must be ONLY <hex>)
         $contentsSection = substr($pdfBytes, $len1, $offset2 - $len1);
-        if (! preg_match('/<([0-9A-Fa-f\s]+)>/', $contentsSection, $cMatch)) {
+        if (! preg_match('/^<([0-9A-Fa-f\s]+)>$/', $contentsSection, $cMatch)) {
             return [
                 'outcome' => 'invalid',
                 'certificate_status' => 'error',
                 'timestamp_status' => 'not_present',
-                'message' => 'Could not extract /Contents hexadecimal payload.',
-                'details' => ['contents_section_len' => strlen($contentsSection)],
+                'message' => 'Could not extract /Contents hexadecimal payload (invalid ByteRange gap).',
+                'details' => ['contents_section_len' => strlen($contentsSection), 'tamper_detected' => true],
             ];
         }
 
@@ -152,7 +244,7 @@ class PdfSignatureVerificationService
             ];
         }
 
-        // 4. Verify Message Digest (Tamper Detection)
+        // Verify Message Digest (Tamper Detection)
         // Find messageDigest OID 1.2.840.113549.1.9.4 in the PKCS#7 envelope
         $msgDigestOid = "\x06\x09\x2A\x86\x48\x86\xF7\x0D\x01\x09\x04";
         $oidPos = strpos($derBinary, $msgDigestOid);
@@ -166,11 +258,11 @@ class PdfSignatureVerificationService
             ];
         }
 
-        // The 32-byte embedded SHA-256 digest follows the OID (11 bytes), SET tag/len (2 bytes), and OCTET STRING tag/len (2 bytes)
-        $embeddedDigest = substr($derBinary, $oidPos + 15, 32);
+        // Parse SET (0x31) -> OCTET STRING (0x04) following the messageDigest OID
+        $embeddedDigest = $this->extractMessageDigestValue($derBinary, $oidPos + strlen($msgDigestOid));
         $observedRawSha256 = hash('sha256', $signedData, true);
 
-        if ($embeddedDigest !== $observedRawSha256) {
+        if ($embeddedDigest === null || $embeddedDigest !== $observedRawSha256) {
             return [
                 'outcome' => 'invalid',
                 'certificate_status' => 'unverified',
@@ -180,13 +272,13 @@ class PdfSignatureVerificationService
                     'tamper_detected' => true,
                     'byte_range' => [$offset0, $len1, $offset2, $len2],
                     'observed_sha256' => bin2hex($observedRawSha256),
-                    'embedded_digest' => bin2hex($embeddedDigest),
+                    'embedded_digest' => $embeddedDigest !== null ? bin2hex($embeddedDigest) : null,
                     'post_signing_modifications' => $postSigningModifications,
                 ],
             ];
         }
 
-        // 5. Extract and Validate Signer X.509 Certificate
+        // Extract and Validate Signer X.509 Certificate
         $pem = "-----BEGIN PKCS7-----\n" . chunk_split(base64_encode($derBinary), 64, "\n") . "-----END PKCS7-----\n";
         $extractedCerts = [];
         @openssl_pkcs7_read($pem, $extractedCerts);
@@ -227,16 +319,37 @@ class PdfSignatureVerificationService
                     ];
                 }
 
+                // Verify certificate trust against the Institutional Root CA
+                $ca = $this->certService->getOrGenerateInstitutionalCa();
+                $caCertPem = $ca['cert_pem'] ?? null;
+                $chainResult = $this->certService->validateCertificate($signerCertPem, $caCertPem);
+                if (! ($chainResult['valid'] ?? false)) {
+                    return [
+                        'outcome' => 'invalid',
+                        'certificate_status' => 'untrusted_ca',
+                        'timestamp_status' => 'not_present',
+                        'message' => 'Signer certificate is not trusted by the Wollo University Institutional Root CA.',
+                        'details' => [
+                            'signer_certificate' => $parsedCert,
+                            'tamper_detected' => false,
+                            'byte_range_valid' => true,
+                        ],
+                    ];
+                }
+
                 // Check revocation status in database
-                if (! empty($parsedCert['serial_number'])) {
+                if (! empty($parsedCert['serial_number']) || ! empty($parsedCert['email'])) {
                     $identity = SigningIdentity::whereNotNull('revoked_at')
                         ->where(function ($q) use ($parsedCert) {
-                            $q->where('provider_identity_reference', 'like', "%{$parsedCert['serial_number']}%")
-                              ->orWhereHas('user', function ($uq) use ($parsedCert) {
-                                  if (! empty($parsedCert['email'])) {
-                                      $uq->where('email', $parsedCert['email']);
-                                  }
-                              });
+                            if (! empty($parsedCert['serial_number'])) {
+                                $q->where('provider_identity_reference', 'like', "%{$parsedCert['serial_number']}%");
+                            }
+                            if (! empty($parsedCert['email'])) {
+                                $method = ! empty($parsedCert['serial_number']) ? 'orWhereHas' : 'whereHas';
+                                $q->{$method}('user', function ($uq) use ($parsedCert) {
+                                    $uq->where('email', $parsedCert['email']);
+                                });
+                            }
                         })
                         ->first();
 
@@ -255,33 +368,58 @@ class PdfSignatureVerificationService
                     }
                 }
             } catch (\Throwable $e) {
-                // Ignore parse errors, proceed to signature verification
+                return [
+                    'outcome' => 'invalid',
+                    'certificate_status' => 'error',
+                    'timestamp_status' => 'not_present',
+                    'message' => 'Signer certificate validation failed: ' . $e->getMessage(),
+                    'details' => [
+                        'tamper_detected' => true,
+                        'byte_range' => [$offset0, $len1, $offset2, $len2],
+                    ],
+                ];
             }
         }
 
-        // 6. Cryptographically Verify Asymmetric RSA Signature over SignedAttributes
+        if (! $signerCertPem) {
+            return [
+                'outcome' => 'invalid',
+                'certificate_status' => 'missing',
+                'timestamp_status' => 'not_present',
+                'message' => 'Cryptographic signature malformed: no signer X.509 certificate present.',
+                'details' => [
+                    'tamper_detected' => true,
+                    'byte_range' => [$offset0, $len1, $offset2, $len2],
+                ],
+            ];
+        }
+
+        // Cryptographically Verify Asymmetric RSA Signature over SignedAttributes
         $attrsPos = strrpos(substr($derBinary, 0, $oidPos), "\xA0");
         $rsaVerified = false;
 
         if ($attrsPos !== false && $signerCertPem) {
-            $attrsLenByte = ord($derBinary[$attrsPos + 1]);
-            if ($attrsLenByte < 0x80) {
-                $attrsLen = 2 + $attrsLenByte;
-            } elseif ($attrsLenByte === 0x81) {
-                $attrsLen = 3 + ord($derBinary[$attrsPos + 2]);
-            } else {
-                $attrsLen = 4 + (ord($derBinary[$attrsPos + 2]) << 8 | ord($derBinary[$attrsPos + 3]));
-            }
+            $attrsTlv = $this->readDerTlv($derBinary, $attrsPos);
+            if ($attrsTlv !== null) {
+                $rawSignedAttrs = substr($derBinary, $attrsPos, $attrsTlv['total_len']);
+                // In CMS, signedAttrs tag [0] (\xA0) is replaced with SET OF (\x31) for signature verification
+                $attrsToVerify = "\x31" . substr($rawSignedAttrs, 1);
 
-            $rawSignedAttrs = substr($derBinary, $attrsPos, $attrsLen);
-            // In CMS, signedAttrs tag [0] (\xA0) is replaced with SET OF (\x31) for signature verification
-            $attrsToVerify = "\x31" . substr($rawSignedAttrs, 1);
-            $sigValue = substr($derBinary, -256);
+                // Next element after signedAttrs is signatureAlgorithm SEQUENCE, followed by signature OCTET STRING
+                $sigAlgOffset = $attrsPos + $attrsTlv['total_len'];
+                $sigAlgTlv = $this->readDerTlv($derBinary, $sigAlgOffset);
+                $sigOctetOffset = $sigAlgTlv !== null ? ($sigAlgOffset + $sigAlgTlv['total_len']) : null;
+                $sigOctetTlv = $sigOctetOffset !== null ? $this->readDerTlv($derBinary, $sigOctetOffset) : null;
 
-            $pubKey = openssl_pkey_get_public($signerCertPem);
-            if ($pubKey) {
-                $v = openssl_verify($attrsToVerify, $sigValue, $pubKey, OPENSSL_ALGO_SHA256);
-                $rsaVerified = ($v === 1);
+                $sigValue = ($sigOctetTlv !== null && $sigOctetTlv['tag'] === 0x04)
+                    ? $sigOctetTlv['value']
+                    : substr($derBinary, -256);
+
+                $pubKey = openssl_pkey_get_public($signerCertPem);
+                if ($pubKey) {
+                    $v = openssl_verify($attrsToVerify, $sigValue, $pubKey, OPENSSL_ALGO_SHA256);
+                    $rsaVerified = ($v === 1);
+                }
             }
         }
 
@@ -299,7 +437,7 @@ class PdfSignatureVerificationService
             ];
         }
 
-        // 7. Check for post-signing modifications
+        // Check for post-signing unauthorized modifications (genuine tampering only)
         if ($postSigningModifications) {
             return [
                 'outcome' => 'invalid',
@@ -331,4 +469,67 @@ class PdfSignatureVerificationService
             ],
         ];
     }
+
+    /**
+     * Read a single ASN.1 DER TLV structure at the given byte offset.
+     *
+     * @return array{tag: int, header_len: int, value_len: int, total_len: int, value: string}|null
+     */
+    private function readDerTlv(string $der, int $offset): ?array
+    {
+        $totalBytes = strlen($der);
+        if ($offset < 0 || $offset + 2 > $totalBytes) {
+            return null;
+        }
+
+        $tag = ord($der[$offset]);
+        $lenByte = ord($der[$offset + 1]);
+
+        if ($lenByte < 0x80) {
+            $headerLen = 2;
+            $valueLen = $lenByte;
+        } else {
+            $numLenBytes = $lenByte & 0x7F;
+            if ($numLenBytes === 0 || $numLenBytes > 4 || $offset + 2 + $numLenBytes > $totalBytes) {
+                return null;
+            }
+            $headerLen = 2 + $numLenBytes;
+            $valueLen = 0;
+            for ($i = 0; $i < $numLenBytes; $i++) {
+                $valueLen = ($valueLen << 8) | ord($der[$offset + 2 + $i]);
+            }
+        }
+
+        $totalLen = $headerLen + $valueLen;
+        if ($offset + $totalLen > $totalBytes) {
+            return null;
+        }
+
+        return [
+            'tag' => $tag,
+            'header_len' => $headerLen,
+            'value_len' => $valueLen,
+            'total_len' => $totalLen,
+            'value' => substr($der, $offset + $headerLen, $valueLen),
+        ];
+    }
+
+    /**
+     * Extract the OCTET STRING digest value from the messageDigest Attribute (SET -> OCTET STRING).
+     */
+    private function extractMessageDigestValue(string $der, int $setOffset): ?string
+    {
+        $setTlv = $this->readDerTlv($der, $setOffset);
+        if ($setTlv === null || $setTlv['tag'] !== 0x31) {
+            return null;
+        }
+
+        $octetTlv = $this->readDerTlv($der, $setOffset + $setTlv['header_len']);
+        if ($octetTlv === null || $octetTlv['tag'] !== 0x04) {
+            return null;
+        }
+
+        return $octetTlv['value'];
+    }
 }
+

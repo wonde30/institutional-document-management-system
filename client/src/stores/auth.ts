@@ -7,9 +7,15 @@ import type { OrganizationalUnitSummary, User } from '@/types'
 export const useAuthStore = defineStore('auth', () => {
   // Pure cookie-based SPA session authentication: No tokens stored in localStorage or browser headers
   const token = ref<string | null>(null)
-  const user = ref<User | null>(
-    localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : null
-  )
+  let initialUser: User | null = null
+  try {
+    const rawUser = localStorage.getItem('user')
+    initialUser = rawUser ? (JSON.parse(rawUser) as User) : null
+  } catch {
+    localStorage.removeItem('user')
+    initialUser = null
+  }
+  const user = ref<User | null>(initialUser)
   const dynamicNavigation = ref<any[] | null>(null)
   const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
@@ -95,6 +101,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       token.value = null
       user.value = receivedUser
+      sessionState.value = 'verified'
 
       // Maintain user identity in state; clear any legacy token artifacts from localStorage
       localStorage.removeItem('token')
@@ -118,11 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // Ignore network errors on logout
     } finally {
-      token.value = null
-      user.value = null
-      dynamicNavigation.value = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearSession()
     }
   }
 
@@ -194,7 +197,11 @@ export const useAuthStore = defineStore('auth', () => {
         await authApi.setActiveUnit(unitId)
 
         // Re-read the canonical context and the navigation for it.
-        await fetchUser()
+        const refreshed = await fetchUser()
+        if (!refreshed) {
+          user.value = previousUser
+          return false
+        }
 
         return true
       } catch (err: unknown) {

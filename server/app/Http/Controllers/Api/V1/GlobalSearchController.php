@@ -54,20 +54,23 @@ class GlobalSearchController extends Controller
 
         $term = $request->query('q') ?: $request->query('search');
         if (! empty($term)) {
-            $normalizedTerm = $this->ocrService->normalizeEthiopicText($term);
+            $escapeLike = static fn (string $value): string => str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+            $escapedTerm = $escapeLike((string) $term);
+            $normalizedTerm = $escapeLike($this->ocrService->normalizeEthiopicText((string) $term));
 
-            $query->where(function ($q) use ($term, $normalizedTerm) {
-                $q->where('title', 'like', "%{$term}%")
-                  ->orWhere('reference_number', 'like', "%{$term}%")
-                  ->orWhere('summary', 'like', "%{$term}%")
-                  ->orWhereHas('versions.textExtractions', function ($eq) use ($normalizedTerm, $term) {
+            $query->where(function ($q) use ($escapedTerm, $normalizedTerm) {
+                $q->where('title', 'like', "%{$escapedTerm}%")
+                  ->orWhere('reference_number', 'like', "%{$escapedTerm}%")
+                  ->orWhere('summary', 'like', "%{$escapedTerm}%")
+                  ->orWhereHas('versions.textExtractions', function ($eq) use ($normalizedTerm, $escapedTerm) {
                       $eq->where('searchable_text', 'like', "%{$normalizedTerm}%")
-                         ->orWhere('raw_text', 'like', "%{$term}%");
+                         ->orWhere('raw_text', 'like', "%{$escapedTerm}%");
                   });
             });
         }
 
-        $documents = $query->orderByDesc('registered_at')->paginate($request->query('per_page', 25));
+        $perPage = min(max((int) $request->query('per_page', 25), 1), 100);
+        $documents = $query->orderByDesc('registered_at')->paginate($perPage);
 
         return response()->json([
             'success' => true,
