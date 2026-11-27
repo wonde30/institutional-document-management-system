@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import UserManagementView from '@/views/users/UserManagementView.vue'
 import { usersApi, organizationUnitsApi, rolesApi, permissionsApi } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 
 vi.mock('@/api/client', () => ({
   usersApi: {
@@ -127,6 +129,16 @@ describe('UserManagementView.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    setActivePinia(createPinia())
+    const authStore = useAuthStore()
+    authStore.user = {
+      id: 1,
+      name: 'HR Admin',
+      email: 'hr@wu.edu.et',
+      status: 'active',
+      permissions: ['users.view', 'users.create', 'users.update', 'users.deactivate', 'roles.assign', 'roles.view', 'permissions.assign', 'permissions.view'],
+      roles: [],
+    } as any
     vi.mocked(usersApi.list).mockResolvedValue({
       data: {
         success: true,
@@ -219,5 +231,27 @@ describe('UserManagementView.vue', () => {
     // Expect confirmation modal to open
     expect(wrapper.text()).toContain('Activate Staff Account')
     expect(wrapper.text()).toContain('Confirm Activation')
+  })
+
+  it('hides administrative mutation buttons from read-only users.view callers', async () => {
+    const authStore = useAuthStore()
+    authStore.user = {
+      id: 99,
+      name: 'Directory Reader',
+      email: 'reader@wu.edu.et',
+      status: 'active',
+      permissions: ['users.view'],
+      roles: [],
+    } as any
+
+    const wrapper = mount(UserManagementView)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Register staff member')
+    expect(wrapper.findAll('button[title*="Deactivate User Account"]').length).toBe(0)
+    expect(wrapper.findAll('button[title*="Assign Scoped Role"]').length).toBe(0)
+    expect(wrapper.findAll('button[title*="Grant Single-User Direct Permission"]').length).toBe(0)
+    expect(wrapper.findAll('button[title*="Edit Staff Profile"]').length).toBe(0)
+    expect(wrapper.findAll('button[title*="Inspect Effective Permissions"]').length).toBeGreaterThanOrEqual(1)
   })
 })

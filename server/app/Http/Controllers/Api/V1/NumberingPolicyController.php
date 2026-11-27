@@ -76,27 +76,31 @@ class NumberingPolicyController extends Controller
             default => $validated['reset_policy'],
         };
 
-        $policy = NumberingPolicy::create([
-            'code' => strtoupper($validated['code']),
-            'name' => $validated['name'],
-            'prefix' => strtoupper($validated['prefix']),
-            'include_unit_code' => (bool) ($validated['include_unit_code'] ?? false),
-            'include_category_code' => (bool) ($validated['include_category_code'] ?? false),
-            'year_format' => $validated['year_format'],
-            'sequence_length' => (int) $validated['sequence_length'],
-            'reset_policy' => $resetPolicy,
-            'active' => (bool) ($validated['active'] ?? true),
-        ]);
+        $policy = DB::transaction(function () use ($validated, $resetPolicy, $actor, $now) {
+            $policy = NumberingPolicy::create([
+                'code' => strtoupper($validated['code']),
+                'name' => $validated['name'],
+                'prefix' => strtoupper($validated['prefix']),
+                'include_unit_code' => (bool) ($validated['include_unit_code'] ?? false),
+                'include_category_code' => (bool) ($validated['include_category_code'] ?? false),
+                'year_format' => $validated['year_format'],
+                'sequence_length' => (int) $validated['sequence_length'],
+                'reset_policy' => $resetPolicy,
+                'active' => (bool) ($validated['active'] ?? true),
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'numbering_policy.created',
-            'target_type' => 'numbering_policy',
-            'target_id' => (string) $policy->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'numbering_policy.created',
+                'target_type' => 'numbering_policy',
+                'target_id' => (string) $policy->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => $validated,
+            ]);
+
+            return $policy;
+        });
 
         return response()->json([
             'success' => true,
@@ -141,26 +145,28 @@ class NumberingPolicyController extends Controller
             default => $validated['reset_policy'],
         };
 
-        $policy->update([
-            'name' => $validated['name'],
-            'prefix' => strtoupper($validated['prefix']),
-            'include_unit_code' => (bool) ($validated['include_unit_code'] ?? false),
-            'include_category_code' => (bool) ($validated['include_category_code'] ?? false),
-            'year_format' => $validated['year_format'],
-            'sequence_length' => (int) $validated['sequence_length'],
-            'reset_policy' => $resetPolicy,
-            'active' => (bool) $validated['active'],
-        ]);
+        DB::transaction(function () use ($policy, $validated, $resetPolicy, $request) {
+            $policy->update([
+                'name' => $validated['name'],
+                'prefix' => strtoupper($validated['prefix']),
+                'include_unit_code' => (bool) ($validated['include_unit_code'] ?? false),
+                'include_category_code' => (bool) ($validated['include_category_code'] ?? false),
+                'year_format' => $validated['year_format'],
+                'sequence_length' => (int) $validated['sequence_length'],
+                'reset_policy' => $resetPolicy,
+                'active' => (bool) $validated['active'],
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $request->user()->id,
-            'action' => 'numbering_policy.updated',
-            'target_type' => 'numbering_policy',
-            'target_id' => (string) $policy->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => now()->format('Y-m-d H:i:s.u'),
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $request->user()->id,
+                'action' => 'numbering_policy.updated',
+                'target_type' => 'numbering_policy',
+                'target_id' => (string) $policy->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => now()->format('Y-m-d H:i:s.u'),
+                'details_json' => $validated,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

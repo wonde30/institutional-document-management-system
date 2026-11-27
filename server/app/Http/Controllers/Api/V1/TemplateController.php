@@ -112,7 +112,7 @@ class TemplateController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $template = DocumentTemplate::with(['category', 'ownerUnit', 'versions.createdBy'])->findOrFail($id);
+        $template = DocumentTemplate::with(['category', 'ownerUnit', 'versions.creator'])->findOrFail($id);
 
         if ($template->visibility_scope === 'unit_restricted' && $template->owner_unit_id !== null) {
             $user = request()->user();
@@ -255,38 +255,52 @@ class TemplateController extends Controller
             $safeTemplateData['reference_number']
         );
 
-        $doc = $this->templateService->generateDocument(
-            $version,
-            $safeTemplateData,
-            [
-                'title' => $validated['title'],
-                'summary' => $validated['summary'] ?? null,
-                'category_id' => $validated['category_id'],
-                'confidentiality_id' => $validated['confidentiality_id'],
-                'owner_unit_id' => $validated['owner_unit_id'],
-                'document_date' => $validated['document_date'] ?? now()->toDateString(),
-            ],
-            $request->user()
-        );
-
+        $standardWf = null;
         if ($request->boolean('submit_for_approval')) {
-            $initialVersion = $doc->versions()->first();
-            $workflowEngine = app(\App\Services\WorkflowEngineService::class);
             $standardWf = \Illuminate\Support\Facades\DB::table('workflow_definitions')->where('code', 'standard_doc_approval')->first();
-            $hasVersion = $standardWf ? \Illuminate\Support\Facades\DB::table('workflow_versions')->where('definition_id', $standardWf->id)->exists() : false;
-            if ($standardWf && $hasVersion && $initialVersion) {
-                try {
-                    $workflowEngine->startInstance(
-                        (int) $standardWf->id,
-                        (int) $initialVersion->id,
-                        null,
-                        $request->user()
-                    );
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('Template workflow initiation skipped: ' . $e->getMessage());
-                }
+            $hasVersion = $standardWf
+                ? \Illuminate\Support\Facades\DB::table('workflow_versions')
+                    ->where('definition_id', $standardWf->id)
+                    ->whereNotNull('published_at')
+                    ->exists()
+                : false;
+
+            if (! $standardWf || ! $hasVersion) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot submit for approval: no published standard_doc_approval workflow version is configured.',
+                ], 422);
             }
         }
+
+        $doc = \Illuminate\Support\Facades\DB::transaction(function () use ($version, $safeTemplateData, $validated, $request, $standardWf) {
+            $doc = $this->templateService->generateDocument(
+                $version,
+                $safeTemplateData,
+                [
+                    'title' => $validated['title'],
+                    'summary' => $validated['summary'] ?? null,
+                    'category_id' => $validated['category_id'],
+                    'confidentiality_id' => $validated['confidentiality_id'],
+                    'owner_unit_id' => $validated['owner_unit_id'],
+                    'document_date' => $validated['document_date'] ?? now()->toDateString(),
+                ],
+                $request->user()
+            );
+
+            if ($request->boolean('submit_for_approval') && $standardWf) {
+                $initialVersion = $doc->versions()->firstOrFail();
+                $workflowEngine = app(\App\Services\WorkflowEngineService::class);
+                $workflowEngine->startInstance(
+                    (int) $standardWf->id,
+                    (int) $initialVersion->id,
+                    null,
+                    $request->user()
+                );
+            }
+
+            return $doc;
+        });
 
         return response()->json([
             'success' => true,
@@ -301,8 +315,24 @@ class TemplateController extends Controller
     public function baselineConfig(Request $request): JsonResponse
     {
         $actor = $request->user();
-        $preferredUnitId = (int) ($request->query('unit_id') ?? $actor->primary_unit_id ?? 12);
-        $unit = \App\Models\OrganizationUnit::with('parent')->find($preferredUnitId);
+        $requestedUnitId = $request->query('unit_id');
+        if ($requestedUnitId !== null && $requestedUnitId !== '') {
+            $preferredUnitId = (int) $requestedUnitId;
+        } else {
+            $contextService = app(\App\Services\Authorization\OrganizationalContextService::class);
+            $preferredUnitId = $actor ? $contextService->resolveActiveUnitId($actor, $request) : null;
+            if ($preferredUnitId === null && $actor) {
+                $permittedUnits = $actor->getPermittedUnitIds('documents.create');
+                if (is_array($permittedUnits) && ! empty($permittedUnits)) {
+                    $preferredUnitId = (int) $permittedUnits[0];
+                } else {
+                    $preferredUnitId = $actor->getPrimaryUnitId();
+                }
+            }
+        }
+        $unit = $preferredUnitId !== null
+            ? \App\Models\OrganizationUnit::with('parent')->find($preferredUnitId)
+            : null;
 
         $facultyAm = 'ኮምቦልቻ ቴክኖሎጂ ኢንስቲትዩት';
         $facultyEn = 'KOMBOLCHA INSTITUTE OF TECHNOLOGY';

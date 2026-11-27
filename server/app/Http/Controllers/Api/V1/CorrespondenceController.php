@@ -16,6 +16,7 @@ use App\Models\DocumentMovement;
 use App\Models\DocumentRelation;
 use App\Models\DocumentRelationType;
 use App\Models\DocumentVersion;
+use App\Models\ExternalParty;
 use App\Models\FileObject;
 use App\Models\MovementReceipt;
 use App\Models\OfficeProcedureVersion;
@@ -37,11 +38,15 @@ class CorrespondenceController extends Controller
     {
         $actor = $request->user();
         $query = Correspondence::with([
-            'document',
+            'document.outgoingRelations.targetDocument',
+            'document.outgoingRelations.relationType',
             'type',
             'priority',
             'firstReceivingUnit',
             'registrar',
+            'participants.party.unit',
+            'participants.party.user',
+            'participants.party.externalParty',
             'movements.fromUnit',
             'movements.toUnit',
             'movements.sentBy',
@@ -96,7 +101,7 @@ class CorrespondenceController extends Controller
             });
         }
 
-        $allowedSortBy = ['registered_at', 'correspondence_date', 'id'];
+        $allowedSortBy = ['registered_at', 'correspondence_date', 'external_reference', 'id'];
         $sortBy = in_array($request->query('sort_by'), $allowedSortBy, true) ? $request->query('sort_by') : 'registered_at';
         $sortOrder = strtolower((string) $request->query('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
         $perPage = min(max((int) $request->query('per_page', 25), 1), 100);
@@ -132,11 +137,23 @@ class CorrespondenceController extends Controller
             'first_receiving_unit_id' => 'nullable|exists:organization_units,id',
             'requested_due_at' => 'nullable|date',
             'sender_unit_id' => 'nullable|exists:organization_units,id',
+            'sender_external_name' => 'nullable|string|max:255',
             'to_unit_id' => 'nullable|exists:organization_units,id',
+            'to_external_name' => 'nullable|string|max:255',
+            'related_document_id' => 'nullable|integer|exists:documents,id',
             'file' => 'nullable|file|max:51200',
         ]);
 
         $actor = $request->user();
+        if (! empty($validated['related_document_id'])) {
+            $relatedDoc = Document::findOrFail((int) $validated['related_document_id']);
+            if ($actor && ! $relatedDoc->allowsUser($actor, 'documents.view')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have permission to link the specified related document.',
+                ], 403);
+            }
+        }
         $now = now()->format('Y-m-d H:i:s.u');
         $currentYear = date('Y');
 
@@ -315,13 +332,29 @@ class CorrespondenceController extends Controller
                 ]);
             }
 
-            // 5. Create communication parties if provided
+            // 5. Create communication parties (internal units & external parties) if provided
             if (! empty($validated['sender_unit_id'])) {
                 $party = CommunicationParty::firstOrCreate([
                     'unit_id' => $validated['sender_unit_id'],
                     'user_id' => null,
                     'external_party_id' => null,
                 ]);
+
+                CorrespondenceParticipant::firstOrCreate([
+                    'correspondence_id' => $corr->id,
+                    'party_id' => $party->id,
+                    'participation_type' => 'sender',
+                ]);
+            } elseif (! empty($validated['sender_external_name'])) {
+                $senderName = trim($validated['sender_external_name']);
+                $extParty = ExternalParty::firstOrCreate(
+                    ['name' => $senderName, 'party_type' => 'organization'],
+                    ['created_at' => $now]
+                );
+                $party = CommunicationParty::firstOrCreate(
+                    ['external_party_id' => $extParty->id],
+                    ['unit_id' => null, 'user_id' => null]
+                );
 
                 CorrespondenceParticipant::firstOrCreate([
                     'correspondence_id' => $corr->id,
@@ -342,12 +375,51 @@ class CorrespondenceController extends Controller
                     'party_id' => $party->id,
                     'participation_type' => 'to',
                 ]);
+            } elseif (! empty($validated['to_external_name'])) {
+                $recipientName = trim($validated['to_external_name']);
+                $extParty = ExternalParty::firstOrCreate(
+                    ['name' => $recipientName, 'party_type' => 'organization'],
+                    ['created_at' => $now]
+                );
+                $party = CommunicationParty::firstOrCreate(
+                    ['external_party_id' => $extParty->id],
+                    ['unit_id' => null, 'user_id' => null]
+                );
+
+                CorrespondenceParticipant::firstOrCreate([
+                    'correspondence_id' => $corr->id,
+                    'party_id' => $party->id,
+                    'participation_type' => 'to',
+                ]);
+            }
+
+            // 6. Link related document if provided
+            if (! empty($validated['related_document_id']) && (int) $validated['related_document_id'] !== (int) $doc->id) {
+                $relType = DocumentRelationType::firstOrCreate(
+                    ['code' => 'references'],
+                    ['name' => 'References']
+                );
+                DocumentRelation::firstOrCreate([
+                    'source_id' => $doc->id,
+                    'target_id' => (int) $validated['related_document_id'],
+                    'relation_type_id' => $relType->id,
+                ]);
             }
 
             return $corr;
         });
 
-        $correspondence->load(['document', 'type', 'priority', 'firstReceivingUnit', 'registrar']);
+        $correspondence->load([
+            'document.outgoingRelations.targetDocument',
+            'document.outgoingRelations.relationType',
+            'type',
+            'priority',
+            'firstReceivingUnit',
+            'registrar',
+            'participants.party.unit',
+            'participants.party.user',
+            'participants.party.externalParty',
+        ]);
 
         return response()->json([
             'success' => true,
@@ -364,6 +436,8 @@ class CorrespondenceController extends Controller
         $correspondence = Correspondence::with([
             'document.category',
             'document.confidentiality',
+            'document.outgoingRelations.targetDocument',
+            'document.outgoingRelations.relationType',
             'type',
             'priority',
             'firstReceivingUnit',

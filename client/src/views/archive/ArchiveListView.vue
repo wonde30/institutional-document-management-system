@@ -360,7 +360,7 @@ onMounted(() => {
          <template #actions>
 
         <BaseButton
-          v-if="activeTab === 'holds'"
+          v-if="activeTab === 'holds' && authStore.hasPermission('archive.transfer')"
           variant="primary"
           size="sm"
           class="bg-rose-600 hover:bg-rose-700 text-white"
@@ -371,7 +371,7 @@ onMounted(() => {
         </BaseButton>
 
         <BaseButton
-          v-else-if="activeTab === 'collections'"
+          v-else-if="activeTab === 'collections' && authStore.hasPermission('archive.transfer')"
           variant="primary"
           size="sm"
           @click="openCreateCollectionModal"
@@ -593,7 +593,7 @@ onMounted(() => {
             </BaseButton>
 
             <BaseButton
-              v-if="item.document?.lifecycle !== 'tombstoned'"
+              v-if="item.document?.lifecycle !== 'tombstoned' && (authStore.hasPermission('archive.request_disposal') || authStore.hasPermission('archive.approve_disposal') || authStore.hasPermission('archive.execute_disposal'))"
               variant="outline"
               size="sm"
               class="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20"
@@ -690,7 +690,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <div v-if="!hold.released_at" class="shrink-0">
+          <div v-if="!hold.released_at && authStore.hasPermission('archive.transfer')" class="shrink-0">
             <BaseButton
               variant="outline"
               size="sm"

@@ -751,7 +751,7 @@ onMounted(async () => {
  <div class="flex items-center justify-end gap-1.5 flex-wrap" @click.stop>
  <!-- Acknowledge Movement Button -->
  <BaseButton
- v-if="getPendingMovementForUser(item)"
+ v-if="getPendingMovementForUser(item) && authStore.hasPermission('correspondence.acknowledge')"
  variant="outline"
  size="sm"
  class="h-7 text-xs px-2 bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/30 hover:bg-[#d6f0dc] dark:hover:bg-[#1b3d27]"
@@ -763,7 +763,7 @@ onMounted(async () => {
 
  <!-- Outgoing Dispatch Button -->
  <BaseButton
- v-if="selectedTab === 'outgoing' || item.type?.code === 'outgoing'"
+ v-if="(selectedTab === 'outgoing' || item.type?.code === 'outgoing') && authStore.hasPermission('correspondence.dispatch')"
  variant="outline"
  size="sm"
  class="h-7 text-xs px-2 text-primary border-primary/30"
@@ -775,6 +775,7 @@ onMounted(async () => {
 
  <!-- Forward / Movement Button -->
  <BaseButton
+ v-if="authStore.hasPermission('correspondence.forward')"
  variant="outline"
  size="sm"
  class="h-7 text-xs px-2"
@@ -786,6 +787,7 @@ onMounted(async () => {
 
  <!-- Direct Assignment Button -->
  <BaseButton
+ v-if="authStore.hasPermission('correspondence.assign')"
  variant="outline"
  size="sm"
  class="h-7 text-xs px-2"
@@ -809,6 +811,7 @@ onMounted(async () => {
 
  <!-- Close Correspondence Button -->
  <BaseButton
+ v-if="!item.is_closed && authStore.hasPermission('correspondence.register')"
  variant="outline"
  size="sm"
  class="h-7 text-xs px-2 text-rose-600 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/20"

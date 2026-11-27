@@ -8,10 +8,7 @@
     "build": "vite build",
     "typecheck": "vue-tsc -b",
     "preview": "vite preview",
-    "test": "vitest run",
-    "check:encoding": "node scripts/check-encoding.mjs",
-    "check:vue": "node scripts/check-vue-components.mjs",
-    "check:ui": "node scripts/check-ui.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

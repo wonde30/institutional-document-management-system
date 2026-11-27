@@ -92,7 +92,7 @@ class DocumentTimelineService
 
             if ($m->receipt) {
                 $events->push([
-                    'id' => "movement-rcpt-{$m->receipt->id}",
+                    'id' => "movement-rcpt-{$m->receipt->movement_id}",
                     'event_type' => 'movement_acknowledged',
                     'title' => "Custody Receipt Acknowledged: {$toName}",
                     'description' => "Physical custody confirmed by recipient officer",

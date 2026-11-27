@@ -52,7 +52,7 @@ class UserResource extends JsonResource
             'direct_permissions' => $this->whenLoaded('userPermissions', function () {
                 return $this->userPermissions->map(function ($up) {
                     return [
-                        'id' => $up->id,
+                        'id' => "{$up->user_id}:{$up->permission_id}:{$up->scope_id}",
                         'permission_id' => $up->permission_id,
                         'permission_code' => $up->permission?->code,
                         'permission_name' => $up->permission?->name,

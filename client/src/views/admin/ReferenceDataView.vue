@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { metadataApi } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import PageHeader from '@/components/PageHeader.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
@@ -21,6 +22,7 @@ import {
   AlertCircle
 } from 'lucide-vue-next'
 
+const authStore = useAuthStore()
 const toast = useToast()
 
 const loading = ref(true)
@@ -195,7 +197,7 @@ onMounted(() => {
           Refresh
         </BaseButton>
 
-        <BaseButton variant="primary" size="sm" @click="openCreateModal">
+        <BaseButton v-if="authStore.hasPermission('system.configure')" variant="primary" size="sm" @click="openCreateModal">
           <Plus class="w-4 h-4 mr-1.5" />
           Add {{ currentConfig.title }}
         </BaseButton>
@@ -294,7 +296,7 @@ onMounted(() => {
               </span>
             </td>
             <td class="p-3.5 text-right">
-              <div class="inline-flex items-center gap-1">
+              <div v-if="authStore.hasPermission('system.configure')" class="inline-flex items-center gap-1">
                 <button
                   type="button"
                   @click="openEditModal(cat)"
@@ -343,7 +345,7 @@ onMounted(() => {
               </span>
             </td>
             <td class="p-3.5 text-right">
-              <div class="inline-flex items-center gap-1">
+              <div v-if="authStore.hasPermission('system.configure')" class="inline-flex items-center gap-1">
                 <button
                   type="button"
                   @click="openEditModal(c)"
@@ -390,7 +392,7 @@ onMounted(() => {
               </span>
             </td>
             <td class="p-3.5 text-right">
-              <div class="inline-flex items-center gap-1">
+              <div v-if="authStore.hasPermission('system.configure')" class="inline-flex items-center gap-1">
                 <button
                   type="button"
                   @click="openEditModal(t)"
@@ -437,7 +439,7 @@ onMounted(() => {
               </span>
             </td>
             <td class="p-3.5 text-right">
-              <div class="inline-flex items-center gap-1">
+              <div v-if="authStore.hasPermission('system.configure')" class="inline-flex items-center gap-1">
                 <button
                   type="button"
                   @click="openEditModal(p)"
@@ -484,7 +486,7 @@ onMounted(() => {
               </span>
             </td>
             <td class="p-3.5 text-right">
-              <div class="inline-flex items-center gap-1">
+              <div v-if="authStore.hasPermission('system.configure')" class="inline-flex items-center gap-1">
                 <button
                   type="button"
                   @click="openEditModal(d)"

@@ -135,18 +135,30 @@ class OcrController extends Controller
     /**
      * List OCR extractions for a document version.
      */
-    public function extractions(int $id, int $versionId): JsonResponse
+    public function extractions(Request $request, int $id, int $versionId): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $version = DocumentVersion::where('document_id', $id)->findOrFail($versionId);
 
+        $perPage = (int) $request->query('per_page', 25);
         $extractions = DocumentTextExtraction::with(['verifiedBy', 'fileObject'])
             ->where('document_version_id', $version->id)
             ->orderByDesc('extracted_at')
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $extractions,
+            'data' => $extractions->items(),
+            'meta' => [
+                'current_page' => $extractions->currentPage(),
+                'last_page' => $extractions->lastPage(),
+                'per_page' => $extractions->perPage(),
+                'total' => $extractions->total(),
+            ],
         ]);
     }
 

@@ -18,7 +18,41 @@ class CorrespondenceResource extends JsonResource
                 'title' => $this->document->title,
                 'summary' => $this->document->summary,
                 'lifecycle' => $this->document->lifecycle,
+                'outgoing_relations' => $this->document->relationLoaded('outgoingRelations')
+                    ? $this->document->outgoingRelations->map(fn ($rel) => [
+                        'source_id' => $rel->source_id,
+                        'target_id' => $rel->target_id,
+                        'relation_type_id' => $rel->relation_type_id,
+                        'relation_type' => $rel->relationLoaded('relationType') ? $rel->relationType?->code : null,
+                        'target_document' => $rel->relationLoaded('targetDocument') && $rel->targetDocument ? [
+                            'id' => $rel->targetDocument->id,
+                            'reference_number' => $rel->targetDocument->reference_number,
+                            'title' => $rel->targetDocument->title,
+                        ] : null,
+                    ])
+                    : [],
             ]),
+            'related_document_id' => $this->whenLoaded('document', fn () => $this->document->relationLoaded('outgoingRelations')
+                ? $this->document->outgoingRelations->first()?->target_id
+                : null),
+            'related_document' => $this->whenLoaded('document', function () {
+                if (! $this->document->relationLoaded('outgoingRelations')) {
+                    return null;
+                }
+                $rel = $this->document->outgoingRelations->first();
+                if (! $rel || ! $rel->relationLoaded('targetDocument') || ! $rel->targetDocument) {
+                    return null;
+                }
+                return [
+                    'id' => $rel->targetDocument->id,
+                    'reference_number' => $rel->targetDocument->reference_number,
+                    'title' => $rel->targetDocument->title,
+                ];
+            }),
+            'sender_external_name' => $this->whenLoaded('participants', fn () => $this->participants
+                ->firstWhere('participation_type', 'sender')?->party?->externalParty?->name),
+            'to_external_name' => $this->whenLoaded('participants', fn () => $this->participants
+                ->firstWhere('participation_type', 'to')?->party?->externalParty?->name),
             'type_id' => $this->type_id,
             'type' => $this->whenLoaded('type', fn () => [
                 'id' => $this->type->id,
@@ -89,7 +123,6 @@ class CorrespondenceResource extends JsonResource
                 'instruction' => $m->instruction,
                 'due_at' => $m->due_at?->toISOString(),
                 'receipt' => $m->receipt ? [
-                    'id' => $m->receipt->id,
                     'movement_id' => $m->receipt->movement_id,
                     'acknowledged_by' => $m->receipt->acknowledged_by,
                     'acknowledged_at' => $m->receipt->acknowledged_at?->toISOString(),

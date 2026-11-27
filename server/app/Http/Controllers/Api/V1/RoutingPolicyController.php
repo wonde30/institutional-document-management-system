@@ -9,6 +9,7 @@ use App\Models\AuditEvent;
 use App\Models\RoutingPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class RoutingPolicyController extends Controller
@@ -59,30 +60,34 @@ class RoutingPolicyController extends Controller
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $policy = RoutingPolicy::create([
-            'code' => strtoupper($validated['code']),
-            'name' => $validated['name'],
-            'from_unit_id' => $validated['from_unit_id'] ?? null,
-            'to_unit_id' => $validated['to_unit_id'],
-            'correspondence_type_id' => $validated['correspondence_type_id'] ?? null,
-            'document_category_id' => $validated['document_category_id'] ?? null,
-            'priority_id' => $validated['priority_id'] ?? null,
-            'default_assignee_role_id' => $validated['default_assignee_role_id'] ?? null,
-            'sla_hours' => (int) $validated['sla_hours'],
-            'escalation_unit_id' => $validated['escalation_unit_id'] ?? null,
-            'active' => (bool) ($validated['active'] ?? true),
-            'description' => $validated['description'] ?? null,
-        ]);
+        $policy = DB::transaction(function () use ($validated, $actor, $now) {
+            $policy = RoutingPolicy::create([
+                'code' => strtoupper($validated['code']),
+                'name' => $validated['name'],
+                'from_unit_id' => $validated['from_unit_id'] ?? null,
+                'to_unit_id' => $validated['to_unit_id'],
+                'correspondence_type_id' => $validated['correspondence_type_id'] ?? null,
+                'document_category_id' => $validated['document_category_id'] ?? null,
+                'priority_id' => $validated['priority_id'] ?? null,
+                'default_assignee_role_id' => $validated['default_assignee_role_id'] ?? null,
+                'sla_hours' => (int) $validated['sla_hours'],
+                'escalation_unit_id' => $validated['escalation_unit_id'] ?? null,
+                'active' => (bool) ($validated['active'] ?? true),
+                'description' => $validated['description'] ?? null,
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'routing_policy.created',
-            'target_type' => 'routing_policy',
-            'target_id' => (string) $policy->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'routing_policy.created',
+                'target_type' => 'routing_policy',
+                'target_id' => (string) $policy->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => $validated,
+            ]);
+
+            return $policy;
+        });
 
         return response()->json([
             'success' => true,
@@ -129,29 +134,31 @@ class RoutingPolicyController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $policy->update([
-            'name' => $validated['name'],
-            'from_unit_id' => $validated['from_unit_id'] ?? null,
-            'to_unit_id' => $validated['to_unit_id'],
-            'correspondence_type_id' => $validated['correspondence_type_id'] ?? null,
-            'document_category_id' => $validated['document_category_id'] ?? null,
-            'priority_id' => $validated['priority_id'] ?? null,
-            'default_assignee_role_id' => $validated['default_assignee_role_id'] ?? null,
-            'sla_hours' => (int) $validated['sla_hours'],
-            'escalation_unit_id' => $validated['escalation_unit_id'] ?? null,
-            'active' => (bool) $validated['active'],
-            'description' => $validated['description'] ?? null,
-        ]);
+        DB::transaction(function () use ($policy, $validated, $request) {
+            $policy->update([
+                'name' => $validated['name'],
+                'from_unit_id' => $validated['from_unit_id'] ?? null,
+                'to_unit_id' => $validated['to_unit_id'],
+                'correspondence_type_id' => $validated['correspondence_type_id'] ?? null,
+                'document_category_id' => $validated['document_category_id'] ?? null,
+                'priority_id' => $validated['priority_id'] ?? null,
+                'default_assignee_role_id' => $validated['default_assignee_role_id'] ?? null,
+                'sla_hours' => (int) $validated['sla_hours'],
+                'escalation_unit_id' => $validated['escalation_unit_id'] ?? null,
+                'active' => (bool) $validated['active'],
+                'description' => $validated['description'] ?? null,
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $request->user()->id,
-            'action' => 'routing_policy.updated',
-            'target_type' => 'routing_policy',
-            'target_id' => (string) $policy->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => now()->format('Y-m-d H:i:s.u'),
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $request->user()->id,
+                'action' => 'routing_policy.updated',
+                'target_type' => 'routing_policy',
+                'target_id' => (string) $policy->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => now()->format('Y-m-d H:i:s.u'),
+                'details_json' => $validated,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

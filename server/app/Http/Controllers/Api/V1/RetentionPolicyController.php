@@ -136,22 +136,24 @@ class RetentionPolicyController extends Controller
             'active' => 'required|boolean',
         ]);
 
-        $policy->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'document_category_id' => $validated['document_category_id'] ?? null,
-            'active' => (bool) $validated['active'],
-        ]);
+        DB::transaction(function () use ($policy, $validated, $request) {
+            $policy->update([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'document_category_id' => $validated['document_category_id'] ?? null,
+                'active' => (bool) $validated['active'],
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $request->user()->id,
-            'action' => 'retention_policy.updated',
-            'target_type' => 'retention_policy',
-            'target_id' => (string) $policy->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => now()->format('Y-m-d H:i:s.u'),
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $request->user()->id,
+                'action' => 'retention_policy.updated',
+                'target_type' => 'retention_policy',
+                'target_id' => (string) $policy->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => now()->format('Y-m-d H:i:s.u'),
+                'details_json' => $validated,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

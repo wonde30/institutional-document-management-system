@@ -603,7 +603,8 @@ export const dataTransferApi = {
 // ----------------------------------------------------------------------------
 export const institutionalApi = {
   // Research
-  research: () => apiClient.get<ApiResponse<ResearchRecord[]>>('/research/outputs'),
+  research: (params?: Record<string, unknown>) =>
+    apiClient.get<ApiResponse<ResearchRecord[]>>('/research/outputs', { params: { per_page: 100, ...(params || {}) } }),
   getResearch: (id: number) => apiClient.get<ApiResponse<ResearchRecord>>(`/research/outputs/${id}`),
   storeResearch: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<any>>('/research/outputs', data),
@@ -615,7 +616,8 @@ export const institutionalApi = {
     apiClient.post<ApiResponse<any>>(`/research/outputs/${id}/toggle-publication`, { action }),
 
   // Staff & Physical Custody
-  staffRecords: () => apiClient.get<ApiResponse<any[]>>('/staff/records'),
+  staffRecords: (params?: Record<string, unknown>) =>
+    apiClient.get<ApiResponse<any[]>>('/staff/records', { params: { per_page: 100, ...(params || {}) } }),
   storeStaffRecord: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<any>>('/staff/records', data),
   verifyStaffScan: (
@@ -636,8 +638,8 @@ export const institutionalApi = {
     apiClient.get<ApiResponse<AccreditationFramework[]>>('/accreditation/frameworks'),
   accreditationStandards: (params?: { cycle_id?: number; framework_version_id?: number }) =>
     apiClient.get<ApiResponse<AccreditationStandard[]>>('/accreditation/standards', { params }),
-  accreditationCycles: (params?: { unit_id?: number; active?: boolean }) =>
-    apiClient.get<ApiResponse<AccreditationCycle[]>>('/accreditation/cycles', { params }),
+  accreditationCycles: (params?: { unit_id?: number; active?: boolean; per_page?: number; page?: number }) =>
+    apiClient.get<ApiResponse<AccreditationCycle[]>>('/accreditation/cycles', { params: { per_page: 100, ...(params || {}) } }),
   accreditationCycle: (id: number) =>
     apiClient.get<ApiResponse<AccreditationCycle>>(`/accreditation/cycles/${id}`),
   createAccreditationCycle: (data: Record<string, unknown>) =>
@@ -647,7 +649,7 @@ export const institutionalApi = {
   accreditationCycleSummary: (cycleId: number) =>
     apiClient.get<ApiResponse<AccreditationCycleSummary>>(`/accreditation/cycles/${cycleId}/summary`),
   accreditationEvidence: (params?: Record<string, unknown>) =>
-    apiClient.get<ApiResponse<AccreditationEvidence[]>>('/accreditation/evidence', { params }),
+    apiClient.get<ApiResponse<AccreditationEvidence[]>>('/accreditation/evidence', { params: { per_page: 100, ...(params || {}) } }),
   accreditationEvidenceDetail: (id: number) =>
     apiClient.get<ApiResponse<AccreditationEvidence>>(`/accreditation/evidence/${id}`),
   submitAccreditationEvidence: (data: { cycle_id: number; standard_id: number; document_version_id: number; note?: string }) =>
@@ -658,15 +660,18 @@ export const institutionalApi = {
     apiClient.get<ApiResponse<any>>(`/accreditation/cycles/${cycleId}/export`),
 
   // Projects & Innovation
-  projects: () =>
-    apiClient.get<ApiResponse<{ proposals: ProjectProposal[]; projects: Project[]; project_types?: ProjectType[] }>>('/projects'),
+  projects: (params?: Record<string, unknown>) =>
+    apiClient.get<ApiResponse<{ proposals: ProjectProposal[]; projects: Project[]; project_types?: ProjectType[] }>>('/projects', {
+      params: { per_page: 100, ...(params || {}) },
+    }),
   storeProject: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<ProjectProposal>>('/projects', data),
 
   // Signatures & Stamps
-  signatures: () =>
+  signatures: (params?: Record<string, unknown>) =>
     apiClient.get<ApiResponse<{ signatures: SignatureRequestItem[]; stamps: StampDefinitionItem[]; trust_provider_status: string }>>(
-      '/signatures'
+      '/signatures',
+      { params: { per_page: 100, ...(params || {}) } }
     ),
   storeSignatureRequest: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<SignatureRequestItem>>('/signatures', data),
@@ -682,7 +687,8 @@ export const institutionalApi = {
     apiClient.post<ApiResponse<any>>('/stamps/apply', data),
 
   // Office Procedures
-  procedures: () => apiClient.get<ApiResponse<unknown[]>>('/procedures'),
+  procedures: (params?: Record<string, unknown>) =>
+    apiClient.get<ApiResponse<unknown[]>>('/procedures', { params: { per_page: 100, ...(params || {}) } }),
   storeProcedure: (data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<unknown>>('/procedures', data),
 

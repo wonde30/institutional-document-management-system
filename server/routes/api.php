@@ -374,7 +374,7 @@ Route::prefix('v1')->group(function () {
         Route::post('research/outputs/{id}/versions', [InstitutionalModuleController::class, 'uploadResearchVersion'])
             ->middleware('permission:research.update');
         Route::post('research/outputs/{id}/toggle-publication', [InstitutionalModuleController::class, 'toggleResearchPublication'])
-            ->middleware('permission:research.publish');
+            ->middleware('permission:research.publish|research.withdraw');
         Route::post('research/outputs/{id}/submit', [InstitutionalModuleController::class, 'submitResearch'])
             ->middleware('permission:research.submit');
         Route::post('research/outputs/{id}/review', [InstitutionalModuleController::class, 'reviewResearch'])
@@ -449,12 +449,12 @@ Route::prefix('v1')->group(function () {
         Route::get('signatures/identities', [InstitutionalModuleController::class, 'identities'])
             ->middleware('permission:signatures.request');
         Route::post('stamps/apply', [InstitutionalModuleController::class, 'applyStamp'])
-            ->middleware('permission:stamps.apply|signatures.request');
+            ->middleware('permission:stamps.apply|stamps.manage|signatures.request');
 
         Route::get('procedures', [InstitutionalModuleController::class, 'procedures'])
-            ->middleware('permission:roles.view');
+            ->middleware('permission:roles.view|workflow.configure|system.configure');
         Route::post('procedures', [InstitutionalModuleController::class, 'storeProcedure'])
-            ->middleware('permission:roles.view');
+            ->middleware('permission:workflow.configure|system.configure');
 
         Route::get('operations/status', [InstitutionalModuleController::class, 'operations'])
             ->middleware('permission:system.configure');
@@ -519,17 +519,17 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('admin/retention-policies')->group(function () {
             Route::get('/', [RetentionPolicyController::class, 'index'])
-                ->middleware('permission:system.configure|archive.view');
+                ->middleware('permission:system.configure|archive.view|archive.manage_retention');
             Route::post('/', [RetentionPolicyController::class, 'store'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:system.configure|archive.manage_retention');
             Route::get('{id}', [RetentionPolicyController::class, 'show'])
-                ->middleware('permission:system.configure|archive.view');
+                ->middleware('permission:system.configure|archive.view|archive.manage_retention');
             Route::put('{id}', [RetentionPolicyController::class, 'update'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:system.configure|archive.manage_retention');
             Route::post('{id}/versions', [RetentionPolicyController::class, 'storeVersion'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:system.configure|archive.manage_retention');
             Route::delete('{id}', [RetentionPolicyController::class, 'destroy'])
-                ->middleware('permission:system.configure');
+                ->middleware('permission:system.configure|archive.manage_retention');
         });
 
         // Runtime System Configuration

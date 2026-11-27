@@ -141,17 +141,27 @@ async function submitProcedure() {
  title="Office Procedure Directives"
  subtitle="Confirmed receipt and issue routing policies governing institutional correspondence channels."
  >
- <template #actions>
- <BaseButton
- variant="primary"
- size="sm"
- @click="openCreateModal"
- >
- <Plus class="w-4 h-4 mr-1.5" />
- <span>Add Confirmed Procedure</span>
- </BaseButton>
- </template>
- </PageHeader>
+      <template #actions>
+        <BaseButton
+          v-if="authStore.hasPermission('workflow.configure') || authStore.hasPermission('system.configure')"
+          variant="primary"
+          size="sm"
+          @click="openCreateModal"
+        >
+          <Plus class="w-4 h-4 mr-1.5" />
+          <span>Add Confirmed Procedure</span>
+        </BaseButton>
+      </template>
+    </PageHeader>
+
+    <div
+      v-if="errorMessage"
+      role="alert"
+      class="p-3.5 rounded-lg bg-[#fde8e8] dark:bg-[#371717] border border-[#f87171]/40 text-[#e03e3e] dark:text-[#f87171] text-xs flex items-center justify-between"
+    >
+      <span>{{ errorMessage }}</span>
+      <BaseButton size="sm" variant="outline" @click="fetchData">Retry</BaseButton>
+    </div>
 
  <!-- Institutional Policy Notice -->
  <div class="wu-notice">
@@ -182,20 +192,20 @@ async function submitProcedure() {
  <span class="text-xs font-semibold text-ink-muted">Designated Registry Enforced</span>
  <Building2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
  </div>
- <div class="text-2xl font-bold text-ink-secondary mt-2">
- {{ procedures.filter(p => p.receipt_mode === 'designated_registry').length }}
- </div>
- <div class="text-xs text-ink-muted mt-0.5">Central registry receipt gate</div>
- </div>
+        <div class="text-2xl font-bold text-ink-secondary mt-2">
+          {{ procedures.filter(p => p.receipt_mode === 'via_registry' || p.receipt_mode === 'designated_registry').length }}
+        </div>
+        <div class="text-xs text-ink-muted mt-0.5">Central registry receipt gate</div>
+      </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4">
- <div class="flex items-center justify-between">
- <span class="text-xs font-semibold text-ink-muted">Direct Issue Authorities</span>
- <FileCheck class="w-4 h-4 text-primary" />
- </div>
- <div class="text-2xl font-bold text-ink-secondary mt-2">
- {{ procedures.filter(p => p.issue_mode === 'direct_issue').length }}
- </div>
+      <div class="bg-surface border border-hairline rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-ink-muted">Direct Issue Authorities</span>
+          <FileCheck class="w-4 h-4 text-primary" />
+        </div>
+        <div class="text-2xl font-bold text-ink-secondary mt-2">
+          {{ procedures.filter(p => p.issue_mode === 'direct' || p.issue_mode === 'direct_issue').length }}
+        </div>
  <div class="text-xs text-ink-muted mt-0.5">Authorized executive bypass rules</div>
  </div>
  </div>
@@ -256,22 +266,22 @@ async function submitProcedure() {
  {{ proc.correspondence_type?.name || 'Correspondence' }} · {{ proc.purpose_code }}
  </div>
  </td>
- <td class="py-3 px-4">
- <span
- class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
- :class="proc.receipt_mode === 'designated_registry' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200' : 'bg-canvas-soft text-ink-secondary'"
- >
- {{ proc.receipt_mode === 'designated_registry' ? 'Designated Registry' : 'Direct Office' }}
- </span>
- </td>
- <td class="py-3 px-4">
- <span
- class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
- :class="proc.issue_mode === 'direct_issue' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-primary-subtle text-primary'"
- >
- {{ proc.issue_mode === 'direct_issue' ? 'Direct Issue' : 'Workflow Review Required' }}
- </span>
- </td>
+            <td class="py-3 px-4">
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                :class="['via_registry', 'designated_registry', 'either'].includes(proc.receipt_mode) ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200' : 'bg-canvas-soft text-ink-secondary'"
+              >
+                {{ proc.receipt_mode === 'via_registry' || proc.receipt_mode === 'designated_registry' ? 'Designated Registry' : proc.receipt_mode === 'either' ? 'Direct or Registry' : 'Direct Office' }}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                :class="['direct', 'direct_issue'].includes(proc.issue_mode) ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : proc.issue_mode === 'blocked' ? 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300' : 'bg-primary-subtle text-primary'"
+              >
+                {{ ['direct', 'direct_issue'].includes(proc.issue_mode) ? 'Direct Issue' : proc.issue_mode === 'blocked' ? 'Issue Blocked' : 'Workflow Review Required' }}
+              </span>
+            </td>
  <td class="py-3 px-4">
  <div class="text-ink-secondary font-medium">
  {{ proc.confirmation_source || 'University Senate Directive' }}

@@ -240,7 +240,7 @@ onMounted(() => {
  </BaseButton>
 
  <BaseButton
- v-if="authStore.hasPermission('users.create') || authStore.hasPermission('documents.create')"
+ v-if="authStore.hasPermission('staff.update') || authStore.hasPermission('system.configure')"
  variant="primary"
  size="sm"
  @click="showModal = true"
@@ -351,7 +351,7 @@ onMounted(() => {
  <td class="py-3 px-4 text-right">
  <div class="flex items-center justify-end gap-2">
  <button
- v-if="latestScan(item)"
+ v-if="latestScan(item) && (authStore.hasPermission('staff.update') || authStore.hasPermission('system.configure'))"
  type="button"
  class="text-xs font-medium text-primary hover:underline"
  @click="openVerifyModal(item)"
@@ -361,7 +361,7 @@ onMounted(() => {
  </button>
 
  <button
- v-if="!isDisposed(item)"
+ v-if="!isDisposed(item) && (authStore.hasPermission('archive.approve_disposal') || authStore.hasPermission('system.configure'))"
  type="button"
  class="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline inline-flex items-center gap-1"
  @click="openDisposalModal(item)"

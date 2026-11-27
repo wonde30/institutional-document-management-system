@@ -42,6 +42,7 @@ use App\Models\WorkflowInstance;
 use App\Models\WorkflowState;
 use App\Models\WorkflowTask;
 use App\Models\WorkflowTaskDecision;
+use App\Models\WorkflowVersion;
 use App\Services\FileSecurityService;
 use App\Services\WorkflowEngineService;
 use App\Services\Pki\CertificateService;
@@ -63,6 +64,11 @@ class InstitutionalModuleController extends Controller
      */
     public function research(Request $request): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $actor = $request->user();
         $query = ResearchRecord::with([
             'document.ownerUnit',
@@ -72,22 +78,32 @@ class InstitutionalModuleController extends Controller
             'publications',
         ]);
 
-        // If actor does not have global research.view, restrict to authorized departments or published records
-        $permittedUnitIds = $actor ? $actor->getPermittedUnitIds('research.view') : [];
-        if ($permittedUnitIds !== null) {
-            $query->where(function ($q) use ($permittedUnitIds) {
-                // 1. Published research accessible to university members
-                $q->whereHas('publications')
-                  // 2. Or departmental research where actor holds scoped permission (including subtrees and direct grants)
-                    ->orWhereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+        // If actor does not have global research.view or system.configure, restrict to accessible departmental records or non-confidential published records
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $query->where(function ($q) use ($actor) {
+                $q->where(function ($pubQ) use ($actor) {
+                    $pubQ->whereHas('publications')
+                        ->whereHas('document', function ($dq) use ($actor) {
+                            $dq->whereHas('confidentiality', fn ($cq) => $cq->whereNotIn('code', ['confidential', 'restricted', 'secret', 'top_secret']))
+                                ->orWhere(fn ($aq) => $aq->accessibleBy($actor, 'research.view'));
+                        });
+                })
+                ->orWhereHas('document', fn ($dq) => $dq->accessibleBy($actor, 'research.view'));
             });
         }
 
-        $records = $query->orderByDesc('id')->get();
+        $perPage = (int) $request->query('per_page', 25);
+        $records = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $records,
+            'data' => $records->items(),
+            'meta' => [
+                'current_page' => $records->currentPage(),
+                'last_page' => $records->lastPage(),
+                'per_page' => $records->perPage(),
+                'total' => $records->total(),
+            ],
         ]);
     }
 
@@ -95,6 +111,7 @@ class InstitutionalModuleController extends Controller
     {
         $record = ResearchRecord::with([
             'document.ownerUnit',
+            'document.confidentiality',
             'document.versions',
             'authors.staff',
             'recordedBy',
@@ -102,10 +119,12 @@ class InstitutionalModuleController extends Controller
         ])->findOrFail($id);
 
         $actor = $request->user();
-        $unitId = (int) $record->document->owner_unit_id;
+        $doc = $record->document;
         $isPublished = $record->publications()->exists();
+        $confCode = $doc?->confidentiality?->code;
+        $isHighConfidentiality = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
 
-        if (! $isPublished && ! $actor->hasPermission('research.view', $unitId)) {
+        if ((! $isPublished || $isHighConfidentiality) && (! $doc || ! $doc->allowsUser($actor, 'research.view'))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: Departmental research record is restricted to authorized personnel.',
@@ -152,6 +171,33 @@ class InstitutionalModuleController extends Controller
         $actor = $request->user();
         $officeId = (int) $validated['office_id'];
 
+        // Enforce research_authors_ck_1 (XOR between staff_id and external_name) and unique staff_id per output
+        if (! empty($validated['authors'])) {
+            $seenStaffIds = [];
+            foreach ($validated['authors'] as $idx => $auth) {
+                $hasStaffId = ! empty($auth['staff_id']);
+                $trimmedName = isset($auth['name']) ? trim((string) $auth['name']) : '';
+                if ($hasStaffId && $trimmedName !== '') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed: an author entry cannot specify both staff_id and an external author name.',
+                        'errors' => ["authors.{$idx}" => ['An author entry cannot specify both staff_id and external name.']],
+                    ], 422);
+                }
+                if ($hasStaffId) {
+                    $sId = (int) $auth['staff_id'];
+                    if (in_array($sId, $seenStaffIds, true)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Validation failed: duplicate staff_id in authors list.',
+                            'errors' => ["authors.{$idx}.staff_id" => ['Duplicate staff author in the same research output.']],
+                        ], 422);
+                    }
+                    $seenStaffIds[] = $sId;
+                }
+            }
+        }
+
         // Enforce departmental scope: author must have research.create in this office
         if (! $actor->hasPermission('research.create', $officeId)) {
             return response()->json([
@@ -163,7 +209,8 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         $record = DB::transaction(function () use ($validated, $actor, $now, $officeId) {
-            $seq = 'WU/RES/'.date('Y').'/'.sprintf('%04d', ResearchRecord::count() + 1);
+            $seq = app(\App\Services\DocumentRepositoryService::class)
+                ->allocateAnnualReference('RES', 'WU', 4, ResearchRecord::count());
 
             $catId = DocumentCategory::where('code', 'research')->value('id')
                 ?? DocumentCategory::value('id');
@@ -205,10 +252,15 @@ class InstitutionalModuleController extends Controller
 
             if (! empty($validated['authors'])) {
                 foreach ($validated['authors'] as $idx => $auth) {
+                    $staffId = ! empty($auth['staff_id']) ? (int) $auth['staff_id'] : null;
+                    $externalName = $staffId !== null
+                        ? null
+                        : (trim((string) ($auth['name'] ?? '')) ?: 'Faculty Researcher');
+
                     ResearchAuthor::create([
                         'research_id' => $research->id,
-                        'staff_id' => $auth['staff_id'] ?? null,
-                        'external_name' => $auth['name'] ?? ($auth['staff_id'] ? null : 'Faculty Researcher'),
+                        'staff_id' => $staffId,
+                        'external_name' => $externalName,
                         'author_order' => $idx + 1,
                         'contribution' => $auth['contribution'] ?? 'Primary Author',
                     ]);
@@ -226,7 +278,7 @@ class InstitutionalModuleController extends Controller
             ]);
 
             return $research;
-        });
+        }, 5);
 
         return response()->json([
             'success' => true,
@@ -392,29 +444,31 @@ class InstitutionalModuleController extends Controller
                 ], 403);
             }
 
-            $pub = Publication::firstOrCreate(
-                ['document_id' => $record->document_id],
-                [
-                    'doi' => '10.5897/WU.RES.'.date('Y').'.'.sprintf('%04d', $record->id),
-                    'publication_type' => 'academic_monograph',
-                    'venue' => 'Wollo University Institutional Research Repository',
-                    'published_on' => date('Y-m-d'),
-                ]
-            );
+            DB::transaction(function () use ($record, $actor, $now) {
+                $pub = Publication::firstOrCreate(
+                    ['document_id' => $record->document_id],
+                    [
+                        'doi' => '10.5897/WU.RES.'.date('Y').'.'.sprintf('%04d', $record->id),
+                        'publication_type' => 'academic_monograph',
+                        'venue' => 'Wollo University Institutional Research Repository',
+                        'published_on' => date('Y-m-d'),
+                    ]
+                );
 
-            DB::table('research_publications')->updateOrInsert(
-                ['research_id' => $record->id, 'publication_id' => $pub->id]
-            );
+                DB::table('research_publications')->updateOrInsert(
+                    ['research_id' => $record->id, 'publication_id' => $pub->id]
+                );
 
-            AuditEvent::create([
-                'actor_id' => $actor->id,
-                'action' => 'research.published',
-                'target_type' => 'research_record',
-                'target_id' => (string) $record->id,
-                'request_id' => (string) Str::uuid(),
-                'occurred_at' => $now,
-                'details_json' => ['doi' => $pub->doi, 'published_on' => date('Y-m-d')],
-            ]);
+                AuditEvent::create([
+                    'actor_id' => $actor->id,
+                    'action' => 'research.published',
+                    'target_type' => 'research_record',
+                    'target_id' => (string) $record->id,
+                    'request_id' => (string) Str::uuid(),
+                    'occurred_at' => $now,
+                    'details_json' => ['doi' => $pub->doi, 'published_on' => date('Y-m-d')],
+                ]);
+            });
 
             $status = 'published';
         } else {
@@ -425,17 +479,19 @@ class InstitutionalModuleController extends Controller
                 ], 403);
             }
 
-            DB::table('research_publications')->where('research_id', $record->id)->delete();
+            DB::transaction(function () use ($record, $actor, $now) {
+                DB::table('research_publications')->where('research_id', $record->id)->delete();
 
-            AuditEvent::create([
-                'actor_id' => $actor->id,
-                'action' => 'research.withdrawn',
-                'target_type' => 'research_record',
-                'target_id' => (string) $record->id,
-                'request_id' => (string) Str::uuid(),
-                'occurred_at' => $now,
-                'details_json' => ['withdrawn_at' => $now],
-            ]);
+                AuditEvent::create([
+                    'actor_id' => $actor->id,
+                    'action' => 'research.withdrawn',
+                    'target_type' => 'research_record',
+                    'target_id' => (string) $record->id,
+                    'request_id' => (string) Str::uuid(),
+                    'occurred_at' => $now,
+                    'details_json' => ['withdrawn_at' => $now],
+                ]);
+            });
 
             $status = 'withdrawn';
         }
@@ -473,10 +529,13 @@ class InstitutionalModuleController extends Controller
 
     public function returnResearch(int $id, Request $request): JsonResponse
     {
-        return $this->transitionResearchStatus($id, $request, 'returned', ['submitted', 'under_review'], 'research.review', 'research.returned', 'Research output returned for revision.');
+        return $this->transitionResearchStatus($id, $request, 'returned', ['submitted', 'under_review'], ['research.review', 'research.approve'], 'research.returned', 'Research output returned for revision.');
     }
 
-    protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
+    /**
+     * @param  string|array<int, string>  $requiredPermission
+     */
+    protected function transitionResearchStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string|array $requiredPermission, string $auditAction, string $successMessage): JsonResponse
     {
         $actor = $request->user();
         if (! $actor) {
@@ -484,10 +543,10 @@ class InstitutionalModuleController extends Controller
         }
 
         // (a) Load record scoped to user's permitted units so missing and out-of-scope look the same (404)
-        $permittedUnitIds = $actor->getPermittedUnitIds($requiredPermission);
+        $permittedUnitIds = $this->resolveUnionPermittedUnitIds($actor, (array) $requiredPermission);
         $query = ResearchRecord::with(['document', 'authors.staff']);
         if ($permittedUnitIds !== null) {
-            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds ?: [0]));
         }
 
         $record = $query->find($id);
@@ -696,8 +755,12 @@ class InstitutionalModuleController extends Controller
      */
     public function staffRecords(Request $request): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $actor = $request->user();
-        $permittedUnitIds = $actor ? $actor->getPermittedUnitIds('staff.view') : [];
 
         $query = PhysicalOriginal::with([
             'document.ownerUnit',
@@ -707,15 +770,24 @@ class InstitutionalModuleController extends Controller
             'retentionPolicyVersion.policy',
         ]);
 
-        if ($permittedUnitIds !== null) {
-            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $query->whereHas('document', fn ($dq) => $dq->accessibleBy($actor, 'staff.view'));
+        } elseif (! $actor) {
+            $query->whereRaw('1 = 0');
         }
 
-        $records = $query->orderByDesc('id')->get();
+        $perPage = (int) $request->query('per_page', 25);
+        $records = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $records,
+            'data' => $records->items(),
+            'meta' => [
+                'current_page' => $records->currentPage(),
+                'last_page' => $records->lastPage(),
+                'per_page' => $records->perPage(),
+                'total' => $records->total(),
+            ],
         ]);
     }
 
@@ -736,7 +808,8 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         $original = DB::transaction(function () use ($validated, $actor, $now) {
-            $seq = 'WU/HR/'.date('Y').'/'.sprintf('%04d', PhysicalOriginal::count() + 1);
+            $seq = app(\App\Services\DocumentRepositoryService::class)
+                ->allocateAnnualReference('HR', 'WU', 4, PhysicalOriginal::count());
 
             $catId = DocumentCategory::where('code', 'hr')->value('id')
                 ?? DocumentCategory::value('id');
@@ -805,7 +878,7 @@ class InstitutionalModuleController extends Controller
             ]);
 
             return $orig;
-        });
+        }, 5);
 
         return response()->json([
             'success' => true,
@@ -834,22 +907,24 @@ class InstitutionalModuleController extends Controller
             ], 404);
         }
 
-        $digitization->update([
-            'verification_status' => $validated['verification_status'],
-            'verified_by' => $actor->id,
-            'verified_at' => $now,
-            'verification_note' => $validated['verification_note'] ?? 'Verified by designated records authority.',
-        ]);
+        DB::transaction(function () use ($digitization, $validated, $actor, $now) {
+            $digitization->update([
+                'verification_status' => $validated['verification_status'],
+                'verified_by' => $actor->id,
+                'verified_at' => $now,
+                'verification_note' => $validated['verification_note'] ?? 'Verified by designated records authority.',
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'staff.scan_verified',
-            'target_type' => 'digitization_record',
-            'target_id' => (string) $digitization->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => ['status' => $validated['verification_status']],
-        ]);
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'staff.scan_verified',
+                'target_type' => 'digitization_record',
+                'target_id' => (string) $digitization->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => ['status' => $validated['verification_status']],
+            ]);
+        });
 
         return response()->json([
             'success' => true,
@@ -894,25 +969,27 @@ class InstitutionalModuleController extends Controller
 
         $now = now()->format('Y-m-d H:i:s.u');
 
-        PhysicalCustodyEvent::create([
-            'physical_original_id' => $original->id,
-            'location_id' => null,
-            'custodian_id' => $actor->id,
-            'action' => 'destroy',
-            'actor_id' => $actor->id,
-            'occurred_at' => $now,
-            'reason' => "Authorized destruction under directive: {$validated['authorization_reference']} - {$validated['reason']}",
-        ]);
+        DB::transaction(function () use ($original, $actor, $now, $validated) {
+            PhysicalCustodyEvent::create([
+                'physical_original_id' => $original->id,
+                'location_id' => null,
+                'custodian_id' => $actor->id,
+                'action' => 'destroy',
+                'actor_id' => $actor->id,
+                'occurred_at' => $now,
+                'reason' => "Authorized destruction under directive: {$validated['authorization_reference']} - {$validated['reason']}",
+            ]);
 
-        AuditEvent::create([
-            'actor_id' => $actor->id,
-            'action' => 'staff.physical_original_destroyed',
-            'target_type' => 'physical_original',
-            'target_id' => (string) $original->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => $now,
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'staff.physical_original_destroyed',
+                'target_type' => 'physical_original',
+                'target_id' => (string) $original->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => $validated,
+            ]);
+        });
 
         return response()->json([
             'success' => true,
@@ -925,29 +1002,51 @@ class InstitutionalModuleController extends Controller
      */
     public function projects(Request $request): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $actor = $request->user();
         $isAdmin = $actor && $actor->hasPermission('system.configure');
-        $permittedUnits = ($actor && ! $isAdmin) ? $actor->getPermittedUnitIds('projects.view') : null;
 
         $proposalsQuery = ProjectProposal::with(['projectType', 'document.ownerUnit', 'recordedBy'])->orderByDesc('id');
         $projectsQuery = Project::with(['proposal.document.ownerUnit', 'proposal.projectType'])->orderByDesc('id');
 
-        if ($permittedUnits !== null) {
-            $proposalsQuery->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnits ?: [0]));
-            $projectsQuery->whereHas('proposal.document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnits ?: [0]));
+        if ($actor && ! $isAdmin) {
+            $proposalsQuery->whereHas('document', fn ($dq) => $dq->accessibleBy($actor, 'projects.view'));
+            $projectsQuery->whereHas('proposal.document', fn ($dq) => $dq->accessibleBy($actor, 'projects.view'));
+        } elseif (! $actor) {
+            $proposalsQuery->whereRaw('1 = 0');
+            $projectsQuery->whereRaw('1 = 0');
         }
 
-        $proposals = $proposalsQuery->get();
-        $activeProjects = $projectsQuery->get();
+        $perPage = (int) $request->query('per_page', 25);
+        $proposals = $proposalsQuery->paginate($perPage);
+        $activeProjects = $projectsQuery->paginate($perPage);
 
         $projectTypes = ProjectType::where('active', true)->get();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'proposals' => $proposals,
-                'projects' => $activeProjects,
+                'proposals' => $proposals->items(),
+                'projects' => $activeProjects->items(),
                 'project_types' => $projectTypes,
+            ],
+            'meta' => [
+                'proposals' => [
+                    'current_page' => $proposals->currentPage(),
+                    'last_page' => $proposals->lastPage(),
+                    'per_page' => $proposals->perPage(),
+                    'total' => $proposals->total(),
+                ],
+                'projects' => [
+                    'current_page' => $activeProjects->currentPage(),
+                    'last_page' => $activeProjects->lastPage(),
+                    'per_page' => $activeProjects->perPage(),
+                    'total' => $activeProjects->total(),
+                ],
             ],
         ]);
     }
@@ -965,7 +1064,8 @@ class InstitutionalModuleController extends Controller
         $now = now()->format('Y-m-d H:i:s.u');
 
         $proposal = DB::transaction(function () use ($validated, $actor, $now) {
-            $seq = 'WU/PROJ/'.date('Y').'/'.sprintf('%04d', ProjectProposal::count() + 1);
+            $seq = app(\App\Services\DocumentRepositoryService::class)
+                ->allocateAnnualReference('PROJ', 'WU', 4, ProjectProposal::count());
 
             $catId = DocumentCategory::where('code', 'research')->value('id')
                 ?? DocumentCategory::value('id');
@@ -993,7 +1093,7 @@ class InstitutionalModuleController extends Controller
                 'recorded_by' => $actor->id,
                 'recorded_at' => $now,
             ]);
-        });
+        }, 5);
 
         return response()->json([
             'success' => true,
@@ -1024,10 +1124,33 @@ class InstitutionalModuleController extends Controller
 
     public function returnProject(int $id, Request $request): JsonResponse
     {
-        return $this->transitionProjectStatus($id, $request, 'returned', ['submitted', 'under_review'], 'projects.review', 'projects.returned', 'Project proposal returned for revision.');
+        return $this->transitionProjectStatus($id, $request, 'returned', ['submitted', 'under_review'], ['projects.review', 'projects.approve'], 'projects.returned', 'Project proposal returned for revision.');
     }
 
-    protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string $requiredPermission, string $auditAction, string $successMessage): JsonResponse
+    /**
+     * Resolve the union of permitted unit IDs across one or more capability codes.
+     *
+     * @param  array<int, string>  $permissions
+     * @return array<int, int>|null
+     */
+    protected function resolveUnionPermittedUnitIds(User $actor, array $permissions): ?array
+    {
+        $unitIds = [];
+        foreach ($permissions as $perm) {
+            $ids = $actor->getPermittedUnitIds($perm);
+            if ($ids === null) {
+                return null;
+            }
+            $unitIds = array_merge($unitIds, $ids);
+        }
+
+        return array_values(array_unique(array_map('intval', $unitIds)));
+    }
+
+    /**
+     * @param  string|array<int, string>  $requiredPermission
+     */
+    protected function transitionProjectStatus(int $id, Request $request, string $targetStatus, array $allowedFromStatuses, string|array $requiredPermission, string $auditAction, string $successMessage): JsonResponse
     {
         $actor = $request->user();
         if (! $actor) {
@@ -1035,10 +1158,10 @@ class InstitutionalModuleController extends Controller
         }
 
         // (a) Load record scoped to user's permitted units so missing and out-of-scope look the same (404)
-        $permittedUnitIds = $actor->getPermittedUnitIds($requiredPermission);
+        $permittedUnitIds = $this->resolveUnionPermittedUnitIds($actor, (array) $requiredPermission);
         $query = ProjectProposal::with(['document', 'projectType']);
         if ($permittedUnitIds !== null) {
-            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds));
+            $query->whereHas('document', fn ($dq) => $dq->whereIn('owner_unit_id', $permittedUnitIds ?: [0]));
         }
 
         $proposal = $query->find($id);
@@ -1251,25 +1374,48 @@ class InstitutionalModuleController extends Controller
             }
         }
 
-        $signatures = SignatureRequest::with([
+        $actor = $request->user();
+        $sigQuery = SignatureRequest::with([
             'documentVersion.document',
             'requestedBy',
             'signer',
             'digitalSignature.signingIdentity',
             'digitalSignature.verifications',
             'digitalSignature.signedFile',
-        ])
+        ]);
+
+        if ($actor && ! $actor->hasPermission('system.configure')) {
+            $sigQuery->where(function ($q) use ($actor) {
+                $q->where('signer_id', $actor->id)
+                  ->orWhere('requested_by', $actor->id)
+                  ->orWhereHas('documentVersion.document', fn ($dq) => $dq->accessibleBy($actor, 'signatures.request'));
+            });
+        }
+
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $perPage = (int) $request->query('per_page', 25);
+        $signatures = $sigQuery
             ->orderByDesc('id')
-            ->get();
+            ->paginate($perPage);
 
         $stamps = StampDefinition::with(['unit', 'versions.imageFile'])->get();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'signatures' => $signatures,
+                'signatures' => $signatures->items(),
                 'stamps' => $stamps,
                 'trust_provider_status' => 'active_local_verified',
+            ],
+            'meta' => [
+                'current_page' => $signatures->currentPage(),
+                'last_page' => $signatures->lastPage(),
+                'per_page' => $signatures->perPage(),
+                'total' => $signatures->total(),
             ],
         ]);
     }
@@ -1720,8 +1866,9 @@ class InstitutionalModuleController extends Controller
             ->map(function (SigningIdentity $id) use ($certService): array {
                 $certParsed = null;
                 if ($id->publicCertificateFile) {
-                    $certPath = storage_path('app/'.$id->publicCertificateFile->storage_key);
-                    if (File::exists($certPath)) {
+                    $certPath = app(FileSecurityService::class)->resolveFileObjectPath($id->publicCertificateFile)
+                        ?? storage_path('app/'.$id->publicCertificateFile->storage_key);
+                    if ($certPath && File::exists($certPath)) {
                         try {
                             $certParsed = $certService->parseCertificate(File::get($certPath));
                         } catch (\Throwable $e) {
@@ -1778,13 +1925,25 @@ class InstitutionalModuleController extends Controller
             }
         }
 
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $perPage = (int) $request->query('per_page', 25);
         $procedures = OfficeProcedureVersion::with(['unit', 'correspondenceType', 'registryUnit', 'confirmedBy'])
             ->orderByDesc('id')
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $procedures,
+            'data' => $procedures->items(),
+            'meta' => [
+                'current_page' => $procedures->currentPage(),
+                'last_page' => $procedures->lastPage(),
+                'per_page' => $procedures->perPage(),
+                'total' => $procedures->total(),
+            ],
         ]);
     }
 
@@ -1794,42 +1953,95 @@ class InstitutionalModuleController extends Controller
             'unit_id' => 'required|exists:organization_units,id',
             'correspondence_type_id' => 'required|exists:correspondence_types,id',
             'purpose_code' => 'required|string|max:64',
-            'receipt_mode' => 'required|string',
+            'receipt_mode' => 'required|string|in:direct,direct_office,via_registry,designated_registry,either',
             'registry_unit_id' => 'nullable|exists:organization_units,id',
-            'issue_mode' => 'required|string',
+            'issue_mode' => 'required|string|in:direct,direct_issue,workflow,workflow_review,blocked',
+            'workflow_version_id' => 'nullable|exists:workflow_versions,id',
             'confirmation_source' => 'required|string|max:160',
             'effective_from' => 'required|date',
         ]);
 
         $actor = $request->user();
+        $unitId = (int) $validated['unit_id'];
+
+        if (! $actor->hasPermission('system.configure') && ! $actor->hasPermission('workflow.configure', $unitId)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Forbidden: Configuring office procedures requires workflow.configure or system.configure authority for unit ID {$unitId}.",
+            ], 403);
+        }
+
         $now = now()->format('Y-m-d H:i:s.u');
 
-        // Map modes to enforce exact CHECK constraints
-        $receiptMode = in_array($validated['receipt_mode'], ['via_registry', 'designated_registry']) ? 'via_registry' : 'direct';
-        $registryUnitId = ($receiptMode === 'via_registry') ? ($validated['registry_unit_id'] ?? $validated['unit_id']) : null;
+        // Map modes to enforce exact CHECK constraints without silently degrading workflow mode to blocked
+        $receiptMode = match ($validated['receipt_mode']) {
+            'via_registry', 'designated_registry' => 'via_registry',
+            'either' => 'either',
+            default => 'direct',
+        };
+        $registryUnitId = in_array($receiptMode, ['via_registry', 'either'], true)
+            ? ($validated['registry_unit_id'] ?? $unitId)
+            : null;
 
-        $issueMode = in_array($validated['issue_mode'], ['direct', 'direct_issue']) ? 'direct' : 'blocked';
+        $issueMode = match ($validated['issue_mode']) {
+            'direct', 'direct_issue' => 'direct',
+            'workflow', 'workflow_review' => 'workflow',
+            default => 'blocked',
+        };
+
         $workflowVersionId = null;
+        if ($issueMode === 'workflow') {
+            $workflowVersionId = ! empty($validated['workflow_version_id'])
+                ? (int) $validated['workflow_version_id']
+                : WorkflowVersion::whereNotNull('published_at')->orderByDesc('version_number')->value('id');
 
-        $currentVersion = OfficeProcedureVersion::where('unit_id', $validated['unit_id'])
-            ->where('correspondence_type_id', $validated['correspondence_type_id'])
-            ->where('purpose_code', $validated['purpose_code'])
-            ->max('version_number') ?? 0;
+            if (! $workflowVersionId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error: Selecting workflow issue mode requires a published workflow version.',
+                ], 422);
+            }
+        }
 
-        $procedure = OfficeProcedureVersion::create([
-            'unit_id' => $validated['unit_id'],
-            'correspondence_type_id' => $validated['correspondence_type_id'],
-            'purpose_code' => $validated['purpose_code'],
-            'version_number' => $currentVersion + 1,
-            'receipt_mode' => $receiptMode,
-            'registry_unit_id' => $registryUnitId,
-            'issue_mode' => $issueMode,
-            'workflow_version_id' => $workflowVersionId,
-            'confirmed_by' => $actor->id,
-            'confirmation_source' => $validated['confirmation_source'],
-            'confirmed_at' => $now,
-            'effective_from' => $validated['effective_from'],
-        ]);
+        $procedure = DB::transaction(function () use ($validated, $unitId, $receiptMode, $registryUnitId, $issueMode, $workflowVersionId, $actor, $now) {
+            $currentVersion = OfficeProcedureVersion::where('unit_id', $unitId)
+                ->where('correspondence_type_id', $validated['correspondence_type_id'])
+                ->where('purpose_code', $validated['purpose_code'])
+                ->lockForUpdate()
+                ->max('version_number') ?? 0;
+
+            $procedure = OfficeProcedureVersion::create([
+                'unit_id' => $unitId,
+                'correspondence_type_id' => $validated['correspondence_type_id'],
+                'purpose_code' => $validated['purpose_code'],
+                'version_number' => $currentVersion + 1,
+                'receipt_mode' => $receiptMode,
+                'registry_unit_id' => $registryUnitId,
+                'issue_mode' => $issueMode,
+                'workflow_version_id' => $workflowVersionId,
+                'confirmed_by' => $actor->id,
+                'confirmation_source' => $validated['confirmation_source'],
+                'confirmed_at' => $now,
+                'effective_from' => $validated['effective_from'],
+            ]);
+
+            AuditEvent::create([
+                'actor_id' => $actor->id,
+                'action' => 'office_procedure.confirmed',
+                'target_type' => 'office_procedure_version',
+                'target_id' => (string) $procedure->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => $now,
+                'details_json' => [
+                    'unit_id' => $unitId,
+                    'receipt_mode' => $receiptMode,
+                    'issue_mode' => $issueMode,
+                    'version_number' => $procedure->version_number,
+                ],
+            ]);
+
+            return $procedure;
+        });
 
         return response()->json([
             'success' => true,

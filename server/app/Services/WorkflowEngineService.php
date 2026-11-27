@@ -37,7 +37,7 @@ class WorkflowEngineService
         int $definitionId,
         ?int $documentVersionId = null,
         ?int $parentInstanceId = null,
-        User $actor = null,
+        ?User $actor = null,
         ?int $unitId = null
     ): WorkflowInstance {
         $actor = $actor ?? auth()->user();
@@ -447,7 +447,8 @@ class WorkflowEngineService
                 || (in_array($decision, ['submit', 'resubmit'], true) && ($actor->hasPermission('research.submit', $unitId) || $actor->hasPermission('research.submit') || $actor->hasPermission('projects.submit', $unitId) || $actor->hasPermission('projects.submit') || $actor->hasPermission('documents.create', $unitId)))
                 || ($decision === 'approve' && ($actor->hasPermission('research.approve', $unitId) || $actor->hasPermission('research.approve') || $actor->hasPermission('projects.approve', $unitId) || $actor->hasPermission('projects.approve')))
                 || (in_array($decision, ['review', 'start_review'], true) && ($actor->hasPermission('research.review', $unitId) || $actor->hasPermission('research.review') || $actor->hasPermission('projects.review', $unitId) || $actor->hasPermission('projects.review')))
-                || (in_array($decision, ['reject', 'return'], true) && ($actor->hasPermission('research.reject', $unitId) || $actor->hasPermission('research.reject') || $actor->hasPermission('projects.reject', $unitId) || $actor->hasPermission('projects.reject') || $actor->hasPermission('research.review', $unitId) || $actor->hasPermission('projects.review', $unitId)));
+                || ($decision === 'reject' && ($actor->hasPermission('research.reject', $unitId) || $actor->hasPermission('research.reject') || $actor->hasPermission('projects.reject', $unitId) || $actor->hasPermission('projects.reject') || $actor->hasPermission('research.review', $unitId) || $actor->hasPermission('projects.review', $unitId)))
+                || ($decision === 'return' && ($actor->hasPermission('research.reject', $unitId) || $actor->hasPermission('research.reject') || $actor->hasPermission('projects.reject', $unitId) || $actor->hasPermission('projects.reject') || $actor->hasPermission('research.review', $unitId) || $actor->hasPermission('projects.review', $unitId) || $actor->hasPermission('research.approve', $unitId) || $actor->hasPermission('projects.approve', $unitId)));
 
             if (! $isAssigned && ! $effectiveParticipant && ! $hasPerm) {
                 throw new HttpException(403, 'Forbidden: You are not authorized to decide this workflow task.');

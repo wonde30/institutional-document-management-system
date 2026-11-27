@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Authorization;
 
 use App\Models\AccreditationEvidence;
+use App\Models\DigitalSignature;
 use App\Models\Document;
 use App\Models\DocumentAssignment;
 use App\Models\DocumentMovement;
 use App\Models\DocumentTextExtraction;
+use App\Models\PhysicalOriginal;
+use App\Models\ProjectProposal;
+use App\Models\ResearchRecord;
 use App\Models\SignatureRequest;
 use Illuminate\Http\Request;
 
@@ -126,8 +130,27 @@ class RouteScopeResolver
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
 
-        // 4. Digital signature requests: the request targets a document version.
+        // 4. Digital signatures & signature requests:
+        //    - signatures/{id}/verify addresses a DigitalSignature ID
+        //    - signatures/{id}/execute addresses a SignatureRequest ID
         if (str_contains($path, 'signatures')) {
+            if (preg_match('#signatures/\d+/verify$#', $path)) {
+                $digitalSignature = DigitalSignature::with('request.documentVersion.document.confidentiality')->find($id);
+
+                if (! $digitalSignature) {
+                    return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+                }
+
+                $document = $digitalSignature->request?->documentVersion?->document;
+                if (! ($document instanceof Document) && $digitalSignature->signed_file_id) {
+                    $document = Document::resolveForFile((int) $digitalSignature->signed_file_id);
+                }
+
+                return ($document instanceof Document)
+                    ? RouteAuthorizationTarget::forDocument($document)
+                    : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
             $signature = SignatureRequest::find($id);
 
             if (! $signature) {
@@ -157,8 +180,8 @@ class RouteScopeResolver
         }
 
         // 5b. Project proposals: the proposal references a document.
-        if (str_contains($path, 'projects/')) {
-            $proposal = \App\Models\ProjectProposal::find($id);
+        if (str_contains($path, 'projects')) {
+            $proposal = ProjectProposal::find($id);
 
             if (! $proposal) {
                 return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
@@ -169,6 +192,51 @@ class RouteScopeResolver
             return ($document instanceof Document)
                 ? RouteAuthorizationTarget::forDocument($document)
                 : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        // 5c. Research outputs: published non-confidential outputs are readable across units
+        //     with research.view; unpublished, high-confidentiality, or mutating requests bind
+        //     to the underlying document policy (Document::allowsUser).
+        if (str_contains($path, 'research/outputs')) {
+            $record = ResearchRecord::with(['document.confidentiality', 'publications'])->find($id);
+
+            if (! $record) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $record->document;
+            if (! ($document instanceof Document)) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $confCode = $document->confidentiality?->code;
+            $isHighConfidentiality = in_array($confCode, ['confidential', 'restricted', 'secret', 'top_secret'], true);
+
+            if ($request->isMethod('get') && $record->publications->isNotEmpty() && ! $isHighConfidentiality) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: false);
+            }
+
+            return RouteAuthorizationTarget::forDocument($document);
+        }
+
+        // 5d. Staff physical records: bound to the underlying HR document policy.
+        if (str_contains($path, 'staff/records')) {
+            $original = PhysicalOriginal::find($id);
+
+            if (! $original) {
+                return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+            }
+
+            $document = $original->document()->with('confidentiality')->first();
+
+            return ($document instanceof Document)
+                ? RouteAuthorizationTarget::forDocument($document)
+                : RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
+        }
+
+        // 5e. Archive retention policies: institutional catalog definitions (not unit-owned).
+        if (str_contains($path, 'admin/retention-policies')) {
+            return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: false);
         }
 
         // 6. Archive records: entries, disposition requests, and archive files.
@@ -197,6 +265,14 @@ class RouteScopeResolver
         }
 
         if (str_contains($path, 'archive/legal-holds')) {
+            $hold = \App\Models\LegalHold::with('documents.confidentiality')->find($id);
+            if ($hold && $hold->documents->isNotEmpty()) {
+                $unitCount = $hold->documents->pluck('owner_unit_id')->filter()->unique()->count();
+                if ($unitCount === 1) {
+                    return RouteAuthorizationTarget::forDocument($hold->documents->first());
+                }
+            }
+
             return RouteAuthorizationTarget::capabilityOnly(resourceSpecific: true);
         }
 

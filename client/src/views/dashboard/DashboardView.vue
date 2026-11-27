@@ -32,7 +32,9 @@ async function loadData() {
 
   // Both data endpoints are independent and guarded by capabilities.
   const [metricsResult, tasksResult] = await Promise.allSettled([
-    dashboardApi.getMetrics(),
+    authStore.hasPermission('documents.view')
+      ? dashboardApi.getMetrics()
+      : Promise.resolve(null),
     authStore.hasPermission('workflow.view')
       ? workflowApi.tasks({ scope: 'mine' })
       : Promise.resolve(null),

@@ -191,10 +191,10 @@ onMounted(() => {
     </BaseButton>
 
     <BaseButton
-     v-if="authStore.hasPermission('research.create') || authStore.hasPermission('documents.create')"
-     variant="primary"
-     size="sm"
-     @click="showModal = true"
+      v-if="authStore.hasPermission('research.create')"
+      variant="primary"
+      size="sm"
+      @click="showModal = true"
     >
      <Plus class="w-4 h-4 mr-1.5" />
      Register Finalized Research
@@ -269,7 +269,7 @@ onMounted(() => {
  </small>
  </td>
  <td class="py-3 px-4 text-ink-muted">
- {{ item.document?.ownerUnit?.name || '—' }}
+ {{ (item.document as any)?.owner_unit?.name || item.document?.ownerUnit?.name || '—' }}
  </td>
  <td class="py-3 px-4 text-ink-muted whitespace-nowrap">
  {{ item.completed_on ? new Date(item.completed_on).toLocaleDateString() : '—' }}
@@ -297,6 +297,7 @@ onMounted(() => {
  </button>
 
  <button
+ v-if="authStore.hasPermission('research.update')"
  type="button"
  class="text-xs font-medium text-primary hover:underline"
  @click="openVersionModal(item)"
@@ -306,6 +307,7 @@ onMounted(() => {
  </button>
 
  <button
+ v-if="isPublished(item) ? authStore.hasPermission('research.withdraw') : authStore.hasPermission('research.publish')"
  type="button"
  class="text-xs font-medium"
  :class="isPublished(item) ? 'text-amber-700 hover:underline' : 'text-primary hover:underline'"
@@ -446,7 +448,7 @@ onMounted(() => {
  {{ isPublished(selectedResearch) ? 'Published' : 'Ready to publish' }}
  </span>
  <span class="text-xs text-ink-muted block mt-0.5">
- Scoped to {{ selectedResearch.document?.ownerUnit?.name || '—' }}
+ Scoped to {{ (selectedResearch.document as any)?.owner_unit?.name || selectedResearch.document?.ownerUnit?.name || '—' }}
  </span>
  </div>
  </div>
@@ -455,7 +457,7 @@ onMounted(() => {
  <div class="grid grid-cols-2 gap-4 text-xs">
  <div>
  <span class="block text-ink-muted">Owning Department</span>
- <span class="font-medium text-ink-secondary">{{ selectedResearch.document?.ownerUnit?.name || '—' }}</span>
+ <span class="font-medium text-ink-secondary">{{ (selectedResearch.document as any)?.owner_unit?.name || selectedResearch.document?.ownerUnit?.name || '—' }}</span>
  </div>
  <div>
  <span class="block text-ink-muted">Completion Date</span>

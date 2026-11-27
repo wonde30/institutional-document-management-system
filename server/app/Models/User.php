@@ -820,7 +820,7 @@ class User extends Authenticatable
                     'permission_description' => $perm->description,
                     'module' => $module,
                     'source_type' => 'direct',
-                    'source_id' => $up->id,
+                    'source_id' => $perm->id,
                     'source_code' => 'direct_grant',
                     'source_name' => 'Direct User Grant',
                     'scope_kind' => $scope?->kind ?? 'unknown',

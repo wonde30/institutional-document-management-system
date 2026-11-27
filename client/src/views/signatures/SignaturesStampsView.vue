@@ -62,6 +62,97 @@ const verifyingId = ref<number | null>(null)
 const verificationModalOpen = ref(false)
 const selectedVerification = ref<SignatureVerificationItem | null>(null)
 
+const verificationDetails = computed<Record<string, any>>(() => {
+  const v = selectedVerification.value
+  return (v?.details || v?.details_json || {}) as Record<string, any>
+})
+
+const overallVerificationSummary = computed(() => {
+  const outcome = selectedVerification.value?.outcome
+  switch (outcome) {
+    case 'valid':
+      return {
+        label: 'Verified (Internal PKI)',
+        badgeClass: 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]',
+      }
+    case 'partially_valid':
+      return {
+        label: 'Partially Valid',
+        badgeClass: 'bg-[#fff4e6] text-[#dd5b00] dark:bg-[#382412] dark:text-[#ff9243]',
+      }
+    case 'invalid':
+      return {
+        label: 'Invalid',
+        badgeClass: 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373]',
+      }
+    case 'error':
+      return {
+        label: 'Verification Failed',
+        badgeClass: 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373]',
+      }
+    default:
+      return {
+        label: outcome ? String(outcome) : 'Unknown / Unavailable',
+        badgeClass: 'bg-surface-muted text-ink-muted',
+      }
+  }
+})
+
+const integrityDisplay = computed(() => {
+  const v = selectedVerification.value
+  const d = verificationDetails.value
+  if (!v) {
+    return { label: 'Unavailable', ok: false, failed: false }
+  }
+  if (d.post_signing_modifications === true && d.tamper_detected === true) {
+    return { label: 'Tampered (Modified After Signing)', ok: false, failed: true }
+  }
+  if (d.has_byte_range === false) {
+    return { label: 'Unavailable (No ByteRange Signature)', ok: false, failed: true }
+  }
+  if (d.tamper_detected === true || d.byte_range_valid === false) {
+    return { label: 'Tampered / Digest Mismatch', ok: false, failed: true }
+  }
+  if (d.byte_range_valid === true && d.tamper_detected === false) {
+    return { label: 'Verified (ByteRange Intact)', ok: true, failed: false }
+  }
+  if (v.outcome === 'valid') {
+    return { label: 'Verified (ByteRange Intact)', ok: true, failed: false }
+  }
+  return { label: 'ByteRange Data Unavailable', ok: false, failed: false }
+})
+
+const certificateStatusDisplay = computed(() => {
+  const status = selectedVerification.value?.certificate_status
+  switch (status) {
+    case 'trusted_valid':
+      return { label: 'Trusted & Valid (Internal Root CA)', tone: 'ok' }
+    case 'expired':
+      return { label: 'Expired Certificate', tone: 'bad' }
+    case 'not_yet_valid':
+      return { label: 'Certificate Not Yet Valid', tone: 'bad' }
+    case 'untrusted_ca':
+      return { label: 'Untrusted Certificate Authority', tone: 'bad' }
+    case 'revoked':
+      return { label: 'Revoked Certificate', tone: 'bad' }
+    case 'missing':
+      return { label: 'Signer Certificate Missing', tone: 'bad' }
+    case 'unverified':
+      return { label: 'Certificate Unverified (Digest Failed)', tone: 'bad' }
+    case 'error':
+      return { label: 'Certificate Validation Failed', tone: 'bad' }
+    case 'not_present':
+    default:
+      return { label: status ? String(status) : 'Unknown / Unavailable', tone: 'neutral' }
+  }
+})
+
+const canApplyStamp = computed(() =>
+  authStore.hasPermission('stamps.apply') ||
+  authStore.hasPermission('stamps.manage') ||
+  authStore.hasPermission('system.configure')
+)
+
 // Apply Stamp Modal State
 const applyStampModalOpen = ref(false)
 const selectedStampForApplication = ref<StampDefinitionItem | null>(null)
@@ -535,7 +626,7 @@ async function submitApplyStamp() {
  </td>
  <td class="py-3 px-4 text-right">
  <button
- v-if="stamp.active"
+ v-if="stamp.active && canApplyStamp"
  type="button"
  class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition cursor-pointer"
  title="Apply this office seal to a document version"
@@ -544,7 +635,8 @@ async function submitApplyStamp() {
  <Stamp class="w-3.5 h-3.5" />
  <span>Apply Seal</span>
  </button>
- <span v-else class="text-xs text-ink-muted">Retired</span>
+ <span v-else-if="!stamp.active" class="text-xs text-ink-muted">Retired</span>
+ <span v-else class="text-xs text-ink-muted">Authorized stamp permission required</span>
  </td>
  </tr>
 
@@ -801,37 +893,57 @@ async function submitApplyStamp() {
  <!-- Verification Metrics -->
  <div class="space-y-3 text-xs">
  <div class="flex items-center justify-between p-2.5 rounded-md bg-canvas-soft border border-hairline">
- <span class="font-medium text-ink-muted">Overall Cryptographic Status:</span>
+ <span class="font-medium text-ink-muted">Overall Verification Result:</span>
  <span
- class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold   text-xs"
- :class="selectedVerification.outcome === 'valid' ? 'bg-[#e8f7ec] text-[#1aae39] dark:bg-[#183321] dark:text-[#42cf63]' : 'bg-[#fdebee] text-[#e03e3e] dark:bg-[#381619] dark:text-[#ff7373]'"
+ class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold text-xs"
+ :class="overallVerificationSummary.badgeClass"
  >
- {{ selectedVerification.outcome }}
+ {{ overallVerificationSummary.label }}
  </span>
  </div>
 
- <div class="grid grid-cols-2 gap-3">
+ <div v-if="selectedVerification.message" class="p-2.5 rounded-md bg-canvas-soft border border-hairline text-xs text-ink-secondary">
+ {{ selectedVerification.message }}
+ </div>
+
+ <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
  <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
- <div class="text-xs text-ink-muted font-medium">ByteRange integrity</div>
- <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mt-1 flex items-center gap-1">
- <CheckCircle2 class="w-3.5 h-3.5" />
- Unbroken (Tamper Passed)
+ <div class="text-xs text-ink-muted font-medium">Cryptographic integrity</div>
+ <div
+ class="text-xs font-semibold mt-1 flex items-center gap-1"
+ :class="integrityDisplay.ok ? 'text-emerald-700 dark:text-emerald-300' : integrityDisplay.failed ? 'text-[#e03e3e] dark:text-[#ff7373]' : 'text-ink-muted'"
+ >
+ <CheckCircle2 v-if="integrityDisplay.ok" class="w-3.5 h-3.5 shrink-0" />
+ <AlertCircle v-else-if="integrityDisplay.failed" class="w-3.5 h-3.5 shrink-0" />
+ <span>{{ integrityDisplay.label }}</span>
+ </div>
+ </div>
+
+ <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
+ <div class="text-xs text-ink-muted font-medium">Certificate trust & validity</div>
+ <div
+ class="text-xs font-semibold mt-1"
+ :class="certificateStatusDisplay.tone === 'ok' ? 'text-emerald-700 dark:text-emerald-300' : certificateStatusDisplay.tone === 'bad' ? 'text-[#e03e3e] dark:text-[#ff7373]' : 'text-ink-muted'"
+ >
+ {{ certificateStatusDisplay.label }}
  </div>
  </div>
 
  <div class="p-2.5 rounded-md bg-canvas-soft border border-hairline">
  <div class="text-xs text-ink-muted font-medium">Timestamp status</div>
  <div class="text-xs font-semibold text-ink-secondary mt-1">
- {{ selectedVerification.timestamp_status || 'Offline Test Token' }}
+ {{ selectedVerification.timestamp_status === 'trusted_rfc3161' ? 'Trusted RFC 3161' : selectedVerification.timestamp_status === 'not_present' ? 'Not present' : (selectedVerification.timestamp_status || 'Unavailable') }}
  </div>
  </div>
  </div>
 
  <div class="space-y-1.5 p-3 rounded-md bg-canvas-soft border border-hairline font-mono text-xs">
- <div><span class="text-ink-muted">Signer Subject DN:</span> {{ selectedVerification.details?.signer_certificate?.subject_dn || 'N/A' }}</div>
- <div><span class="text-ink-muted">Issuer CA DN:</span> {{ selectedVerification.details?.signer_certificate?.issuer_dn || 'N/A' }}</div>
- <div><span class="text-ink-muted">Observed SHA-256:</span> <span class="break-all">{{ selectedVerification.details?.observed_sha256 }}</span></div>
- <div><span class="text-ink-muted">Signature Algorithm:</span> {{ selectedVerification.details?.signature_algorithm || 'RSA-2048 / SHA-256' }}</div>
+ <div><span class="text-ink-muted">Signer Subject DN:</span> {{ verificationDetails.signer_certificate?.subject_dn || 'Unavailable' }}</div>
+ <div><span class="text-ink-muted">Issuer CA DN:</span> {{ verificationDetails.signer_certificate?.issuer_dn || 'Unavailable' }}</div>
+ <div><span class="text-ink-muted">Validity Window:</span> {{ verificationDetails.signer_certificate?.valid_from ? `${verificationDetails.signer_certificate.valid_from} → ${verificationDetails.signer_certificate.valid_to || '?'}` : 'Unavailable' }}</div>
+ <div v-if="verificationDetails.revoked_at"><span class="text-ink-muted">Revoked At:</span> <span class="text-[#e03e3e]">{{ verificationDetails.revoked_at }}</span></div>
+ <div><span class="text-ink-muted">Observed SHA-256:</span> <span class="break-all">{{ verificationDetails.observed_sha256 || 'Unavailable' }}</span></div>
+ <div><span class="text-ink-muted">Signature Algorithm:</span> {{ verificationDetails.signature_algorithm || 'Unavailable' }}</div>
  </div>
  </div>
 

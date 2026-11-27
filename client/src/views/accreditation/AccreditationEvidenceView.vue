@@ -193,6 +193,11 @@ async function loadRepoDocuments() {
   }
 }
 
+function resolveDocumentVersionId(doc: any): number | null {
+  const id = doc?.current_version?.id ?? doc?.latest_version?.id ?? doc?.versions?.[0]?.id ?? null
+  return typeof id === 'number' && id > 0 ? id : null
+}
+
 function openAttachModal() {
   loadRepoDocuments()
  if (!selectedCycleId.value) {
@@ -213,8 +218,9 @@ async function handleAttachSubmit() {
  toast.error('Validation Error', 'Please select an accreditation standard.')
  return
  }
- if (!attachForm.value.document_version_id) {
- toast.error('Validation Error', 'Please enter a valid Document Version ID.')
+ const versionId = Number(attachForm.value.document_version_id)
+ if (!Number.isInteger(versionId) || versionId <= 0) {
+ toast.error('Validation Error', 'Please select a document with an active Document Version ID or enter a valid Document Version ID.')
  return
  }
 
@@ -505,15 +511,16 @@ onMounted(() => {
  </label>
  <select
  class="w-full text-xs rounded-md border border-hairline bg-surface text-ink-secondary px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 mb-2"
- @change="(e: Event) => { const v = (e.target as HTMLSelectElement).value; if (v) attachForm.document_version_id = Number(v) }"
+ @change="(e: Event) => { const v = (e.target as HTMLSelectElement).value; attachForm.document_version_id = v ? Number(v) : ('' as unknown as number) }"
  >
  <option value="">-- Choose from repository documents or enter version ID below --</option>
  <option
  v-for="doc in repoDocuments"
  :key="doc.id"
- :value="doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id"
+ :value="resolveDocumentVersionId(doc) ?? ''"
+ :disabled="!resolveDocumentVersionId(doc)"
  >
- {{ doc.reference_number }} — {{ doc.title }} (Ver ID: {{ doc.current_version?.id || doc.latest_version?.id || doc.versions?.[0]?.id || doc.id }})
+ {{ doc.reference_number }} — {{ doc.title }} ({{ resolveDocumentVersionId(doc) ? `Ver ID: ${resolveDocumentVersionId(doc)}` : 'No version available' }})
  </option>
  </select>
  </div>

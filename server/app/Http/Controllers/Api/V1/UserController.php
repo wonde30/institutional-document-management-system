@@ -90,6 +90,13 @@ class UserController extends Controller
         ]);
 
         $actor = $request->user();
+        if (! empty($validated['unit_id']) && $actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('users.create', (int) $validated['unit_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have users.create authority for the target organizational unit.',
+            ], 403);
+        }
+
         $now = now()->format('Y-m-d H:i:s.u');
 
         $user = DB::transaction(function () use ($validated, $actor, $now) {
@@ -250,6 +257,23 @@ class UserController extends Controller
         ]);
 
         $actor = $request->user();
+        $targetIsAdmin = $user->hasPermission('system.configure')
+            || $user->userRoles()->whereHas('role', fn ($q) => $q->where('code', 'super_admin'))->exists();
+
+        if ($targetIsAdmin && $actor && ! $actor->hasPermission('system.configure')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: Only an authorized System Administrator can modify memberships of a privileged administrator account.',
+            ], 403);
+        }
+
+        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('users.update', (int) $validated['unit_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: You do not have users.update authority for the target organizational unit.',
+            ], 403);
+        }
+
         $now = now()->format('Y-m-d H:i:s.u');
 
         $membership = DB::transaction(function () use ($user, $validated, $actor, $now) {
@@ -304,6 +328,16 @@ class UserController extends Controller
         $actor = $request->user();
         $targetUser = User::findOrFail($id);
 
+        $targetIsAdmin = $targetUser->hasPermission('system.configure')
+            || $targetUser->userRoles()->whereHas('role', fn ($q) => $q->where('code', 'super_admin'))->exists();
+
+        if ($targetIsAdmin && $actor && ! $actor->hasPermission('system.configure')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden: Only an authorized System Administrator can change the status of a privileged administrator account.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'status' => ['required', Rule::in(['active', 'inactive', 'locked'])],
         ]);
@@ -327,26 +361,28 @@ class UserController extends Controller
         $oldStatus = $targetUser->status;
         $newStatus = $validated['status'];
 
-        $targetUser->update([
-            'status' => $newStatus,
-            'authz_version' => $targetUser->authz_version + 1,
-        ]);
-
         $action = in_array($newStatus, ['inactive', 'locked'], true)
             ? 'auth.account_suspended'
             : 'auth.account_activated';
 
-        AuditService::recordAuthEvent(
-            action: $action,
-            actorId: $actor->id,
-            targetType: 'user',
-            targetId: (string) $targetUser->id,
-            details: [
-                'old_status' => $oldStatus,
-                'new_status' => $newStatus,
-            ],
-            request: $request
-        );
+        DB::transaction(function () use ($targetUser, $newStatus, $oldStatus, $action, $actor, $request) {
+            $targetUser->update([
+                'status' => $newStatus,
+                'authz_version' => $targetUser->authz_version + 1,
+            ]);
+
+            AuditService::recordAuthEvent(
+                action: $action,
+                actorId: $actor->id,
+                targetType: 'user',
+                targetId: (string) $targetUser->id,
+                details: [
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                ],
+                request: $request
+            );
+        });
 
         $targetUser->load([
             'primaryMembershipRecord.membership.unit',

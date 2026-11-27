@@ -52,10 +52,40 @@ class ConcurrencyAndDeadlockTest extends TestCase
     protected function tearDown(): void
     {
         // Clean up documents and dependent rows created during test to preserve isolation
+        $docIds = DB::table('documents')
+            ->whereRaw("reference_number LIKE 'WU/CONC/%' OR reference_number LIKE 'WU/DEADLOCK/%' OR reference_number LIKE 'WU/PHYS/%'")
+            ->pluck('id');
+
         DB::statement('SET FOREIGN_KEY_CHECKS = 0');
         DB::table('workflow_task_decisions')->whereRaw("reason LIKE '%Connection%'")->delete();
         DB::table('correspondence_dispatches')->whereRaw("tracking_reference LIKE 'TRACK-%'")->delete();
-        DB::table('documents')->whereRaw("reference_number LIKE 'WU/CONC/%' OR reference_number LIKE 'WU/DEADLOCK/%' OR reference_number LIKE 'WU/PHYS/%'")->delete();
+
+        if ($docIds->isNotEmpty()) {
+            $corrIds = DB::table('correspondences')->whereIn('document_id', $docIds)->pluck('id');
+            if ($corrIds->isNotEmpty()) {
+                DB::table('correspondence_participants')->whereIn('correspondence_id', $corrIds)->delete();
+                DB::table('correspondences')->whereIn('id', $corrIds)->delete();
+            }
+
+            $versionIds = DB::table('document_versions')->whereIn('document_id', $docIds)->pluck('id');
+            if ($versionIds->isNotEmpty()) {
+                $instanceIds = DB::table('workflow_instances')->whereIn('document_version_id', $versionIds)->pluck('id');
+                if ($instanceIds->isNotEmpty()) {
+                    DB::table('workflow_tasks')->whereIn('instance_id', $instanceIds)->delete();
+                    DB::table('workflow_events')->whereIn('instance_id', $instanceIds)->delete();
+                    DB::table('workflow_instances')->whereIn('id', $instanceIds)->delete();
+                }
+            }
+
+            $physicalIds = DB::table('physical_originals')->whereIn('document_id', $docIds)->pluck('id');
+            if ($physicalIds->isNotEmpty()) {
+                DB::table('physical_custody_events')->whereIn('physical_original_id', $physicalIds)->delete();
+                DB::table('physical_originals')->whereIn('id', $physicalIds)->delete();
+            }
+
+            DB::table('documents')->whereIn('id', $docIds)->delete();
+        }
+
         DB::table('reference_sequences')->where('sequence_key', 'CONC_TEST')->delete();
         DB::statement('SET FOREIGN_KEY_CHECKS = 1');
 

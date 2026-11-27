@@ -1253,16 +1253,28 @@ export interface DigitalSignatureItem {
 
 export interface SignatureVerificationItem {
   id: number
-  signature_id: number
-  verified_at: string
-  outcome: 'valid' | 'invalid' | 'indeterminate'
+  signature_id?: number
+  verification_id?: number
+  verified_at?: string
+  outcome: 'valid' | 'invalid' | 'partially_valid' | 'error' | 'indeterminate'
   certificate_status: string
   timestamp_status: string
+  message?: string
   details_json?: Record<string, unknown>
   details?: {
+    byte_range_valid?: boolean
+    has_byte_range?: boolean
+    tamper_detected?: boolean
+    post_signing_modifications?: boolean
+    revoked_at?: string
+    regulatory_classification?: string
     signer_certificate?: {
       subject_dn?: string
       issuer_dn?: string
+      valid_from?: string
+      valid_to?: string
+      is_expired?: boolean
+      is_not_yet_valid?: boolean
     }
     observed_sha256?: string
     signature_algorithm?: string
@@ -1292,10 +1304,13 @@ export interface FileIntegrityCheckItem {
   id: number
   file_object_id: number
   checked_at: string
-  algorithm: string
-  expected_hash: string
-  actual_hash: string
-  status: 'passed' | 'failed'
+  observed_sha256?: string
+  outcome?: 'match' | 'mismatch' | 'missing_file' | string
+  error_code?: string | null
+  algorithm?: string
+  expected_hash?: string
+  actual_hash?: string
+  status?: 'passed' | 'failed'
 }
 
 export interface BackupRunItem {

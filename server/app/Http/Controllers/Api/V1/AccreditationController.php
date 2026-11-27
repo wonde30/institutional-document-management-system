@@ -37,13 +37,25 @@ class AccreditationController extends Controller
      */
     public function standards(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'cycle_id' => 'nullable|integer|exists:accreditation_cycles,id',
+            'framework_version_id' => 'nullable|integer|exists:accreditation_framework_versions,id',
+        ]);
+
+        $actor = $request->user();
         $query = AccreditationStandard::with(['frameworkVersion', 'parent']);
 
-        if ($request->filled('cycle_id')) {
-            $cycle = AccreditationCycle::findOrFail($request->input('cycle_id'));
+        if (! empty($validated['cycle_id'])) {
+            $cycle = AccreditationCycle::findOrFail((int) $validated['cycle_id']);
+            if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('accreditation.view', (int) $cycle->unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have accreditation.view permission for the organizational unit owning this cycle.',
+                ], 403);
+            }
             $query->where('framework_version_id', $cycle->framework_version_id);
-        } elseif ($request->filled('framework_version_id')) {
-            $query->where('framework_version_id', $request->input('framework_version_id'));
+        } elseif (! empty($validated['framework_version_id'])) {
+            $query->where('framework_version_id', (int) $validated['framework_version_id']);
         }
 
         $standards = $query->orderBy('code')->get();
@@ -59,6 +71,11 @@ class AccreditationController extends Controller
      */
     public function cycles(Request $request): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $actor = $request->user();
         $query = AccreditationCycle::with(['unit', 'frameworkVersion.framework'])
             ->withCount('evidence');
@@ -92,11 +109,18 @@ class AccreditationController extends Controller
             }
         }
 
-        $cycles = $query->orderByDesc('id')->get();
+        $perPage = (int) $request->query('per_page', 25);
+        $cycles = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $cycles,
+            'data' => $cycles->items(),
+            'meta' => [
+                'current_page' => $cycles->currentPage(),
+                'last_page' => $cycles->lastPage(),
+                'per_page' => $cycles->perPage(),
+                'total' => $cycles->total(),
+            ],
         ]);
     }
 
@@ -214,6 +238,11 @@ class AccreditationController extends Controller
      */
     public function evidence(Request $request): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $actor = $request->user();
         $query = AccreditationEvidence::with([
             'cycle.unit',
@@ -233,7 +262,14 @@ class AccreditationController extends Controller
         }
 
         if ($request->filled('cycle_id')) {
-            $query->where('cycle_id', $request->input('cycle_id'));
+            $cycle = AccreditationCycle::findOrFail((int) $request->input('cycle_id'));
+            if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('accreditation.view', (int) $cycle->unit_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have accreditation.view permission for the specified accreditation cycle.',
+                ], 403);
+            }
+            $query->where('cycle_id', $cycle->id);
         }
 
         if ($request->filled('standard_id')) {
@@ -241,7 +277,13 @@ class AccreditationController extends Controller
         }
 
         if ($request->filled('unit_id')) {
-            $unitId = $request->input('unit_id');
+            $unitId = (int) $request->input('unit_id');
+            if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('accreditation.view', $unitId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden: You do not have accreditation.view permission for the specified organizational unit.',
+                ], 403);
+            }
             $query->whereHas('cycle', fn ($cq) => $cq->where('unit_id', $unitId));
         }
 
@@ -254,11 +296,18 @@ class AccreditationController extends Controller
             }
         }
 
-        $evidence = $query->orderByDesc('id')->get();
+        $perPage = (int) $request->query('per_page', 25);
+        $evidence = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $evidence,
+            'data' => $evidence->items(),
+            'meta' => [
+                'current_page' => $evidence->currentPage(),
+                'last_page' => $evidence->lastPage(),
+                'per_page' => $evidence->perPage(),
+                'total' => $evidence->total(),
+            ],
         ]);
     }
 
@@ -290,6 +339,7 @@ class AccreditationController extends Controller
         $validated = $request->validate([
             'cycle_id' => 'required|exists:accreditation_cycles,id',
             'standard_id' => 'required|exists:accreditation_standards,id',
+            'document_id' => 'nullable|integer|exists:documents,id',
             'document_version_id' => 'required|exists:document_versions,id',
             'note' => 'nullable|string|max:1000',
         ]);
@@ -304,6 +354,12 @@ class AccreditationController extends Controller
         }
 
         $docVersion = \App\Models\DocumentVersion::with('document')->findOrFail((int) $validated['document_version_id']);
+        if (! empty($validated['document_id']) && (int) $docVersion->document_id !== (int) $validated['document_id']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document version mismatch: The specified document_version_id does not belong to the specified document_id.',
+            ], 422);
+        }
         if ($actor && $docVersion->document && ! $docVersion->document->allowsUser($actor, 'documents.view')) {
             return response()->json([
                 'success' => false,

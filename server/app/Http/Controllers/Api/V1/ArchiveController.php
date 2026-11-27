@@ -71,7 +71,7 @@ class ArchiveController extends Controller
         }
 
         $actor = $request->user();
-        if ($actor && ! $actor->hasPermission('system.configure') && ! $actor->hasPermission('archive.manage_retention')) {
+        if ($actor && ! $actor->hasPermission('system.configure')) {
             $query->whereHas('document', function ($dq) use ($actor) {
                 $dq->accessibleBy($actor, 'archive.view');
             });
@@ -278,27 +278,70 @@ class ArchiveController extends Controller
      */
     public function releaseLegalHold(Request $request, int $id): JsonResponse
     {
-        $hold = LegalHold::findOrFail($id);
-
-        if ($hold->released_at !== null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This legal hold has already been released.',
-            ], 422);
-        }
-
         $actor = $request->user();
         $now = now()->format('Y-m-d H:i:s.u');
 
-        $hold->update([
-            'released_by' => $actor->id,
-            'released_at' => $now,
-        ]);
+        $result = DB::transaction(function () use ($id, $actor, $now, $request) {
+            $hold = LegalHold::with('documents.confidentiality')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($hold->released_at !== null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This legal hold has already been released.',
+                ], 422);
+            }
+
+            if ($actor && ! $actor->hasPermission('system.configure')) {
+                if ($hold->documents->isEmpty()) {
+                    if (! $actor->hasPermission('archive.transfer', null)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Forbidden: Releasing an unscoped legal hold requires global archive.transfer or system.configure authority.',
+                        ], 403);
+                    }
+                } else {
+                    foreach ($hold->documents as $doc) {
+                        if (! $doc->allowsUser($actor, 'archive.transfer')) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Forbidden: You do not have permission to release a legal hold covering one or more protected documents.',
+                            ], 403);
+                        }
+                    }
+                }
+            }
+
+            $hold->update([
+                'released_by' => $actor->id,
+                'released_at' => $now,
+            ]);
+
+            \App\Services\AuditService::log(
+                action: 'archive.legal_hold_released',
+                targetType: 'legal_hold',
+                targetId: (string) $hold->id,
+                details: [
+                    'code' => $hold->code,
+                    'document_ids' => $hold->documents->pluck('id')->all(),
+                ],
+                actorId: $actor->id,
+                request: $request
+            );
+
+            return $hold;
+        });
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Legal hold released successfully.',
-            'data' => $hold->fresh(['placedBy', 'releasedBy', 'documents:id,title,reference_number']),
+            'data' => $result->fresh(['placedBy', 'releasedBy', 'documents:id,title,reference_number']),
         ]);
     }
 

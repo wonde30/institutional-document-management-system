@@ -57,10 +57,21 @@ const newPassword = ref('')
 const confirmNewPassword = ref('')
 const isUpdatingPassword = ref(false)
 
-// Preferences tab model
-const timezone = ref('Africa/Addis_Ababa')
-const tableDensity = ref<'compact' | 'comfortable'>('comfortable')
-const emailNotifications = ref(true)
+// Preferences tab model (persisted per browser profile in localStorage)
+const PREFS_STORAGE_KEY = 'wu_dms_user_preferences'
+function loadStoredPreferences() {
+  try {
+    const raw = localStorage.getItem(PREFS_STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as { timezone?: string; tableDensity?: 'compact' | 'comfortable'; emailNotifications?: boolean }
+  } catch {
+    return null
+  }
+}
+const storedPrefs = loadStoredPreferences()
+const timezone = ref(storedPrefs?.timezone || 'Africa/Addis_Ababa')
+const tableDensity = ref<'compact' | 'comfortable'>(storedPrefs?.tableDensity || 'comfortable')
+const emailNotifications = ref(storedPrefs?.emailNotifications ?? true)
 
 async function handlePasswordUpdate() {
  if (newPassword.value !== confirmNewPassword.value) {
@@ -90,7 +101,19 @@ async function handlePasswordUpdate() {
 }
 
 function handleSavePreferences() {
- toast.success('Workspace preferences saved.')
+  try {
+    localStorage.setItem(
+      PREFS_STORAGE_KEY,
+      JSON.stringify({
+        timezone: timezone.value,
+        tableDensity: tableDensity.value,
+        emailNotifications: emailNotifications.value,
+      })
+    )
+    toast.success('Workspace preferences saved.')
+  } catch {
+    toast.error('Failed to persist preferences in local storage.')
+  }
 }
 </script>
 
@@ -158,12 +181,19 @@ function handleSavePreferences() {
  <span class="block text-ink-muted">Institutional Email</span>
  <span class="font-medium text-ink text-sm">{{ authStore.user?.email }}</span>
  </div>
- <div>
- <span class="block text-ink-muted">Account Status</span>
- <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border border-[#1aae39]/20">
- <CheckCircle2 class="w-3 h-3" /> Active Institutional Account
- </span>
- </div>
+  <div>
+    <span class="block text-ink-muted">Account Status</span>
+    <span
+      class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border"
+      :class="authStore.user?.status === 'active'
+        ? 'bg-[#e8f7ec] dark:bg-[#14301d] text-[#1aae39] dark:text-[#34d399] border-[#1aae39]/20'
+        : 'bg-[#fde8e8] dark:bg-[#371717] text-[#e03e3e] dark:text-[#f87171] border-[#f87171]/30'"
+    >
+      <CheckCircle2 v-if="authStore.user?.status === 'active'" class="w-3 h-3" />
+      <AlertCircle v-else class="w-3 h-3" />
+      {{ authStore.user?.status === 'active' ? 'Active Institutional Account' : (authStore.user?.status || 'Unknown Status') }}
+    </span>
+  </div>
  <div>
  <span class="block text-ink-muted">Primary Institutional Unit</span>
  <span class="font-medium text-ink">{{ authStore.primaryUnit?.unit_name || authStore.activeUnit?.name || 'Central Administration' }}</span>

@@ -175,17 +175,19 @@ class WorkflowAdminController extends Controller
             'active' => 'required|boolean',
         ]);
 
-        $def->update($validated);
+        DB::transaction(function () use ($def, $validated, $request) {
+            $def->update($validated);
 
-        AuditEvent::create([
-            'actor_id' => $request->user()->id,
-            'action' => 'workflow.definition_updated',
-            'target_type' => 'workflow_definition',
-            'target_id' => (string) $def->id,
-            'request_id' => (string) Str::uuid(),
-            'occurred_at' => now()->format('Y-m-d H:i:s.u'),
-            'details_json' => $validated,
-        ]);
+            AuditEvent::create([
+                'actor_id' => $request->user()->id,
+                'action' => 'workflow.definition_updated',
+                'target_type' => 'workflow_definition',
+                'target_id' => (string) $def->id,
+                'request_id' => (string) Str::uuid(),
+                'occurred_at' => now()->format('Y-m-d H:i:s.u'),
+                'details_json' => $validated,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

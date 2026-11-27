@@ -69,62 +69,82 @@ onMounted(() => {
  </template>
  </PageHeader>
 
- <!-- Institutional Policy Notice (Mandatory from UI Blueprint) -->
- <div class="wu-notice">
- <div class="flex items-start gap-3">
- <ShieldAlert class="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
- <div class="text-xs text-amber-900 dark:text-amber-100">
- <strong class="font-semibold block mb-0.5">Disaster Recovery & Recovery Drills Invariant</strong>
- The mere existence of a backup file is NOT proof of recoverable records. Routine restore drills with cryptographic SHA-256 byte comparison are required to verify database and repository survivability. Never claim corruption repaired automatically.
- </div>
- </div>
- </div>
+  <!-- Institutional Policy Notice (Mandatory from UI Blueprint) -->
+  <div class="wu-notice">
+    <div class="flex items-start gap-3">
+      <ShieldAlert class="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
+      <div class="text-xs text-amber-900 dark:text-amber-100">
+        <strong class="font-semibold block mb-0.5">Disaster Recovery &amp; Recovery Drills Invariant</strong>
+        The mere existence of a backup file is NOT proof of recoverable records. Routine restore drills with cryptographic SHA-256 byte comparison are required to verify database and repository survivability. Never claim corruption repaired automatically.
+      </div>
+    </div>
+  </div>
 
- <!-- Metrics Cards -->
- <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
- <div class="bg-surface border border-hairline rounded-xl p-4">
- <div class="flex items-center justify-between">
- <span class="text-xs font-semibold text-ink-muted">Storage Driver</span>
- <HardDrive class="w-4 h-4 text-primary" />
- </div>
- <div class="text-sm font-bold text-ink-secondary mt-2">Local POSIX Storage
- </div>
- <div class="text-xs text-ink-muted mt-0.5">Encrypted at rest · Strict SHA-256</div>
- </div>
+  <div
+    v-if="errorMessage"
+    role="alert"
+    class="p-3.5 rounded-lg bg-[#fde8e8] dark:bg-[#371717] border border-[#f87171]/40 text-[#e03e3e] dark:text-[#f87171] text-xs flex items-center justify-between"
+  >
+    <span>{{ errorMessage }}</span>
+    <BaseButton size="sm" variant="outline" @click="fetchData">Retry</BaseButton>
+  </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4">
- <div class="flex items-center justify-between">
- <span class="text-xs font-semibold text-ink-muted">Backup Snapshots</span>
- <Database class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
- </div>
- <div class="text-2xl font-bold text-ink-secondary mt-2">
- {{ backups.length }}
- </div>
- <div class="text-xs text-ink-muted mt-0.5">Verified daily manifest</div>
- </div>
+  <!-- Metrics Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="bg-surface border border-hairline rounded-xl p-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-ink-muted">Storage Driver</span>
+        <HardDrive class="w-4 h-4 text-primary" />
+      </div>
+      <div class="text-sm font-bold text-ink-secondary mt-2 uppercase">{{ storageDriver }}</div>
+      <div class="text-xs text-ink-muted mt-0.5">Private disk · SHA-256 verified</div>
+    </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4">
- <div class="flex items-center justify-between">
- <span class="text-xs font-semibold text-ink-muted">Restore Drills</span>
- <ShieldCheck class="w-4 h-4 text-primary" />
- </div>
- <div class="text-2xl font-bold text-ink-secondary mt-2">
- {{ restoreDrills.length }}
- </div>
- <div class="text-xs text-ink-muted mt-0.5">Successful simulated restores</div>
- </div>
+    <div class="bg-surface border border-hairline rounded-xl p-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-ink-muted">Backup Snapshots</span>
+        <Database class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+      </div>
+      <div class="text-2xl font-bold text-ink-secondary mt-2">
+        {{ backups.length }}
+      </div>
+      <div class="text-xs text-ink-muted mt-0.5">Recorded backup runs</div>
+    </div>
 
- <div class="bg-surface border border-hairline rounded-xl p-4">
- <div class="flex items-center justify-between">
- <span class="text-xs font-semibold text-ink-muted">File Integrity Checks</span>
- <FileCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
- </div>
- <div class="text-2xl font-bold text-ink-secondary mt-2">
- {{ integrityChecks.length > 0 ? '100% Valid' : 'Continuous' }}
- </div>
- <div class="text-xs text-ink-muted mt-0.5">Zero byte corruption detected</div>
- </div>
- </div>
+    <div class="bg-surface border border-hairline rounded-xl p-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-ink-muted">Restore Drills</span>
+        <ShieldCheck class="w-4 h-4 text-primary" />
+      </div>
+      <div class="text-2xl font-bold text-ink-secondary mt-2">
+        {{ restoreDrills.length }}
+      </div>
+      <div class="text-xs text-ink-muted mt-0.5">Recorded restore verifications</div>
+    </div>
+
+    <div class="bg-surface border border-hairline rounded-xl p-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-ink-muted">File Integrity Checks</span>
+        <FileCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+      </div>
+      <div class="text-2xl font-bold text-ink-secondary mt-2">
+        {{
+          integrityChecks.length === 0
+            ? 'No checks'
+            : `${integrityChecks.filter(c => (c.outcome ? c.outcome === 'match' : c.status === 'passed')).length}/${integrityChecks.length} Match`
+        }}
+      </div>
+      <div class="text-xs text-ink-muted mt-0.5">
+        {{
+          integrityChecks.some(c => (c.outcome ? c.outcome !== 'match' : c.status !== 'passed'))
+            ? `${integrityChecks.filter(c => (c.outcome ? c.outcome !== 'match' : c.status !== 'passed')).length} integrity alert(s) recorded`
+            : integrityChecks.length > 0
+              ? 'All sampled checksums matched'
+              : 'Run verify-integrity to sample files'
+        }}
+      </div>
+    </div>
+  </div>
 
  <!-- Section: Backup Runs & Verified Manifests -->
  <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
@@ -219,10 +239,13 @@ onMounted(() => {
  <span class="font-bold text-ink-secondary">
  Drill #{{ drill.id }} — Simulated Cold Standby Recovery
  </span>
- <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
- <CheckCircle2 class="w-3 h-3" />
- Passed
- </span>
+  <span
+    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium"
+    :class="drill.status === 'failed' ? 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300' : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'"
+  >
+    <CheckCircle2 class="w-3 h-3" />
+    {{ drill.status || 'Recorded' }}
+  </span>
  </div>
  <p class="text-ink-muted">
  {{ drill.notes || 'Full table schema and SHA-256 byte reconciliation verified with zero checksum divergence.' }}

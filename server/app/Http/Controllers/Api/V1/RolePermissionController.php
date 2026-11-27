@@ -60,28 +60,32 @@ class RolePermissionController extends Controller
             }
         }
 
-        $role = Role::create([
-            'code' => strtolower($validated['code']),
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'active' => $validated['active'] ?? true,
-            'is_system' => false,
-        ]);
+        $role = DB::transaction(function () use ($validated, $actor, $request) {
+            $role = Role::create([
+                'code' => strtolower($validated['code']),
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'active' => $validated['active'] ?? true,
+                'is_system' => false,
+            ]);
 
-        if (! empty($validated['permission_ids'])) {
-            $role->permissions()->sync($validated['permission_ids']);
-        }
+            if (! empty($validated['permission_ids'])) {
+                $role->permissions()->sync($validated['permission_ids']);
+            }
+
+            AuditService::recordAuthEvent(
+                action: 'auth.role_created',
+                actorId: $actor?->id,
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['code' => $role->code, 'permission_ids' => $validated['permission_ids'] ?? []],
+                request: $request
+            );
+
+            return $role;
+        });
 
         $role->load('permissions');
-
-        AuditService::recordAuthEvent(
-            action: 'auth.role_created',
-            actorId: $actor?->id,
-            targetType: 'role',
-            targetId: (string) $role->id,
-            details: ['code' => $role->code, 'permission_ids' => $validated['permission_ids'] ?? []],
-            request: $request
-        );
 
         return response()->json([
             'success' => true,
@@ -206,10 +210,21 @@ class RolePermissionController extends Controller
             }
         }
 
-        $role->update($validated);
+        DB::transaction(function () use ($role, $validated) {
+            $role->update($validated);
+
+            if (array_key_exists('active', $validated)) {
+                $affectedUserIds = UserRole::where('role_id', $role->id)->pluck('user_id')->unique()->all();
+                if (! empty($affectedUserIds)) {
+                    User::whereIn('id', $affectedUserIds)->increment('authz_version');
+                }
+            }
+        });
 
         if (array_key_exists('active', $validated)) {
-            User::whereHas('userRoles', fn ($q) => $q->where('role_id', $role->id))->increment('authz_version');
+            foreach (UserRole::where('role_id', $role->id)->pluck('user_id')->unique() as $uid) {
+                User::clearUserGrantsCache((int) $uid);
+            }
         }
 
         return response()->json([
@@ -357,26 +372,31 @@ class RolePermissionController extends Controller
             }
         }
 
-        $role->permissions()->sync($validated['permission_ids']);
-        $role->load('permissions');
+        $affectedUserIds = [];
+        DB::transaction(function () use ($role, $validated, $actor, $request, &$affectedUserIds) {
+            $role->permissions()->sync($validated['permission_ids']);
 
-        // Increment authz_version and clear request grants cache for all users holding this role
-        $affectedUserIds = UserRole::where('role_id', $role->id)->pluck('user_id')->unique()->all();
-        if (! empty($affectedUserIds)) {
-            User::whereIn('id', $affectedUserIds)->increment('authz_version');
-            foreach ($affectedUserIds as $uid) {
-                User::clearUserGrantsCache((int) $uid);
+            // Increment authz_version for all users holding this role
+            $affectedUserIds = UserRole::where('role_id', $role->id)->pluck('user_id')->unique()->all();
+            if (! empty($affectedUserIds)) {
+                User::whereIn('id', $affectedUserIds)->increment('authz_version');
             }
+
+            AuditService::recordAuthEvent(
+                action: 'auth.role_permissions_synced',
+                actorId: $actor?->id,
+                targetType: 'role',
+                targetId: (string) $role->id,
+                details: ['code' => $role->code, 'permission_ids' => $validated['permission_ids']],
+                request: $request
+            );
+        });
+
+        foreach ($affectedUserIds as $uid) {
+            User::clearUserGrantsCache((int) $uid);
         }
 
-        AuditService::recordAuthEvent(
-            action: 'auth.role_permissions_synced',
-            actorId: $actor?->id,
-            targetType: 'role',
-            targetId: (string) $role->id,
-            details: ['code' => $role->code, 'permission_ids' => $validated['permission_ids']],
-            request: $request
-        );
+        $role->load('permissions');
 
         return response()->json([
             'success' => true,
@@ -423,39 +443,44 @@ class RolePermissionController extends Controller
         }
 
         $oldActive = $permission->active;
-        $permission->update($validated);
+        $affectedUserIds = [];
 
-        if ((bool) $oldActive !== (bool) $permission->active) {
-            $roleUserIds = DB::table('user_roles')
-                ->join('role_permissions', 'role_permissions.role_id', '=', 'user_roles.role_id')
-                ->where('role_permissions.permission_id', $permission->id)
-                ->pluck('user_roles.user_id')
-                ->all();
-            $directUserIds = DB::table('user_permissions')
-                ->where('permission_id', $permission->id)
-                ->pluck('user_id')
-                ->all();
-            $affectedUserIds = array_values(array_unique(array_merge($roleUserIds, $directUserIds)));
-            if (! empty($affectedUserIds)) {
-                User::whereIn('id', $affectedUserIds)->increment('authz_version');
-                foreach ($affectedUserIds as $uid) {
-                    User::clearUserGrantsCache((int) $uid);
+        DB::transaction(function () use ($permission, $validated, $oldActive, $request, &$affectedUserIds) {
+            $permission->update($validated);
+
+            if ((bool) $oldActive !== (bool) $permission->active) {
+                $roleUserIds = DB::table('user_roles')
+                    ->join('role_permissions', 'role_permissions.role_id', '=', 'user_roles.role_id')
+                    ->where('role_permissions.permission_id', $permission->id)
+                    ->pluck('user_roles.user_id')
+                    ->all();
+                $directUserIds = DB::table('user_permissions')
+                    ->where('permission_id', $permission->id)
+                    ->pluck('user_id')
+                    ->all();
+                $affectedUserIds = array_values(array_unique(array_merge($roleUserIds, $directUserIds)));
+                if (! empty($affectedUserIds)) {
+                    User::whereIn('id', $affectedUserIds)->increment('authz_version');
                 }
             }
-        }
 
-        AuditService::recordAuthEvent(
-            action: 'auth.permission_status_changed',
-            actorId: $request->user()->id,
-            targetType: 'permission',
-            targetId: (string) $permission->id,
-            details: [
-                'code' => $permission->code,
-                'old_active' => $oldActive,
-                'new_active' => $permission->active,
-            ],
-            request: $request
-        );
+            AuditService::recordAuthEvent(
+                action: 'auth.permission_status_changed',
+                actorId: $request->user()->id,
+                targetType: 'permission',
+                targetId: (string) $permission->id,
+                details: [
+                    'code' => $permission->code,
+                    'old_active' => $oldActive,
+                    'new_active' => $permission->active,
+                ],
+                request: $request
+            );
+        });
+
+        foreach ($affectedUserIds as $uid) {
+            User::clearUserGrantsCache((int) $uid);
+        }
 
         return response()->json([
             'success' => true,
@@ -527,41 +552,42 @@ class RolePermissionController extends Controller
             }
         }
         
-        $scope = AuthorizationScope::firstOrCreate([
-            'kind' => $validated['scope_kind'],
-            'unit_id' => $scopeUnitId,
-        ]);
+        DB::transaction(function () use ($validated, $scopeUnitId, $actor, $now, $request) {
+            $scope = AuthorizationScope::firstOrCreate([
+                'kind' => $validated['scope_kind'],
+                'unit_id' => $scopeUnitId,
+            ]);
 
-        // Grant role
-        DB::table('user_roles')->updateOrInsert(
-            [
-                'user_id' => $validated['user_id'],
-                'role_id' => $validated['role_id'],
-                'scope_id' => $scope->id,
-            ],
-            [
-                'granted_by' => $actor->id,
-                'granted_at' => $now,
-                'expires_at' => $validated['expires_at'] ?? null,
-            ]
-        );
+            DB::table('user_roles')->updateOrInsert(
+                [
+                    'user_id' => $validated['user_id'],
+                    'role_id' => $validated['role_id'],
+                    'scope_id' => $scope->id,
+                ],
+                [
+                    'granted_by' => $actor->id,
+                    'granted_at' => $now,
+                    'expires_at' => $validated['expires_at'] ?? null,
+                ]
+            );
 
-        // Bump authz_version on target user and clear request-level cache
-        User::where('id', $validated['user_id'])->increment('authz_version');
+            User::where('id', $validated['user_id'])->increment('authz_version');
+
+            AuditService::recordAuthEvent(
+                action: 'auth.authorization_version_changed',
+                actorId: $actor->id,
+                targetType: 'user',
+                targetId: (string) $validated['user_id'],
+                details: [
+                    'reason' => 'role_assigned',
+                    'role_id' => $validated['role_id'],
+                    'scope_id' => $scope->id,
+                ],
+                request: $request
+            );
+        });
+
         User::clearUserGrantsCache((int) $validated['user_id']);
-
-        AuditService::recordAuthEvent(
-            action: 'auth.authorization_version_changed',
-            actorId: $actor->id,
-            targetType: 'user',
-            targetId: (string) $validated['user_id'],
-            details: [
-                'reason' => 'role_assigned',
-                'role_id' => $validated['role_id'],
-                'scope_id' => $scope->id,
-            ],
-            request: $request
-        );
 
         return response()->json([
             'success' => true,
@@ -641,27 +667,30 @@ class RolePermissionController extends Controller
             }
         }
 
-        DB::table('user_roles')
-            ->where('user_id', $validated['user_id'])
-            ->where('role_id', $validated['role_id'])
-            ->where('scope_id', $validated['scope_id'])
-            ->delete();
+        DB::transaction(function () use ($validated, $request) {
+            DB::table('user_roles')
+                ->where('user_id', $validated['user_id'])
+                ->where('role_id', $validated['role_id'])
+                ->where('scope_id', $validated['scope_id'])
+                ->delete();
 
-        User::where('id', $validated['user_id'])->increment('authz_version');
+            User::where('id', $validated['user_id'])->increment('authz_version');
+
+            AuditService::recordAuthEvent(
+                action: 'auth.authorization_version_changed',
+                actorId: $request->user()->id,
+                targetType: 'user',
+                targetId: (string) $validated['user_id'],
+                details: [
+                    'reason' => 'role_revoked',
+                    'role_id' => $validated['role_id'],
+                    'scope_id' => $validated['scope_id'],
+                ],
+                request: $request
+            );
+        });
+
         User::clearUserGrantsCache((int) $validated['user_id']);
-
-        AuditService::recordAuthEvent(
-            action: 'auth.authorization_version_changed',
-            actorId: $request->user()->id,
-            targetType: 'user',
-            targetId: (string) $validated['user_id'],
-            details: [
-                'reason' => 'role_revoked',
-                'role_id' => $validated['role_id'],
-                'scope_id' => $validated['scope_id'],
-            ],
-            request: $request
-        );
 
         return response()->json([
             'success' => true,
@@ -713,41 +742,42 @@ class RolePermissionController extends Controller
             }
         }
 
-        $scope = AuthorizationScope::firstOrCreate([
-            'kind' => $validated['scope_kind'],
-            'unit_id' => $scopeUnitId,
-        ]);
+        DB::transaction(function () use ($validated, $scopeUnitId, $actor, $now, $request) {
+            $scope = AuthorizationScope::firstOrCreate([
+                'kind' => $validated['scope_kind'],
+                'unit_id' => $scopeUnitId,
+            ]);
 
-        // Grant single-user direct permission
-        DB::table('user_permissions')->updateOrInsert(
-            [
-                'user_id' => $validated['user_id'],
-                'permission_id' => $validated['permission_id'],
-                'scope_id' => $scope->id,
-            ],
-            [
-                'granted_by' => $actor->id,
-                'granted_at' => $now,
-                'expires_at' => $validated['expires_at'] ?? null,
-            ]
-        );
+            DB::table('user_permissions')->updateOrInsert(
+                [
+                    'user_id' => $validated['user_id'],
+                    'permission_id' => $validated['permission_id'],
+                    'scope_id' => $scope->id,
+                ],
+                [
+                    'granted_by' => $actor->id,
+                    'granted_at' => $now,
+                    'expires_at' => $validated['expires_at'] ?? null,
+                ]
+            );
 
-        // Bump authz_version on target user and clear request-level cache
-        User::where('id', $validated['user_id'])->increment('authz_version');
+            User::where('id', $validated['user_id'])->increment('authz_version');
+
+            AuditService::recordAuthEvent(
+                action: 'auth.authorization_version_changed',
+                actorId: $actor->id,
+                targetType: 'user',
+                targetId: (string) $validated['user_id'],
+                details: [
+                    'reason' => 'user_permission_assigned',
+                    'permission_id' => $validated['permission_id'],
+                    'scope_id' => $scope->id,
+                ],
+                request: $request
+            );
+        });
+
         User::clearUserGrantsCache((int) $validated['user_id']);
-
-        AuditService::recordAuthEvent(
-            action: 'auth.authorization_version_changed',
-            actorId: $actor->id,
-            targetType: 'user',
-            targetId: (string) $validated['user_id'],
-            details: [
-                'reason' => 'user_permission_assigned',
-                'permission_id' => $validated['permission_id'],
-                'scope_id' => $scope->id,
-            ],
-            request: $request
-        );
 
         return response()->json([
             'success' => true,
@@ -813,27 +843,30 @@ class RolePermissionController extends Controller
             }
         }
 
-        DB::table('user_permissions')
-            ->where('user_id', $validated['user_id'])
-            ->where('permission_id', $validated['permission_id'])
-            ->where('scope_id', $validated['scope_id'])
-            ->delete();
+        DB::transaction(function () use ($validated, $request) {
+            DB::table('user_permissions')
+                ->where('user_id', $validated['user_id'])
+                ->where('permission_id', $validated['permission_id'])
+                ->where('scope_id', $validated['scope_id'])
+                ->delete();
 
-        User::where('id', $validated['user_id'])->increment('authz_version');
+            User::where('id', $validated['user_id'])->increment('authz_version');
+
+            AuditService::recordAuthEvent(
+                action: 'auth.authorization_version_changed',
+                actorId: $request->user()->id,
+                targetType: 'user',
+                targetId: (string) $validated['user_id'],
+                details: [
+                    'reason' => 'user_permission_revoked',
+                    'permission_id' => $validated['permission_id'],
+                    'scope_id' => $validated['scope_id'],
+                ],
+                request: $request
+            );
+        });
+
         User::clearUserGrantsCache((int) $validated['user_id']);
-
-        AuditService::recordAuthEvent(
-            action: 'auth.authorization_version_changed',
-            actorId: $request->user()->id,
-            targetType: 'user',
-            targetId: (string) $validated['user_id'],
-            details: [
-                'reason' => 'user_permission_revoked',
-                'permission_id' => $validated['permission_id'],
-                'scope_id' => $validated['scope_id'],
-            ],
-            request: $request
-        );
 
         return response()->json([
             'success' => true,

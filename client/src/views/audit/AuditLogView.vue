@@ -179,7 +179,7 @@ onMounted(() => {
 
  <template #cell-ip_address="{ value }">
  <span class="font-mono text-xs text-ink-muted">
- {{ value || '127.0.0.1' }}
+ {{ value || '—' }}
  </span>
  </template>
 

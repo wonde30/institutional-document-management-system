@@ -3,14 +3,18 @@
 declare(strict_types=1);
 
 /**
- * Performance Benchmark & EXPLAIN Query Plan Verification on Throwaway Database (wu_dms_perf)
+ * Performance Benchmark & EXPLAIN Query Plan Verification on Explicitly Configured Disposable Database
  *
  * Measures:
  * 1. p95 HTTP latency over Sanctum authentication for the 5 target endpoints
  * 2. Query count via DB::listen
- * 3. Before and After index addition comparison
+ * 3. Before and After audit_events index comparison (on the disposable benchmark DB only)
  * 4. Raw EXPLAIN query plans for actor, target, and occurred_at on audit_events
- * 5. Automatic cleanup: Drops wu_dms_perf database
+ * 5. Automatic cleanup: Drops the verified disposable benchmark database
+ *
+ * Usage:
+ *   BENCHMARK_DB_DATABASE=wu_dms_perf_tmp php tools/run_performance_benchmark.php
+ *   php tools/run_performance_benchmark.php --database=wu_dms_perf_tmp
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -18,100 +22,203 @@ $app = require_once __DIR__ . '/../bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
-echo "=== INSTITUTIONAL DMS PERFORMANCE BENCHMARK (wu_dms_perf) ===\n\n";
+/**
+ * Resolve and strictly validate the isolated disposable benchmark database name.
+ * Fails closed on missing configuration, invalid identifiers, or protected databases.
+ */
+function resolveBenchmarkDatabaseName(array $argv): string
+{
+    $argDb = null;
+    foreach ($argv as $arg) {
+        if (str_starts_with($arg, '--database=')) {
+            $argDb = substr($arg, strlen('--database='));
+            break;
+        }
+    }
 
-// 1. Create throwaway database wu_dms_perf
-echo "--- 1. INITIALIZING THROWAWAY DATABASE wu_dms_perf ---\n";
-DB::statement("CREATE DATABASE IF NOT EXISTS `wu_dms_perf` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs;");
-echo "Created database wu_dms_perf successfully.\n";
+    $envDb = getenv('BENCHMARK_DB_DATABASE');
+    $benchmarkDb = trim((string) ($argDb !== null ? $argDb : ($envDb !== false ? $envDb : '')));
 
-// 2. Run migrations and seeders on wu_dms_perf
-echo "Running migrations on wu_dms_perf...\n";
-putenv('DB_DATABASE=wu_dms_perf');
-$_ENV['DB_DATABASE'] = 'wu_dms_perf';
-$_SERVER['DB_DATABASE'] = 'wu_dms_perf';
+    if ($benchmarkDb === '') {
+        fwrite(STDERR, "FAIL CLOSED: No isolated benchmark database configured. Provide BENCHMARK_DB_DATABASE or --database=<name>.\n");
+        exit(1);
+    }
 
-// Reconnect to wu_dms_perf
+    if (! preg_match('/^[A-Za-z0-9_]+$/', $benchmarkDb)) {
+        fwrite(STDERR, "FAIL CLOSED: Invalid benchmark database identifier '{$benchmarkDb}'.\n");
+        exit(1);
+    }
+
+    $protectedDatabases = array_filter(array_unique([
+        'wu_dms',
+        'wu_dms_test',
+        'wu_dms_phpunit',
+        'wu_dms_e2e',
+        'wu_dms_schema_verify',
+        'wollo_dms_test',
+        'mysql',
+        'information_schema',
+        'performance_schema',
+        'sys',
+        (string) config('database.connections.mysql.database'),
+        (string) (getenv('DB_DATABASE') !== false ? getenv('DB_DATABASE') : ''),
+    ]));
+
+    foreach ($protectedDatabases as $protected) {
+        if (strcasecmp($benchmarkDb, $protected) === 0) {
+            fwrite(STDERR, "FAIL CLOSED: Database '{$benchmarkDb}' is a protected or configured application/test database.\n");
+            exit(1);
+        }
+    }
+
+    if (! preg_match('/_(?:perf|benchmark)(?:_[A-Za-z0-9_]+)?$/i', $benchmarkDb)) {
+        fwrite(STDERR, "FAIL CLOSED: Benchmark database '{$benchmarkDb}' must end with '_perf', '_benchmark', or '_perf_<suffix>' / '_benchmark_<suffix>' to verify disposability.\n");
+        exit(1);
+    }
+
+    return $benchmarkDb;
+}
+
+$originalDb = (string) config('database.connections.mysql.database');
+$benchmarkDb = resolveBenchmarkDatabaseName($argv ?? []);
+
+echo "=== INSTITUTIONAL DMS PERFORMANCE BENCHMARK ({$benchmarkDb}) ===\n\n";
+
+// 1. Verify target database identity & disposability before any schema changes
+echo "--- 1. VERIFYING ISOLATED DISPOSABLE DATABASE {$benchmarkDb} ---\n";
+$existingSchema = DB::selectOne(
+    'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
+    [$benchmarkDb]
+);
+
+if ($existingSchema !== null) {
+    $tableCount = (int) DB::selectOne(
+        'SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?',
+        [$benchmarkDb]
+    )->cnt;
+
+    if ($tableCount > 0 && ! in_array('--allow-existing-disposable', $argv ?? [], true)) {
+        fwrite(STDERR, "FAIL CLOSED: Database '{$benchmarkDb}' already exists with {$tableCount} tables. Pass --allow-existing-disposable or choose a fresh disposable database name.\n");
+        exit(1);
+    }
+}
+
+DB::statement("CREATE DATABASE IF NOT EXISTS `{$benchmarkDb}` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs;");
+
+putenv("DB_DATABASE={$benchmarkDb}");
+$_ENV['DB_DATABASE'] = $benchmarkDb;
+$_SERVER['DB_DATABASE'] = $benchmarkDb;
+
 DB::purge('mysql');
-config(['database.connections.mysql.database' => 'wu_dms_perf']);
+config(['database.connections.mysql.database' => $benchmarkDb]);
 DB::reconnect('mysql');
 
-// Run migrations on wu_dms_perf
-\Illuminate\Support\Facades\Artisan::call('migrate:fresh', [
-    '--database' => 'mysql',
-    '--force' => true,
-]);
-echo "Migrated wu_dms_perf schema.\n";
+$activeDb = (string) DB::connection('mysql')->getPdo()->query('SELECT DATABASE()')->fetchColumn();
+if (strcasecmp($activeDb, $benchmarkDb) !== 0) {
+    fwrite(STDERR, "FAIL CLOSED: Active PDO connection points to '{$activeDb}', expected '{$benchmarkDb}'.\n");
+    exit(1);
+}
+echo "Verified active connection to disposable database: {$activeDb}\n";
 
-// Rollback latest performance migrations to establish BEFORE state
-echo "Rolling back latest performance migrations to capture BEFORE baseline...\n";
-\Illuminate\Support\Facades\Artisan::call('migrate:rollback', [
+// 2. Run the 130 baseline migrations cleanly on the disposable database (no migrate:rollback)
+echo "Running standard Laravel migrations on {$benchmarkDb}...\n";
+$migrateExit = Artisan::call('migrate', [
     '--database' => 'mysql',
-    '--step' => 2,
     '--force' => true,
 ]);
+if ($migrateExit !== 0) {
+    fwrite(STDERR, "FAIL CLOSED: Migration execution failed on '{$benchmarkDb}': " . Artisan::output() . "\n");
+    exit(1);
+}
+echo "Migrated {$benchmarkDb} schema cleanly (" . DB::table('migrations')->count() . " migrations recorded).\n";
+
+// Capture BEFORE baseline for audit_events index comparison by dropping only audit_events secondary indexes on this disposable DB
+echo "Temporarily removing audit_events secondary indexes on {$benchmarkDb} to capture BEFORE baseline...\n";
+$auditIndexesToToggle = [
+    'audit_events_ix_2' => 'CREATE INDEX `audit_events_ix_2` ON `audit_events` (`actor_id`, `occurred_at`)',
+    'audit_events_ix_4' => 'CREATE INDEX `audit_events_ix_4` ON `audit_events` (`occurred_at`)',
+    'audit_events_ix_1' => 'CREATE INDEX `audit_events_ix_1` ON `audit_events` (`target_type`, `target_id`, `occurred_at`)',
+];
+foreach (array_keys($auditIndexesToToggle) as $indexName) {
+    $exists = DB::selectOne(
+        'SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?',
+        [$benchmarkDb, 'audit_events', $indexName]
+    );
+    if ($exists && (int) $exists->cnt > 0) {
+        DB::statement("ALTER TABLE `audit_events` DROP INDEX `{$indexName}`");
+    }
+}
 
 // Seed reference data
 echo "Seeding baseline vocabularies and test datasets...\n";
-\Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'BaselineReferenceVocabularySeeder', '--force' => true]);
-\Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'InstitutionalCredentialSeeder', '--force' => true]);
-\Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'WorkflowBaselineSeeder', '--force' => true]);
-\Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'ResearchProjectWorkflowSeeder', '--force' => true]);
-\Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TestDocumentsSeeder', '--force' => true]);
-echo "wu_dms_perf populated successfully.\n";
+Artisan::call('db:seed', ['--class' => 'BaselineReferenceVocabularySeeder', '--force' => true]);
+Artisan::call('db:seed', ['--class' => 'InstitutionalCredentialSeeder', '--force' => true]);
+Artisan::call('db:seed', ['--class' => 'WorkflowBaselineSeeder', '--force' => true]);
+Artisan::call('db:seed', ['--class' => 'ResearchProjectWorkflowSeeder', '--force' => true]);
+Artisan::call('db:seed', ['--class' => 'TestDocumentsSeeder', '--force' => true]);
+echo "{$benchmarkDb} populated successfully.\n";
 
-// 3. Dedicated HTTP server on port 8002 pointing to wu_dms_perf
+// 3. Dedicated HTTP server on port 8002 pointing to the disposable benchmark DB
 $port = 8002;
-$serverProcess = null;
 $fp = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
 if (! $fp) {
-    echo "Starting dedicated HTTP server on 127.0.0.1:{$port} (DB: wu_dms_perf)...\n";
+    echo "Starting dedicated HTTP server on 127.0.0.1:{$port} (DB: {$benchmarkDb})...\n";
     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        pclose(popen("cmd /c \"set DB_DATABASE=wu_dms_perf&& start /B php artisan serve --host=127.0.0.1 --port={$port} > NUL 2>&1\"", "r"));
+        pclose(popen("cmd /c \"set DB_DATABASE={$benchmarkDb}&& start /B php artisan serve --host=127.0.0.1 --port={$port} > NUL 2>&1\"", 'r'));
     } else {
-        exec("DB_DATABASE=wu_dms_perf php artisan serve --host=127.0.0.1 --port={$port} > /dev/null 2>&1 &");
+        exec("DB_DATABASE={$benchmarkDb} php artisan serve --host=127.0.0.1 --port={$port} > /dev/null 2>&1 &");
     }
     sleep(3);
 } else {
     fclose($fp);
 }
-echo "Connected to dedicated HTTP server on 127.0.0.1:{$port} (DB: wu_dms_perf).\n";
+echo "Connected to dedicated HTTP server on 127.0.0.1:{$port} (DB: {$benchmarkDb}).\n";
 
-// Helper Sanctum Client
 class PerfSanctumClient
 {
     protected string $baseUrl;
     protected array $cookies = [];
 
-    public function __construct(string $baseUrl) { $this->baseUrl = $baseUrl; }
+    public function __construct(string $baseUrl)
+    {
+        $this->baseUrl = $baseUrl;
+    }
 
-    public function getCsrfCookie(): void {
+    public function getCsrfCookie(): void
+    {
         $this->request('GET', '/sanctum/csrf-cookie');
     }
 
-    public function postJson(string $path, array $data = []): array {
+    public function postJson(string $path, array $data = []): array
+    {
         return $this->request('POST', $path, $data, true);
     }
 
-    public function getJson(string $path): array {
+    public function getJson(string $path): array
+    {
         return $this->request('GET', $path);
     }
 
-    protected function request(string $method, string $path, array $data = [], bool $isJson = false): array {
+    protected function request(string $method, string $path, array $data = [], bool $isJson = false): array
+    {
         $headers = [
             'Accept: application/json',
             'Origin: http://localhost:5173',
             'Referer: http://localhost:5173/',
         ];
-        if (!empty($this->cookies['XSRF-TOKEN'])) {
+        if (! empty($this->cookies['XSRF-TOKEN'])) {
             $headers[] = 'X-XSRF-TOKEN: ' . urldecode($this->cookies['XSRF-TOKEN']);
         }
-        if (!empty($this->cookies)) {
+        if (! empty($this->cookies)) {
             $cPairs = [];
-            foreach ($this->cookies as $k => $v) { $cPairs[] = "$k=$v"; }
+            foreach ($this->cookies as $k => $v) {
+                $cPairs[] = "$k=$v";
+            }
             $headers[] = 'Cookie: ' . implode('; ', $cPairs);
         }
         if ($isJson) {
@@ -124,7 +231,7 @@ class PerfSanctumClient
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        if (!empty($data)) {
+        if (! empty($data)) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
 
@@ -166,7 +273,8 @@ $targetEndpoints = [
     'export' => '/api/v1/reports/export',
 ];
 
-function measureEndpoint(PerfSanctumClient $client, string $name, string $endpoint, int $iterations = 20): array {
+function measureEndpoint(PerfSanctumClient $client, string $name, string $endpoint, int $iterations = 20): array
+{
     $times = [];
     $status = 0;
     for ($i = 0; $i < $iterations; $i++) {
@@ -179,6 +287,7 @@ function measureEndpoint(PerfSanctumClient $client, string $name, string $endpoi
     sort($times);
     $p95Index = (int) ceil(0.95 * count($times)) - 1;
     $p95 = $times[$p95Index];
+
     return [
         'status' => $status,
         'p95' => round($p95, 2),
@@ -195,7 +304,8 @@ DB::listen(function ($query) use (&$globalQueryCount, &$countingQueries) {
     }
 });
 
-function countQueriesForEndpoint(string $endpoint, int &$globalQueryCount, bool &$countingQueries): int {
+function countQueriesForEndpoint(string $endpoint, int &$globalQueryCount, bool &$countingQueries): int
+{
     $admin = \App\Models\User::where('email', 'admin@wu.edu.et')->first();
     \Laravel\Sanctum\Sanctum::actingAs($admin, ['*']);
 
@@ -208,9 +318,11 @@ function countQueriesForEndpoint(string $endpoint, int &$globalQueryCount, bool 
 
     try {
         app()->handle($req);
-    } catch (\Throwable $e) {}
+    } catch (\Throwable $e) {
+    }
 
     $countingQueries = false;
+
     return $globalQueryCount;
 }
 
@@ -228,47 +340,38 @@ foreach ($targetEndpoints as $name => $ep) {
     echo sprintf("  %-16s | p95: %6.2f ms | queries: %2d | HTTP %d\n", $name, $timing['p95'], $qCount, $timing['status']);
 }
 
-// 5. Apply NEW migration
-echo "\n--- 3. APPLYING NEW PERFORMANCE INDEX MIGRATION ---\n";
-\Illuminate\Support\Facades\Artisan::call('migrate', [
-    '--database' => 'mysql',
-    '--force' => true,
-]);
-echo "Applied migration: 2026_11_24_000001_add_audit_events_performance_indexes\n";
+// 5. Restore audit_events secondary indexes on the disposable DB
+echo "\n--- 3. RESTORING AUDIT_EVENTS PERFORMANCE INDEXES ---\n";
+foreach ($auditIndexesToToggle as $indexName => $createSql) {
+    DB::statement($createSql);
+    echo "Restored index: {$indexName}\n";
+}
 
 // 6. EXPLAIN Query Plans on audit_events
 echo "\n--- 4. EXPLAIN QUERY PLANS ON AUDIT_EVENTS ---\n";
-
-// Populate audit events to ensure cost-based optimizer uses indexes
 for ($i = 1; $i <= 50; $i++) {
     DB::table('audit_events')->insert([
         'actor_id' => ($i % 3 === 0) ? 1 : 2,
         'action' => 'document.view',
         'target_type' => 'document',
         'target_id' => (string) $i,
-        'request_id' => (string) \Illuminate\Support\Str::uuid(),
+        'request_id' => (string) Str::uuid(),
         'occurred_at' => now()->subMinutes($i)->format('Y-m-d H:i:s.u'),
     ]);
 }
 
-// Plan 1: Actor Query
-echo "\nA) EXPLAIN: Actor Query (SELECT * FROM audit_events WHERE actor_id = 1):\n";
-$planActor = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events WHERE actor_id = 1");
-foreach ($planActor as $row) {
+echo "\nA) EXPLAIN: Actor Query (SELECT id, action, occurred_at FROM audit_events WHERE actor_id = 1):\n";
+foreach (DB::select('EXPLAIN SELECT id, action, occurred_at FROM audit_events WHERE actor_id = 1') as $row) {
     echo "   table: {$row->table} | type: {$row->type} | possible_keys: {$row->possible_keys} | key: {$row->key} | rows: {$row->rows} | Extra: {$row->Extra}\n";
 }
 
-// Plan 2: Target Query
-echo "\nB) EXPLAIN: Target Query (SELECT * FROM audit_events WHERE target_type = 'document' AND target_id = '10'):\n";
-$planTarget = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events WHERE target_type = 'document' AND target_id = '10'");
-foreach ($planTarget as $row) {
+echo "\nB) EXPLAIN: Target Query (SELECT id, action, occurred_at FROM audit_events WHERE target_type = 'document' AND target_id = '10'):\n";
+foreach (DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events WHERE target_type = 'document' AND target_id = '10'") as $row) {
     echo "   table: {$row->table} | type: {$row->type} | possible_keys: {$row->possible_keys} | key: {$row->key} | rows: {$row->rows} | Extra: {$row->Extra}\n";
 }
 
-// Plan 3: Occurred At Range Query
-echo "\nC) EXPLAIN: Occurred At Range Query (SELECT * FROM audit_events WHERE occurred_at >= '2026-01-01' ORDER BY occurred_at DESC):\n";
-$planOccurred = DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events WHERE occurred_at >= '2026-01-01 00:00:00' ORDER BY occurred_at DESC LIMIT 20");
-foreach ($planOccurred as $row) {
+echo "\nC) EXPLAIN: Occurred At Range Query (SELECT id, action, occurred_at FROM audit_events WHERE occurred_at >= '2026-01-01 00:00:00' ORDER BY occurred_at DESC LIMIT 20):\n";
+foreach (DB::select("EXPLAIN SELECT id, action, occurred_at FROM audit_events WHERE occurred_at >= '2026-01-01 00:00:00' ORDER BY occurred_at DESC LIMIT 20") as $row) {
     echo "   table: {$row->table} | type: {$row->type} | possible_keys: {$row->possible_keys} | key: {$row->key} | rows: {$row->rows} | Extra: {$row->Extra}\n";
 }
 
@@ -287,13 +390,14 @@ foreach ($targetEndpoints as $name => $ep) {
 }
 
 // 8. Output Performance Table
-echo "\n=== PERFORMANCE COMPARISON TABLE (wu_dms_perf) ===\n";
-printf("%-18s | %-12s | %-12s | %-14s | %-14s | %s\n", "Endpoint", "Before p95", "After p95", "Before Queries", "After Queries", "Status");
-echo str_repeat("-", 85) . "\n";
+echo "\n=== PERFORMANCE COMPARISON TABLE ({$benchmarkDb}) ===\n";
+printf("%-18s | %-12s | %-12s | %-14s | %-14s | %s\n", 'Endpoint', 'Before p95', 'After p95', 'Before Queries', 'After Queries', 'Status');
+echo str_repeat('-', 85) . "\n";
 foreach ($targetEndpoints as $name => $ep) {
     $b = $beforeResults[$name];
     $a = $afterResults[$name];
-    printf("%-18s | %8.2f ms  | %8.2f ms  | %14d | %14d | HTTP %d\n",
+    printf(
+        "%-18s | %8.2f ms  | %8.2f ms  | %14d | %14d | HTTP %d\n",
         $name,
         $b['p95'],
         $a['p95'],
@@ -303,15 +407,18 @@ foreach ($targetEndpoints as $name => $ep) {
     );
 }
 
-// 9. Teardown & Drop wu_dms_perf
+// 9. Teardown & Drop verified disposable benchmark database only
 echo "\n--- 6. TEARDOWN & CLEANUP ---\n";
+if (! preg_match('/_(?:perf|benchmark)(?:_[A-Za-z0-9_]+)?$/i', $benchmarkDb)) {
+    fwrite(STDERR, "FAIL CLOSED: Refusing to drop non-disposable database '{$benchmarkDb}'.\n");
+    exit(1);
+}
 
-// Reconnect to default database before dropping wu_dms_perf
 DB::purge('mysql');
-config(['database.connections.mysql.database' => 'wu_dms_test']);
+config(['database.connections.mysql.database' => $originalDb]);
 DB::reconnect('mysql');
 
-DB::statement("DROP DATABASE IF EXISTS `wu_dms_perf`;");
-echo "Dropped throwaway database wu_dms_perf.\n";
+DB::statement("DROP DATABASE IF EXISTS `{$benchmarkDb}`;");
+echo "Dropped disposable benchmark database {$benchmarkDb}.\n";
 
 echo "\nPerformance benchmark completed successfully.\n";

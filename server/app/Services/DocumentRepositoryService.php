@@ -27,6 +27,75 @@ use Illuminate\Support\Str;
 class DocumentRepositoryService
 {
     /**
+     * Allocate the next sequential reference number atomically via reference_sequences.
+     */
+    public function allocateAnnualReference(
+        string $sequenceKey,
+        string $prefix = 'WU',
+        int $padLength = 4,
+        ?int $baselineFloor = null
+    ): string {
+        $year = date('Y');
+        $normalizedKey = strtoupper($sequenceKey);
+        $normalizedPrefix = strtoupper($prefix);
+
+        $allocator = function () use ($normalizedKey, $normalizedPrefix, $year, $padLength, $baselineFloor): string {
+            $seq = DB::table('reference_sequences')
+                ->where('sequence_key', $normalizedKey)
+                ->where('period_key', $year)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $seq) {
+                $refPrefix = "{$normalizedPrefix}/{$normalizedKey}/{$year}/";
+                $existingRefs = DB::table('documents')
+                    ->where('reference_number', 'like', $refPrefix.'%')
+                    ->pluck('reference_number');
+
+                $maxSuffix = 0;
+                foreach ($existingRefs as $existingRef) {
+                    $tail = substr((string) $existingRef, strlen($refPrefix));
+                    if ($tail !== '' && ctype_digit($tail)) {
+                        $maxSuffix = max($maxSuffix, (int) $tail);
+                    }
+                }
+
+                $seedNext = max(1, max($maxSuffix, $baselineFloor ?? 0) + 1);
+
+                DB::table('reference_sequences')->insertOrIgnore([
+                    'sequence_key' => $normalizedKey,
+                    'period_key' => $year,
+                    'next_value' => $seedNext,
+                ]);
+
+                $seq = DB::table('reference_sequences')
+                    ->where('sequence_key', $normalizedKey)
+                    ->where('period_key', $year)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            $seqVal = (int) $seq->next_value;
+            $candidate = sprintf('%s/%s/%s/%0'.$padLength.'d', $normalizedPrefix, $normalizedKey, $year, $seqVal);
+
+            while (DB::table('documents')->where('reference_number', $candidate)->exists()) {
+                $seqVal++;
+                $candidate = sprintf('%s/%s/%s/%0'.$padLength.'d', $normalizedPrefix, $normalizedKey, $year, $seqVal);
+            }
+
+            DB::table('reference_sequences')
+                ->where('id', $seq->id)
+                ->update(['next_value' => $seqVal + 1]);
+
+            return $candidate;
+        };
+
+        return DB::transactionLevel() > 0
+            ? $allocator()
+            : DB::transaction($allocator, 5);
+    }
+
+    /**
      * Generate a provisional reference number for draft records without burning official sequence numbers.
      */
     public function generateDraftReferenceNumber(string $sequenceKey = 'DOC'): string

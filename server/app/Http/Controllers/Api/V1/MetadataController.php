@@ -17,6 +17,7 @@ use App\Models\Tag;
 use App\Services\AuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class MetadataController extends Controller
@@ -143,25 +144,29 @@ class MetadataController extends Controller
         ]);
 
         $actor = $request->user();
-        $item = $modelClass::create([
-            'code' => $validated['code'],
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'active' => $validated['active'] ?? true,
-        ]);
+        $item = DB::transaction(function () use ($modelClass, $validated, $actor, $tableName, $type, $request) {
+            $item = $modelClass::create([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'active' => $validated['active'] ?? true,
+            ]);
 
-        AuditService::recordAuthEvent(
-            action: 'metadata.item_created',
-            actorId: $actor ? $actor->id : null,
-            targetType: $tableName,
-            targetId: (string) $item->id,
-            details: [
-                'type' => $type,
-                'code' => $item->code,
-                'name' => $item->name,
-            ],
-            request: $request
-        );
+            AuditService::recordAuthEvent(
+                action: 'metadata.item_created',
+                actorId: $actor ? $actor->id : null,
+                targetType: $tableName,
+                targetId: (string) $item->id,
+                details: [
+                    'type' => $type,
+                    'code' => $item->code,
+                    'name' => $item->name,
+                ],
+                request: $request
+            );
+
+            return $item;
+        });
 
         return response()->json([
             'success' => true,
@@ -192,21 +197,23 @@ class MetadataController extends Controller
             'active' => 'sometimes|boolean',
         ]);
 
-        $item->update($validated);
-
         $actor = $request->user();
-        AuditService::recordAuthEvent(
-            action: 'metadata.item_updated',
-            actorId: $actor ? $actor->id : null,
-            targetType: $item->getTable(),
-            targetId: (string) $item->id,
-            details: [
-                'type' => $type,
-                'code' => $item->code,
-                'changes' => $validated,
-            ],
-            request: $request
-        );
+        DB::transaction(function () use ($item, $validated, $actor, $type, $request) {
+            $item->update($validated);
+
+            AuditService::recordAuthEvent(
+                action: 'metadata.item_updated',
+                actorId: $actor ? $actor->id : null,
+                targetType: $item->getTable(),
+                targetId: (string) $item->id,
+                details: [
+                    'type' => $type,
+                    'code' => $item->code,
+                    'changes' => $validated,
+                ],
+                request: $request
+            );
+        });
 
         return response()->json([
             'success' => true,

@@ -6,11 +6,7 @@ use App\Models\Correspondence;
 use App\Models\Document;
 use App\Models\DocumentMovement;
 use App\Models\FileObject;
-use App\Models\PhysicalOriginal;
-use App\Models\ResearchRecord;
-use App\Models\VersionFile;
 use App\Models\WorkflowTask;
-use App\Services\Authorization\RouteAuthorizationTarget;
 use App\Services\Authorization\RouteScopeResolver;
 use Closure;
 use Illuminate\Http\Request;
@@ -98,9 +94,7 @@ class CheckBaselinePermission
             $id = (int) $request->route('id');
             $isResourceSpecific = true;
 
-            if (str_contains($path, 'research/outputs')) {
-                $targetUnitId = ResearchRecord::with('document')->find($id)?->document?->owner_unit_id;
-            } elseif (str_contains($path, 'correspondences')) {
+            if (str_contains($path, 'correspondences')) {
                 if (str_contains($path, 'acknowledge') && $request->route('movementId')) {
                     $targetUnitId = DocumentMovement::find((int) $request->route('movementId'))?->to_unit_id;
                 } else {
@@ -142,10 +136,6 @@ class CheckBaselinePermission
                 }
 
                 return null;
-            } elseif (str_contains($path, 'staff/records')) {
-                $targetUnitId = PhysicalOriginal::with('document')->find($id)?->document?->owner_unit_id;
-            } elseif (str_contains($path, 'projects')) {
-                $targetUnitId = \App\Models\ProjectProposal::with('document')->find($id)?->document?->owner_unit_id;
             } elseif (str_contains($path, 'workflows/tasks')) {
                 $task = WorkflowTask::with('instance.documentVersion.document')->find($id);
                 $targetUnitId = $task ? ($task->assigned_unit_id ?? $task->instance?->documentVersion?->document?->owner_unit_id) : null;

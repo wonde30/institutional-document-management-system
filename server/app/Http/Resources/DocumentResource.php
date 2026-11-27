@@ -233,20 +233,17 @@ class DocumentResource extends JsonResource
                             'id' => $m->sentBy->id,
                             'name' => $m->sentBy->name,
                         ] : null,
-                        'dispatch_method' => $m->dispatch_method,
                         'instruction' => $m->instruction,
                         'instructions' => $m->instruction,
                         'due_at' => $m->due_at?->toISOString(),
                         'receipt' => $m->receipt ? [
-                            'id' => $m->receipt->id,
+                            'movement_id' => $m->receipt->movement_id,
                             'acknowledged_by' => $m->receipt->acknowledged_by,
                             'acknowledged_by_user' => $m->receipt->acknowledgedBy ? [
                                 'id' => $m->receipt->acknowledgedBy->id,
                                 'name' => $m->receipt->acknowledgedBy->name,
                             ] : null,
                             'acknowledged_at' => $m->receipt->acknowledged_at?->toISOString(),
-                            'status' => $m->receipt->status,
-                            'remarks' => $m->receipt->remarks,
                         ] : null,
                     ];
                 });
@@ -336,9 +333,11 @@ class DocumentResource extends JsonResource
             }),
             'archive_entry' => $this->whenLoaded('archiveEntry', fn () => $this->archiveEntry ? [
                 'id' => $this->archiveEntry->id,
-                'archive_reference' => $this->archiveEntry->archive_reference,
+                'document_id' => $this->archiveEntry->document_id,
+                'archive_reference' => $this->reference_number,
                 'collection' => $this->archiveEntry->collection ? [
                     'id' => $this->archiveEntry->collection->id,
+                    'code' => $this->archiveEntry->collection->code,
                     'name' => $this->archiveEntry->collection->name,
                 ] : null,
                 'archived_at' => $this->archiveEntry->archived_at?->toISOString(),

@@ -22,6 +22,11 @@ class AssignmentController extends Controller
      */
     public function index(Request $request, ?int $documentId = null): JsonResponse
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $docId = $documentId ?? ($request->route('id') ? (int) $request->route('id') : null) ?? ($request->query('document_id') ? (int) $request->query('document_id') : null);
         $actor = $request->user();
 
@@ -48,11 +53,18 @@ class AssignmentController extends Controller
             $query->where('assigned_user_id', $request->query('assigned_user_id'));
         }
 
-        $assignments = $query->orderByDesc('assigned_at')->get();
+        $perPage = (int) $request->query('per_page', 25);
+        $assignments = $query->orderByDesc('assigned_at')->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $assignments,
+            'data' => $assignments->items(),
+            'meta' => [
+                'current_page' => $assignments->currentPage(),
+                'last_page' => $assignments->lastPage(),
+                'per_page' => $assignments->perPage(),
+                'total' => $assignments->total(),
+            ],
         ]);
     }
 

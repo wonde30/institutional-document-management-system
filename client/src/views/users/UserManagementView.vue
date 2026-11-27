@@ -17,6 +17,7 @@ import DataTable, { type TableColumn } from '@/components/data-display/DataTable
 import Pagination from '@/components/Pagination.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { formatStatus } from '@/utils/formatters'
 import {
@@ -47,6 +48,7 @@ import {
  Check
 } from 'lucide-vue-next'
 
+const authStore = useAuthStore()
 const toast = useToast()
 const loading = ref(true)
 const users = ref<User[]>([])
@@ -537,7 +539,12 @@ onMounted(() => {
  Refresh
  </BaseButton>
 
- <BaseButton variant="primary" size="sm" @click="openCreateModal">
+ <BaseButton
+ v-if="authStore.hasPermission('users.create')"
+ variant="primary"
+ size="sm"
+ @click="openCreateModal"
+ >
  <UserPlus class="w-4 h-4 mr-1.5" />
  Register staff member
  </BaseButton>
@@ -683,7 +690,7 @@ onMounted(() => {
  :title="`Direct Single-User Permission in ${dp.scope_kind} scope`"
  >
  <span>{{ dp.permission_code }}</span>
- <button type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke direct permission override" @click.stop="handleRevokeDirectPermission(item, dp)">&times;</button>
+ <button v-if="authStore.hasPermission('permissions.assign')" type="button" class="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 ml-0.5 transition-opacity cursor-pointer font-bold leading-none" title="Revoke direct permission override" @click.stop="handleRevokeDirectPermission(item, dp)">&times;</button>
  </span>
  <span v-if="!item.direct_permissions || item.direct_permissions.length === 0" class="text-xs text-ink-muted">
  None
@@ -715,6 +722,7 @@ onMounted(() => {
  <div class="flex items-center justify-end gap-1.5">
  <!-- Quick Activate / Deactivate Toggle Button -->
  <button
+ v-if="authStore.hasPermission('users.deactivate')"
  type="button"
  class="p-1 rounded transition-colors"
  :class="item.status === 'active' ? 'text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950' : 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950'"
@@ -727,6 +735,7 @@ onMounted(() => {
 
  <!-- Assign Scoped Role Button -->
  <button
+ v-if="authStore.hasPermission('roles.assign')"
  type="button"
  class="p-1 text-ink-muted hover:text-primary hover:bg-canvas-soft rounded transition-colors"
  title="Assign Scoped Role"
@@ -737,6 +746,7 @@ onMounted(() => {
 
  <!-- Assign Direct Permission Button -->
  <button
+ v-if="authStore.hasPermission('permissions.assign')"
  type="button"
  class="p-1 text-ink-muted hover:text-amber-600 hover:bg-canvas-soft rounded transition-colors"
  title="Grant Single-User Direct Permission"
@@ -747,6 +757,7 @@ onMounted(() => {
 
  <!-- Assign Unit Membership Button -->
  <button
+ v-if="authStore.hasPermission('users.update')"
  type="button"
  class="p-1 text-ink-muted hover:text-primary hover:bg-canvas-soft rounded transition-colors"
  title="Assign Unit Membership"
@@ -757,6 +768,7 @@ onMounted(() => {
 
  <!-- Inspect Effective Access Lineage Button -->
  <button
+ v-if="authStore.hasPermission('users.view') || authStore.hasPermission('roles.view') || authStore.hasPermission('permissions.view') || authStore.hasPermission('system.configure')"
  type="button"
  class="p-1 text-ink-muted hover:text-emerald-600 hover:bg-canvas-soft rounded transition-colors"
  title="Inspect Effective Permissions & Lineage"
@@ -767,6 +779,7 @@ onMounted(() => {
 
  <!-- Edit User Button -->
  <button
+ v-if="authStore.hasPermission('users.update')"
  type="button"
  class="p-1 text-ink-muted hover:text-primary hover:bg-canvas-soft rounded transition-colors"
  title="Edit Staff Profile"
@@ -912,6 +925,7 @@ onMounted(() => {
  <div class="pt-4 mt-4 border-t border-hairline flex items-center justify-between">
  <!-- Activate / Deactivate Toggle Button -->
  <button
+ v-if="authStore.hasPermission('users.deactivate')"
  type="button"
  class="px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
  :class="user.status === 'active' ? 'bg-[#fdebee] text-[#e03e3e] hover:bg-rose-100 dark:bg-[#381619] dark:text-[#ff7373]' : 'bg-[#e8f7ec] text-[#1aae39] hover:bg-emerald-100 dark:bg-[#183321] dark:text-[#42cf63]'"
@@ -921,10 +935,12 @@ onMounted(() => {
  <UserCheck v-else class="w-3.5 h-3.5" />
  {{ user.status === 'active' ? 'Deactivate' : 'Activate' }}
  </button>
+ <span v-else />
 
  <!-- Action Toolbar -->
  <div class="flex items-center gap-1">
  <button
+ v-if="authStore.hasPermission('roles.assign')"
  type="button"
  class="p-1.5 text-ink-muted hover:text-primary hover:bg-canvas-soft rounded-md transition-colors"
  title="Assign Scoped Role"
@@ -934,6 +950,7 @@ onMounted(() => {
  </button>
 
  <button
+ v-if="authStore.hasPermission('permissions.assign')"
  type="button"
  class="p-1.5 text-ink-muted hover:text-amber-600 hover:bg-canvas-soft rounded-md transition-colors"
  title="Single-User Permissions"
@@ -943,6 +960,7 @@ onMounted(() => {
  </button>
 
  <button
+ v-if="authStore.hasPermission('users.update')"
  type="button"
  class="p-1.5 text-ink-muted hover:text-primary hover:bg-canvas-soft rounded-md transition-colors"
  title="Assign Unit"
@@ -952,6 +970,7 @@ onMounted(() => {
  </button>
 
  <button
+ v-if="authStore.hasPermission('users.view') || authStore.hasPermission('roles.view') || authStore.hasPermission('permissions.view') || authStore.hasPermission('system.configure')"
  type="button"
  class="p-1.5 text-ink-muted hover:text-emerald-600 hover:bg-canvas-soft rounded-md transition-colors"
  title="Inspect Effective Permissions & Lineage"
@@ -961,6 +980,7 @@ onMounted(() => {
  </button>
 
  <button
+ v-if="authStore.hasPermission('users.update')"
  type="button"
  class="p-1.5 text-ink-muted hover:text-primary hover:bg-canvas-soft rounded-md transition-colors"
  title="Edit Profile"
@@ -1162,6 +1182,7 @@ onMounted(() => {
  <span class="text-xs  font-semibold text-ink-muted ml-2">[{{ dp.scope_kind }}]</span>
  </div>
  <button
+ v-if="authStore.hasPermission('permissions.assign')"
  type="button"
  class="text-rose-500 hover:text-rose-700 p-1 rounded"
  title="Revoke Permission"
